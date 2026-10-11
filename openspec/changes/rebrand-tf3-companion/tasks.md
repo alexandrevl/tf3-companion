@@ -33,4 +33,4 @@
 
 - [x] 6.1 Copy the database safely and preserve original files; import remaining prototype snapshots without deleting them. CLI status reports 20 snapshots through 1983-07-17. Private notes and original knowledge backups live outside the repository.
 - [ ] 6.2 Player-controlled live cutover: enable only the renamed bridge, reload/save and verify fresh snapshot plus `[tf3c]` log. The installed prototype remains untouched.
-- [ ] 6.3 Commit locally after validation. Observed: 35 passing tests, real CLI status/overview/XLSX, MCP status/knowledge/findings, isolated mod install, and Lua syntax. No remote or publication.
+- [x] 6.3 Created local baseline commit `ff93edd` after validation: 35 passing tests, real CLI status/overview/XLSX, MCP status/knowledge/findings, isolated mod install and Lua syntax. No remote or publication.

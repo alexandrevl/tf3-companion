@@ -1,0 +1,15 @@
+{
+    "name": "TF3 Companion Bridge",
+    "summary": "Exports a read-only snapshot of your company for TF3 Companion.",
+    "description": "Periodically writes a read-only snapshot of the player's company (finances, lines, vehicles, stations, industries, towns) to the userdata folder (towns_industries/tf3c_snap_*.lua). Does not change the simulation.",
+    "authors": [
+        {
+            "name": "Alexandre Lima",
+            "role": "CREATOR"
+        }
+    ],
+    "tags": [
+        "Script Mod"
+    ],
+    "url": ""
+}

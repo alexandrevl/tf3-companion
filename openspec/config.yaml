@@ -1,0 +1,19 @@
+schema: spec-driven
+
+context: |
+  Product: TF3 Companion, an unofficial read-only data analyst for Transport Fever 3.
+  Two deliverables: an in-game Lua mod (TF3 Companion Bridge) that exports snapshots,
+  and a Python companion (CLI `tf3c`, MCP server) that stores history and analyses it.
+  Write every artifact, code comment, doc and user-facing string in English.
+  Windows and macOS are first-class platforms; Linux (Proton) is best effort.
+  The mod must stay read-only: no api.cmd, no changes to the simulation.
+  No network access and no telemetry; all player data stays on the player's disk.
+  Never copy Urban Games source code verbatim; paraphrase and cite file paths.
+  Mod behaviour can only be verified inside the game by the player; plan an
+  in-game validation step for any mod change.
+
+rules:
+  proposal:
+    - State what is out of scope
+  tasks:
+    - End every change with a verification task that names the exact command or in-game check

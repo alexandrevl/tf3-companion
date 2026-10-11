@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "tf3-companion": {
+      "command": "uv",
+      "args": ["run", "--project", ".", "tf3c", "mcp"]
+    }
+  }
+}

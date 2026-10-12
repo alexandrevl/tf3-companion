@@ -123,6 +123,7 @@ def test_line_lookup_by_name_or_id(paths):
 
 def test_environment_overrides_create_database_outside_package(tmp_path, monkeypatch):
     userdata = tmp_path / "game"
+    userdata.mkdir()
     data = tmp_path / "companion"
     monkeypatch.setenv("TF3C_USERDATA_DIR", str(userdata))
     monkeypatch.setenv("TF3C_DATA_DIR", str(data))
@@ -168,3 +169,73 @@ def test_knowledge_rejects_private_notes_path_outside_repository(paths, tmp_path
     with pytest.raises(LookupError):
         companion.knowledge("../notes")
     companion.close()
+
+
+def test_ingest_retains_changing_and_failed_files(paths):
+    folder = paths.snapshot_folder
+    first = write_snapshot(folder, base_snapshot(game_time=1 * YEAR))
+    broken = folder / "tf3c_snap_000000000002000.lua"
+    broken.write_text("return { broken", encoding="utf-8")
+    store = Store(paths.database)
+    res = store.ingest_folders([folder], keep_files=1)
+    assert res.ingested == [first.name]
+    assert broken.name in res.failed
+    assert broken.exists()
+    assert first.exists()
+    store.close()
+
+
+def test_ingest_disambiguates_duplicate_filenames_across_folders(paths, tmp_path):
+    f1 = paths.snapshot_folder
+    f2 = tmp_path / "second"
+    f2.mkdir()
+    p1 = write_snapshot(f1, base_snapshot(game_time=1 * YEAR))
+    p2 = write_snapshot(f2, base_snapshot(game_time=1 * YEAR))
+    store = Store(paths.database)
+    res = store.ingest_folders([f1, f2], keep_files=1)
+    assert str(p1) in res.ingested or str(p2) in res.ingested
+    assert len(res.skipped) + len(res.ingested) == 2
+    store.close()
+
+
+def test_single_store_rejects_foreign_or_conflicting_save_id(paths):
+    s1 = base_snapshot(game_time=1 * YEAR)
+    s1["meta"]["saveId"] = "save-alpha"
+    write_snapshot(paths.snapshot_folder, s1)
+    store = Store(paths.database)
+    res1 = store.ingest_folders([paths.snapshot_folder])
+    assert len(res1.ingested) == 1
+
+    s2 = base_snapshot(game_time=2 * YEAR)
+    s2["meta"]["saveId"] = "save-beta"
+    p2 = write_snapshot(paths.snapshot_folder, s2)
+    res2 = store.ingest_folders([paths.snapshot_folder])
+    assert p2.name in res2.failed
+    assert "single-store save identity mismatch" in res2.failed[p2.name]
+    store.close()
+
+
+def test_store_reporting_queries_and_bounds_validation(paths):
+    store = Store(paths.database)
+    for yr in (1980, 1981):
+        data = base_snapshot(game_time=yr * YEAR)
+        data["meta"]["date"] = {"year": yr, "month": 6, "day": 1}
+        data["catalog"] = [{"id": yr, "name": f"Vehicle {yr}"}]
+        write_snapshot(paths.snapshot_folder, data)
+    store.ingest_folders([paths.snapshot_folder])
+
+    assert store.available_years() == [1980, 1981]
+    assert len(store.snapshots_for_year(1980)) == 1
+    assert len(store.snapshots()) == 2
+    assert [s.game_time for s in store.recent_snapshots(limit=2)] == [1980 * YEAR, 1981 * YEAR]
+    assert store.latest_before(1981 * YEAR).game_time == 1980 * YEAR
+    assert store.snapshot_at_or_before(1981 * YEAR).game_time == 1981 * YEAR
+    assert store.latest_with_catalog(game_time=1980 * YEAR).game_time == 1980 * YEAR
+
+    with pytest.raises(ValueError):
+        store.recent_snapshots(limit=-1)
+    with pytest.raises(ValueError):
+        store.recent_snapshots(limit=True)
+    with pytest.raises(ValueError):
+        store.snapshots_for_year(-5)
+    store.close()

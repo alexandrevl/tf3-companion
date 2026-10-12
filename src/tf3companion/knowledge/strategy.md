@@ -1,6 +1,6 @@
 # Strategy: heuristics for a profitable company
 
-**Every item below is a HEURISTIC, not a rule.** Each identifies the mechanic it relies on (`mecanicas.md` §M#, `economia_cargas.md` §#; English topics: `mechanics.md`, `cargo_economy.md`) and what is verified or inferred. Before recommending anything, confirm it against actual snapshot data (line/vehicle balance, industry production/stock, town ratings). Sources for each mechanic are in the referenced files; only the minimum is repeated here.
+**Every item below is a HEURISTIC, not a rule.** Each identifies the mechanic it relies on (`mechanics.md` §M#, `cargo_economy.md` §#) and what is verified or inferred. Before recommending anything, confirm it against actual snapshot data (line/vehicle balance, industry production/stock, town ratings). Sources for each mechanic are in the referenced files; only the minimum is repeated here.
 
 Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = depends on something unverified.
 
@@ -9,8 +9,8 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 ## A. Choosing routes and cargo types
 
 **H1 — Choose cargo by volume and logistics, not by its "price".** `[V]`
-- Based on: `mecanicas.md` §M1 — all freight cargo types pay equally (3.8 × distance × difficulty); passengers ≈ 3.61.
-- Consequence: differences in profit per trip come from **vehicle capacity per cargo type, loading speed, distance, return cargo and running costs**, not the type of goods. Cargo types differ in deadline (`economia_cargas.md` §1) and whether there is demand/a consumer.
+- Based on: `mechanics.md` §M1 — all freight cargo types pay equally (3.8 × distance × difficulty); passengers ≈ 3.61.
+- Consequence: differences in profit per trip come from **vehicle capacity per cargo type, loading speed, distance, return cargo and running costs**, not the type of goods. Cargo types differ in deadline (`cargo_economy.md` §1) and whether there is demand/a consumer.
 - Consequence [I]: high-volume cargo types already piled up in stock (Coal, Iron Ore, Stone, Sand, Logs) tend to fill vehicles easily; end-of-chain cargo types have lower volumes but help towns grow (H12).
 
 **H2 — Prefer routes that are straight and long enough for income per trip to compensate for stationary time.** `[V]` for the basis, `[I]` for the optimum
@@ -21,10 +21,10 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 
 **H3 — Eliminate empty trips with return cargo.** `[V]`
 - Based on: WIKI tipstricks ("minimize empty time"; vehicles refit automatically at stations) and §M1 (income only for delivered items).
-- Examples of natural outbound/return pairs (from `economia_cargas.md` §2/§4): Coal/Iron Ore → Steel Mill and Steel/Sheet Metal back; Tools to mines and Coal to Steel Mill on the return trip; Crude Oil → Oil Refinery and Fuel/Chemicals back. `[I]` (must fit the body types: BULK/FLATBED/GOODS/LIQUID classes in `economia_cargas.md` §1).
+- Examples of natural outbound/return pairs (from `cargo_economy.md` §2/§4): Coal/Iron Ore → Steel Mill and Steel/Sheet Metal back; Tools to mines and Coal to Steel Mill on the return trip; Crude Oil → Oil Refinery and Fuel/Chemicals back. `[I]` (must fit the body types: BULK/FLATBED/GOODS/LIQUID classes in `cargo_economy.md` §1).
 
 **H4 — Serve both sides of a chain in the right ratio.** `[V]` for the rule, `[I]` for practice
-- Based on: `economia_cargas.md` §2 — rules have fixed ratios (Steel Mill 6 Iron Ore : 6 Coal; Machines 7 Steel : 4 Plastic; Tinned Food 2 Fish or 2 Meat : 1 Sheet Metal).
+- Based on: `cargo_economy.md` §2 — rules have fixed ratios (Steel Mill 6 Iron Ore : 6 Coal; Machines 7 Steel : 4 Plastic; Tinned Food 2 Fish or 2 Meat : 1 Sheet Metal).
 - If one input is missing, the other accumulates in input stock (limit 400–800) and transport stalls. Adjust vehicle counts on each branch so the cheapest branch is not the bottleneck.
 - Full output stock **destroys** production (§M3); if output stock is near its limit, collection is the bottleneck.
 
@@ -74,10 +74,10 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 - Based on: §M3 — with ≥10 visitors arriving by line (50% of capacity 20) within a two-year window, productivity becomes the industry's "potential" (1.5–2.5; default 2).
 - The visitor-count condition is demanding for isolated industries: the bus must connect a town with residents to the industry, with passengers arriving by line (not car).
 - The gain is worth more where cargo transport already carries production away (H5); otherwise it creates more idle stock (and destruction).
-- Compare with the cargo booster (Tools/Machines/Fertilizer): it consumes input stock (§M3, `economia_cargas.md` §2) and multiplies production by 1+f, with f randomly drawn from 0.5–1.5. Which is worthwhile depends on the cost of transporting the input. `[?]`
+- Compare with the cargo booster (Tools/Machines/Fertilizer): it consumes input stock (§M3, `cargo_economy.md` §2) and multiplies production by 1+f, with f randomly drawn from 0.5–1.5. Which is worthwhile depends on the cost of transporting the input. `[?]`
 
 **H11b — Choose industries to invest in with the climate in mind.** `[V]`
-- Based on: `economia_cargas.md` §3 — not every industry exists in every climate (e.g. Paper Mill/Printing Press only in subarctic). The complete Vehicles chain (tier 2) exists only in tropical (§4 there).
+- Based on: `cargo_economy.md` §3 — not every industry exists in every climate (e.g. Paper Mill/Printing Press only in subarctic). The complete Vehicles chain (tier 2) exists only in tropical (§4 there).
 
 ---
 
@@ -160,7 +160,7 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 
 ## Sources and gaps
 
-**Verified in mechanics:** all `[V]` items cite sections of `mecanicas.md`/`economia_cargas.md` and, through them, game files (`economy.zip`, `game_mechanics.zip`, `industries/*.con.lua`, `cargos/*.cargo.lua`, `scripts.zip`, `base/mod.json`) and the official wiki (`gamemanual:simulation:*`, `management:*`, `infrastructure:stationsdepots`, `gettingstarted:tipstricks`).
+**Verified in mechanics:** all `[V]` items cite sections of `mechanics.md`/`cargo_economy.md` and, through them, game files (`economy.zip`, `game_mechanics.zip`, `industries/*.con.lua`, `cargos/*.cargo.lua`, `scripts.zip`, `base/mod.json`) and the official wiki (`gamemanual:simulation:*`, `management:*`, `infrastructure:stationsdepots`, `gettingstarted:tipstricks`).
 
 **Gaps affecting the heuristics:**
 - Actual effect of speed on income and per-vehicle costs (`runningCosts`) — no number; comparisons require actual in-game balance.

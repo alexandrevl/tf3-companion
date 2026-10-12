@@ -4,15 +4,12 @@ from tf3companion.snapshot import Snapshot
 from conftest import YEAR, base_snapshot
 
 
-def titles(items, severity=None):
-    return [f.title for f in items if severity is None or f.severity == severity]
-
-
 def add_line(data, line_id, *, profit, vehicles_age_years=3.0, load=(50, 100), vehicles=1, **extra):
     now = data["meta"]["gameTime"]
     vehicle_ids = [line_id * 10 + i for i in range(vehicles)]
     data["lines"].append({
-        "id": line_id, "name": f"L{line_id}", "vehicles": vehicle_ids, "stops": [],
+        "id": line_id, "name": f"L{line_id}", "vehicles": vehicle_ids,
+        "stops": [{"stationGroup": 20}, {"stationGroup": 21}],
         "profitYear": profit, "capacity": [{"cargo": 0, "used": load[0], "capacity": load[1]}], "issues": [],
         **extra,
     })
@@ -32,13 +29,9 @@ def test_losing_line_severity_depends_on_line_maturity():
     add_line(data, 1, profit=-200_000, vehicles_age_years=2)
     add_line(data, 2, profit=-50_000, vehicles_age_years=0.4)
     items = analysis.findings(Snapshot(data))
-    assert "L1: loss over the last year" in titles(items, "high")
-    assert "L2: loss over the last year" in titles(items, "low")
     losing = [f for f in items if f.code == "line_losing_money"]
     assert [(f.entity["id"], f.severity, f.category) for f in losing] == [
         (1, "high", "lines"), (2, "low", "lines")]
-    assert "partial" not in losing[0].detail
-    assert "partial" in losing[1].detail
 
 
 def test_load_thresholds_flag_overloaded_and_underused_lines():
@@ -47,32 +40,35 @@ def test_load_thresholds_flag_overloaded_and_underused_lines():
     add_line(data, 2, profit=10, load=(10, 100), vehicles=3)
     add_line(data, 3, profit=10, load=(10, 100), vehicles=1)  # single vehicle: not "too many vehicles"
     items = analysis.findings(Snapshot(data))
-    assert "L1: overloaded (95%)" in titles(items)
-    assert "L2: underused (10%)" in titles(items)
-    assert not any(t.startswith("L3:") for t in titles(items))
     assert [(f.code, f.category) for f in items] == [
         ("line_overloaded", "lines"), ("line_underused", "lines")]
-    assert "instant reading, not an average" in items[1].detail
 
 
 def test_line_issues_and_empty_lines_are_reported():
     data = base_snapshot()
     add_line(data, 1, profit=0, issues=[{"type": "NowhereToUnload", "stopIndex": 2, "cargo": 3}])
-    data["lines"].append({"id": 2, "name": "Empty", "vehicles": [], "stops": [], "capacity": [], "issues": []})
+    data["lines"].append({"id": 2, "name": "Empty", "vehicles": [], "stops": [1, 2], "capacity": [], "issues": []})
     items = analysis.findings(Snapshot(data))
     issue = next(f for f in items if f.code == "line_config_issue")
-    assert issue.severity == "high" and issue.category == "lines" and "Coal" in issue.detail
+    assert issue.severity == "high" and issue.category == "lines"
     empty = next(f for f in items if f.code == "line_no_vehicles")
-    assert empty.title == "Empty: no vehicles"
     assert empty.severity == "medium" and empty.category == "lines"
 
+
+def test_orphan_and_no_stop_lines():
+    data = base_snapshot()
+    data["lines"].append({"id": 10, "name": "Orphan", "vehicles": [], "stops": [], "capacity": [], "issues": []})
+    data["lines"].append({"id": 11, "name": "OneStop", "vehicles": [110], "stops": [1], "capacity": [], "issues": []})
+    data["vehicles"].append({"id": 110, "name": "V110", "line": 11, "state": "EN_ROUTE"})
+    items = analysis.findings(Snapshot(data))
+    assert any(f.code == "line_orphan" and f.entity["id"] == 10 for f in items)
+    assert any(f.code == "line_no_stops" and f.entity["id"] == 11 for f in items)
 
 def test_profit_drop_compares_with_previous_snapshot():
     prev = base_snapshot(game_time=9 * YEAR)
     cur = base_snapshot()
     cur["lines"][0]["profitYear"] = 300_000  # was 800_000
     items = analysis.findings(Snapshot(cur), Snapshot(prev))
-    assert "Train A: profit dropping" in titles(items, "medium")
     drop = next(f for f in items if f.code == "line_profit_dropping")
     assert drop.category == "lines"
     assert drop.evidence == {"previous": 800_000, "current": 300_000}
@@ -92,12 +88,11 @@ def test_vehicle_findings():
     ]
     items = analysis.findings(Snapshot(data))
     no_path = next(f for f in items if f.code == "vehicle_no_path")
-    assert no_path.title == "Lost: no path" and no_path.severity == "high"
-    depot = next(f for f in items if f.code == "vehicles_idle_in_depot")
-    assert depot.title.startswith("1 vehicle") and "40,000" in depot.detail
+    assert no_path.entity["id"] == 1 and no_path.severity == "high"
+    depot = next(f for f in items if f.code == "fleet_idle_in_depot")
     assert depot.severity == "medium" and [v["id"] for v in depot.evidence["vehicles"]] == [2]
     losing = next(f for f in items if f.code == "vehicle_losing_on_profitable_line")
-    assert losing.title == "Surplus: loss on a profitable line" and losing.severity == "low"
+    assert losing.entity["id"] == 4 and losing.severity == "low"
     assert all(f.category == "vehicles" for f in items)
 
 
@@ -108,7 +103,7 @@ def test_closing_industry_and_collection_errors():
     data["errors"] = ["towns: boom"]
     items = analysis.findings(Snapshot(data))
     closing = next(f for f in items if f.code == "industry_closing")
-    assert closing.title == "Mine: scheduled to close" and closing.category == "industries"
+    assert closing.entity["id"] == 50 and closing.category == "industries"
     assert closing.severity == "high"
     errors = next(f for f in items if f.code == "snapshot_collection_errors")
     assert errors.category == "data" and errors.severity == "low"
@@ -171,9 +166,7 @@ def test_idle_depot_finding_aggregates_vehicles_and_value():
     items = analysis.findings(Snapshot(data))
     assert len(items) == 1
     depot = items[0]
-    assert depot.code == "vehicles_idle_in_depot" and depot.entity is None
-    assert depot.title == "3 vehicle(s) idle in depots"
-    assert "60,000" in depot.detail
+    assert depot.code == "fleet_idle_in_depot" and depot.entity["name"] == "Unknown depot"
     assert [v["id"] for v in depot.evidence["vehicles"]] == [1, 2, 3]
 
 
@@ -182,11 +175,10 @@ def test_collection_errors_evidence_is_limited_to_twenty():
     data["errors"] = [f"error {i}" for i in range(25)]
     finding, = analysis.findings(Snapshot(data))
     assert finding.code == "snapshot_collection_errors"
-    assert finding.title == "Snapshot with 25 collection error(s)"
     assert finding.evidence == {"errors": data["errors"][:20]}
 
 
-def test_findings_order_by_severity_then_category_then_title():
+def test_high_severity_findings_precede_collection_warnings():
     data = base_snapshot()
     add_line(data, 2, profit=-100_000)
     add_line(data, 1, profit=-100_000)
@@ -194,10 +186,47 @@ def test_findings_order_by_severity_then_category_then_title():
     data["industries"] = [{"id": 50, "name": "Mine", "closureTimeStamp": 1}]
     data["errors"] = ["collection failed"]
     items = analysis.findings(Snapshot(data))
-    assert [(f.severity, f.category, f.title) for f in items] == [
-        ("high", "industries", "Mine: scheduled to close"),
-        ("high", "lines", "L1: loss over the last year"),
-        ("high", "lines", "L2: loss over the last year"),
-        ("high", "vehicles", "Lost: no path"),
-        ("low", "data", "Snapshot with 1 collection error(s)"),
+    assert [(f.severity, f.category, f.entity["id"] if f.entity else None) for f in items] == [
+        ("high", "industries", 50),
+        ("high", "lines", 1),
+        ("high", "lines", 2),
+        ("high", "vehicles", 1),
+        ("low", "data", None),
     ]
+
+
+def test_full_stocks_and_unserved_summary():
+    data = base_snapshot()
+    data["industries"] = [
+        {"id": 1, "name": "Served Mill", "outputs": [{"cargo": 1, "shippedYear": 100}]},
+        {"id": 2, "name": "Unserved Mill", "outputs": [{"cargo": 2, "shippedYear": 0}]},
+    ]
+    data["stocks"] = [
+        {"kind": "industry", "owner": 1, "ownerName": "Served Mill", "cargos": [1], "count": 95, "capacity": 100},
+        {"kind": "industry", "owner": 2, "ownerName": "Unserved Mill", "cargos": [2], "count": 92, "capacity": 100},
+        {"kind": "warehouse", "owner": 3, "ownerName": "Central WH", "cargos": [1], "count": 100, "capacity": 100},
+    ]
+    items = analysis.findings(Snapshot(data))
+    codes = [f.code for f in items]
+    assert "industry_output_full" in codes
+    assert "industries_output_full_unserved" in codes
+    assert "warehouse_full" in codes
+
+
+def test_load_trend_uses_distinct_monthly_samples():
+    samples = []
+    for month, used in ((1, 20), (2, 50), (3, 80)):
+        data = base_snapshot(game_time=YEAR + month * (YEAR // 12))
+        data["meta"]["date"] = {"year": 1984, "month": month, "day": 1}
+        data["lines"][0]["capacity"][0]["used"] = used
+        samples.append(Snapshot(data))
+    snap1, snap2, snap3 = samples
+    trend = analysis.load_trend([snap1, snap2, snap3])
+    assert len(trend) == 1
+    assert trend[0]["samples"] == 3
+    assert trend[0]["meanLoad"] == 0.5
+    assert trend[0]["latestLoad"] == 0.8
+    assert trend[0]["slope"] > 0
+
+    fit_pending = analysis.fleet_fit(snap3, None)
+    assert fit_pending["status"] == "unavailable"

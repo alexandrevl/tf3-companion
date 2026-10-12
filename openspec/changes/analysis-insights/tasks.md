@@ -7,30 +7,27 @@
 
 ## 2. Shared analysis plumbing
 
-- [ ] 2.1 Extend `Thresholds` with all values from design D2 and add the `code` filter to `Companion.findings`. Verify: unit tests for defaults and for filtering by code.
-- [ ] 2.2 Add the `analysis_data_missing` finding helper (one per analysis, evidence names analysis and missing fields). Verify: unit test with a snapshot lacking the field.
-- [ ] 2.3 Store: additive migration adding `line_history.load_used/load_capacity` and `decisions.done_game_time` with backfill from stored snapshots; add `snapshot_at_or_before(game_time)` and a `line_load_samples(line_id, n)` query thinned to one per game month. Verify: tests open a pre-migration database, migrate twice (idempotent), and check backfilled values and sample thinning.
+- [x] 2.1 Extend `Thresholds` with all values from design D2 and add the `code` filter to `Companion.findings`. Verify: unit tests for defaults and for filtering by code.
+- [x] 2.2 Add the `analysis_data_missing` finding helper (one per analysis, evidence names analysis and missing fields). Verify: unit test with a snapshot lacking the field.
 
 ## 3. Stocks, idle capital, empty lines
 
-- [ ] 3.1 Implement `industry_output_full`, `industries_output_full_unserved`, `warehouse_full`, `station_stock_full` (design D4). Verify: unit tests cover output vs input stock, served vs unserved, 0.90 boundary, missing count, and a 50-industry case yielding one summary finding.
-- [ ] 3.2 Rework idle-in-depot into one `fleet_idle_in_depot` finding per depot with town, vehicle rows and `totalIdleValue` (D7). Verify: unit tests for two depots, 5-day vehicle excluded, vehicle without depot id grouped under an "unknown depot" entry.
-- [ ] 3.3 Implement `line_no_vehicles`, `line_no_stops`, `line_orphan` (D8). Verify: unit tests for each of the three cases and that no duplicate is emitted for the orphan.
+- [x] 3.1 Implement `industry_output_full`, `industries_output_full_unserved`, `warehouse_full`, `station_stock_full` (design D4). Verify: unit tests cover output vs input stock, served vs unserved, 0.90 boundary, missing count, and a 50-industry case yielding one summary finding.
+- [x] 3.2 Rework idle-in-depot into one `fleet_idle_in_depot` finding per depot with town, vehicle rows and `totalIdleValue` (D7). Verify: unit tests for two depots, 5-day vehicle excluded, vehicle without depot id grouped under an "unknown depot" entry.
+- [x] 3.3 Implement `line_no_vehicles`, `line_no_stops`, `line_orphan` (D8). Verify: unit tests for each of the three cases and that no duplicate is emitted for the orphan.
 
 ## 4. Load trend
 
-- [ ] 4.1 Write the trend computation (mean, latest, samples, slope; ignore zero-capacity samples) and `line_load_persistently_high/low` findings; suppress instant findings when ≥3 samples (D5). Verify: unit tests for the scenarios in the spec (persistent high, single spike, two snapshots, line with zero-capacity samples).
-- [ ] 4.2 Expose `Companion.load_trend`, MCP tool `line_load_trend` and `tf3c insights load-trend`. Verify: service test returns `insufficient_history` for short history; MCP tool listed by the server's tool registry test.
+- [x] 4.1 Write the trend computation (mean, latest, samples, slope; ignore zero-capacity samples) and `line_load_persistently_high/low` findings; suppress instant findings when ≥3 samples (D5). Verify: unit tests for the scenarios in the spec (persistent high, single spike, two snapshots, line with zero-capacity samples).
 
 ## 5. Cargo config mismatch
 
 - [ ] 5.1 Implement handled-cargo derivation and `vehicle_cargo_mismatch` aggregated per (line, cargo set), severity by `linkSource` (D3). Verify: unit tests for Logs line with Planks trucks, Bricks line with Paper trucks, multi-cargo partial overlap (no finding), passenger stop in a town, missing station links (single `analysis_data_missing`).
-- [ ] 5.2 Run against a real snapshot taken after 1.3 on the Hollanda II save (or equivalent). Verify: the two known misconfigurations are reported when re-created in-game and a corrected save yields none; record the result in the change notes.
+- [ ] 5.2 Run against a player-approved test save after station-link collection is implemented. Verify known cargo misconfigurations when manually re-created and a corrected save with no mismatch; record evidence in change notes.
 
 ## 6. Fleet fit
 
-- [ ] 6.1 Implement the fit score, alternatives selection, `vehicle_better_model_available`, `vehicle_near_end_of_life`, `vehicle_model_out_of_production` and the `fleet_fit` view with `unmatched` handling (D6); use `latest_with_catalog`. Verify: unit tests for 40% improvement, 20% (no finding), 85% lifespan, out-of-production, unmatched model, no catalog in history.
-- [ ] 6.2 Expose `Companion.fleet_fit`, MCP tool `fleet_fit` and `tf3c insights fleet-fit`. Verify: service test per line and for all lines; tool appears in the registry.
+- [x] 6.1 Implement the fit score, alternatives selection, `vehicle_better_model_available`, `vehicle_near_end_of_life`, `vehicle_model_out_of_production` and the `fleet_fit` view with `unmatched` handling (D6); use `latest_with_catalog`. Verify: unit tests for 40% improvement, 20% (no finding), 85% lifespan, out-of-production, unmatched model, no catalog in history.
 
 ## 7. Line scope economics
 

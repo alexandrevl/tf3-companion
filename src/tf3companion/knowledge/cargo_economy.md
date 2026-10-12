@@ -6,7 +6,7 @@ Source conventions (paths relative to `Transport Fever 3/`):
 - **ECO:** = `base/content/economy.zip:economy/` (`placementparamsutil.lua`, `temperate|dry|tropic|subarctic|all.eco.lua`)
 - **WIKI:ic** = `https://wiki.transportfever3.com/doku.php?id=gamemanual:simulation:industriescargos`
 - **WIKI:towns** = `https://wiki.transportfever3.com/doku.php?id=gamemanual:simulation:towns`
-- General mechanics (income, growth, boosters, closure): `mecanicas.md` (M1…M12), translated as `mechanics.md`.
+- General mechanics (income, growth, boosters, closure): `mechanics.md` (M1…M12).
 - Where the wiki and `.con.lua` conflict, both values are listed and marked [DISCREPANCY].
 - Total (WIKI:ic): 36 cargo types (12 raw materials, 11 intermediates, 3 boosters, 10 final products) and 32 industries (32 `.con.lua` files in `base/content/industries/`). Passengers are a 37th cargo type (`CARGO:passengers`).
 
@@ -14,7 +14,7 @@ Source conventions (paths relative to `Transport Fever 3/`):
 
 ## 1. Cargo types
 
-All freight cargo types pay the same per item and per metre (3.8; see `mecanicas.md` M1, `ECO:cargotype.script.lua` + `CARGO:*`). What differs between cargo types: vehicle class, delivery deadline, where they are produced and consumed, and town demand.
+All freight cargo types pay the same per item and per metre (3.8; see `mechanics.md` M1, `ECO:cargotype.script.lua` + `CARGO:*`). What differs between cargo types: vehicle class, delivery deadline, where they are produced and consumed, and town demand.
 
 Key: **Class** = the cargo's `cargoClasses` (every cargo is also UNIVERSAL), in `CARGO:x`. **Deadline** = `timeToDeliverInSeconds` in `CARGO:x`. **Tier/Use/Factor** = `ECO:placementparamsutil.lua:getCargoCategories` (only cargo types demanded by towns). Factor = `townConsumptionFactor` (the lower it is, the smaller the annual quantity; WIKI:towns: complex cargo types are demanded in smaller quantities). Type/Producer/Consumer = WIKI:ic, confirmed against `IND:x`.
 
@@ -61,12 +61,12 @@ Key: **Class** = the cargo's `cargoClasses` (every cargo is also UNIVERSAL), in 
 Notes:
 - Wiki type/consumers: WIKI:ic. Class/deadline: `CARGO:*`. Tier/use/factor: `ECO:placementparamsutil.lua:getCargoCategories`.
 - All freight cargo types have a `loadSpeedFactor` of 0.0625 (`CARGO:*`); passengers have 1. Exact semantics [UNVERIFIED].
-- **Deadline** (in `timeToDeliverInSeconds`): late delivery does not reduce income, but worsens the town's "Delivery" rating (`mecanicas.md` M12). Shortest: Meat 900; Vegetables/Fish/Beverages 1125; Grain 1286. Longest: Iron Ore, Steel, Stone, Sand 4500.
+- **Deadline** (in `timeToDeliverInSeconds`): late delivery does not reduce income, but worsens the town's "Delivery" rating (`mechanics.md` M12). Shortest: Meat 900; Vegetables/Fish/Beverages 1125; Grain 1286. Longest: Iron Ore, Steel, Stone, Sand 4500.
 - Town demands (`ECO:placementparamsutil.lua`):
   - **Commercial:** Vegetables, Fish, Meat (tier 0); Beverages, Books, Clothes, Tinned Food (tier 1).
   - **Industrial:** Bricks, Cement, Fuel, Planks (tier 0); Furniture, Machines, Tools (tier 1); Vehicles (tier 2).
   - **There is no tier 2 commercial cargo in the data.** The wiki says the third commercial demand (level 9) can be "the most complex type"; in practice, commercial cargo types only have tier ≤1.
-- Tiers × town XP per delivered item: tier 0 = 10, tier 1 = 20, tier 2 = 40 (WIKI:towns; `mecanicas.md` M2).
+- Tiers × town XP per delivered item: tier 0 = 10, tier 1 = 20, tier 2 = 40 (WIKI:towns; `mechanics.md` M2).
 - Which cargo types/industries exist depends on the climate: see §3. Town demand only considers cargo types in the current climate (`cargoCategories` removed by climate in `ECO:*.eco.lua`).
 
 ---
@@ -120,12 +120,12 @@ Values per **production cycle at maximum level**; "duration" = the rule's `capac
 Source: input/output/duration/stock values in `IND:x`; these match WIKI:ic ("Industries List" section) except where marked.
 
 Notes on the rules:
-- The **duration** of most rules is 365/n (365, 182.5, 121.67, 91.25, 45.63, 30.42, 22.81, 11.41; exceptions: Coal 20, Fishing Grounds 21.9): [INFERENCE] these are fractions of a year in days. Do not use the table to estimate annual volume. **Always use `getCargoMaxProductionPerYear`/actual in-game production (MCP snapshot)**: actual production is scaled by production level, `defaultIndustryProductivity` (temperate 0.58), boosters and the "Industry Productivity" option (`mecanicas.md` M3).
+- The **duration** of most rules is 365/n (365, 182.5, 121.67, 91.25, 45.63, 30.42, 22.81, 11.41; exceptions: Coal 20, Fishing Grounds 21.9): [INFERENCE] these are fractions of a year in days. Do not use the table to estimate annual volume. **Always use `getCargoMaxProductionPerYear`/actual in-game production (MCP snapshot)**: actual production is scaled by production level, `defaultIndustryProductivity` (temperate 0.58), boosters and the "Industry Productivity" option (`mechanics.md` M3).
 - **Production level** = number of plots; output per cycle is scaled by level/maximum level. The wiki gives ranges (e.g. Coal 1–16; Quarry 1–16; Oil Platform 1–4).
 - Food Factory has **two** rules: Fish + Sheet Metal or Meat + Sheet Metal. It is not "Fish and Meat together".
 - Steel Mill requires **both** inputs in a 1:1 ratio (6 Iron Ore : 6 Coal).
-- Several processing industries (Steel Mill, Saw Mill, Oil Refinery, Chemical Plant, Livestock Farm) have **two or more outputs** in separate stocks; excess output goes to `itemsDestroyed` when stock fills up (`mecanicas.md` M3 and M9). Whether one full output stock blocks the other outputs: [UNVERIFIED].
-- Capacity for people (worker booster) = 20 in all industries (`industrialCapacity` in `IND:*`); see `mecanicas.md` M3.
+- Several processing industries (Steel Mill, Saw Mill, Oil Refinery, Chemical Plant, Livestock Farm) have **two or more outputs** in separate stocks; excess output goes to `itemsDestroyed` when stock fills up (`mechanics.md` M3 and M9). Whether one full output stock blocks the other outputs: [UNVERIFIED].
+- Capacity for people (worker booster) = 20 in all industries (`industrialCapacity` in `IND:*`); see `mechanics.md` M3.
 
 ---
 

@@ -780,21 +780,24 @@ function bridge.guiUpdate(_params, _state, guiState)
 		if id ~= nil and id ~= state.lastRequestId then
 			reason = "request"
 			requestId = id
-			state.lastRequestId = id
 		end
 	end
 
-	if reason then
+	if reason and (state.retryFrame == nil or state.frame >= state.retryFrame) then
 		local ok, err = pcall(function()
 			local snapshot, gameTime = buildSnapshot(reason, requestId)
 			app.saveUserdata(DIR, string.format("tf3c_snap_%015d", gameTime), snapshot)
 			log(string.format("snapshot written (reason=%s, gameTime=%d, lines=%d, vehicles=%d, errors=%d)",
 				reason, gameTime, #(snapshot.lines or {}), #(snapshot.vehicles or {}), #snapshot.errors))
 		end)
-		if not ok then
+		if ok then
+			state.lastGameTime = now
+			state.lastRequestId = requestId or state.lastRequestId
+			state.retryFrame = nil
+		else
 			log("snapshot failed: " .. tostring(err))
+			state.retryFrame = state.frame + REQUEST_POLL_FRAMES
 		end
-		state.lastGameTime = now
 	end
 
 	guiState:set(state)

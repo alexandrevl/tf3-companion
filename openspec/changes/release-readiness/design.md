@@ -1,12 +1,11 @@
 ## Context
 
-See proposal.md. Facts grounded in the current tree and game install (build 40420, macOS):
+The initial release plan was written during the prototype cutover. Current delivered source and verification are recorded in `docs/review-notes.md`; unchecked tasks below remain targets, not claims about today's tree.
 
-- `pyproject.toml` has a hardcoded `version = "0.1.0"`, hatchling backend, wheel packages `src/<pkg>` only.
-  After change 1 the package is `tf3companion` with `knowledge/` as package data.
+- Companion version is `0.1.0`; hatchling packages `tf3companion`, knowledge, analyst instructions and the bundled mod.
 - The mod lives in `mod/<id>/` with `mod.json` (`revision`, `cosmetic: true`, `severityAdd/Remove: None`),
   `_content.json` (file list), `_metadata/modinfo.json` (name, summary, description, `localization`, authors, tags) and
-  `content/<dir>/*.lua`. There is no `image_00.tga`, no logo, no Lua test.
+  `content/<dir>/*.lua`. Real branding/thumbnail assets remain unverified; Lua polling lifecycle tests now run through Lupa.
 - Game files (read-only inspection): `api/tealdef/api/modhub.d.tl` and `api/type/modhub.d.tl` define the Mod Hub
   publishing API: `ModPublishHelper` with `validate`, `publish`, `addLogoImage`, `addGalleryImages`,
   `moveGalleryImage`, `setModDetails`, `setRemoteModId`, `openFolder`; media types `Logo`, `GalleryThumb180p`,
@@ -14,9 +13,9 @@ See proposal.md. Facts grounded in the current tree and game install (build 4042
   `_metadata/mod.io_fileid.txt`, `mods/{}/gallery/{}/`, "Gallery file doesn't exist". Stock mods in `mods/release/*`
   ship `_metadata/0.png` (1920x1080 RGBA PNG) and `_metadata/modinfo.json`, no `image_00.tga`.
   So which file is the in-game mod-list thumbnail is **not settled by static inspection**; task 6.1 settles it empirically.
-- Findings carry a single `entity` field (`{kind,id,name}` or null), category in `finance|lines|vehicles|industries|data`;
-  `snapshot-schema.md` documents schema 3 (after `analysis-insights`) and that, not an `entities[]` list.
-- No git history and no remote: the repo has zero commits.
+- Findings carry a single `entity` field (`{type,id,name}` or null), with finance/line/vehicle/industry/data categories.
+- Current supported snapshot schema is 1 and bridge revision is 2. Schemas 2/3 are future collection changes, not delivered compatibility.
+- Work is committed locally. No GitHub remote or publication is required for this review.
 
 ## Goals / Non-Goals
 

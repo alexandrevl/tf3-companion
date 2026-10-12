@@ -1,119 +1,82 @@
-# TF3 Companion — Roadmap to a public release
+# Roadmap
 
-Status: approved plan, 2026-10-11. Author: Alexandre Lima (`alexandrevl`). Licence: MIT.
-Detailed plans live in OpenSpec: `openspec/changes/<change>/` (proposal, specs, design, tasks).
-Run `openspec list` to see progress.
+TF3 Companion helps players understand their transport company through explainable local data, without automating gameplay. This roadmap describes **source delivery and release gates separately**. Detailed proposals, designs, specifications and acceptance tasks live in [OpenSpec changes](../openspec/changes/); an implemented feature does not mean its whole proposal is complete.
 
-## 1. Vision
+## Delivered foundation
 
-**TF3 Companion** is an unofficial, read-only data analyst for Transport Fever 3.
-A small in-game mod exports periodic snapshots of your company; a local companion
-stores the history, runs analyses and serves them to any AI agent over MCP (Claude
-Code, Claude Desktop, Cursor, Codex, omp…) or to you directly through a CLI and reports.
+The current source tree provides:
 
-You play; the companion watches the numbers, explains the mechanics and remembers
-what you decided and whether it worked.
+- An English-language `tf3companion` package, `tf3c` CLI and read-only bridge mod.
+- Snapshot ingestion, SQLite history, company/line/vehicle queries and explainable findings.
+- Cargo opportunities, vehicle catalog access, player notes and a decision journal.
+- XLSX exports and an MCP stdio interface with packaged knowledge.
+- Local data storage outside the checkout and an MIT license credited to Alexandre Lima.
 
-### Principles
+These are source capabilities, not evidence of a published package or compatibility on every operating system.
 
-| Principle | Consequence |
-|---|---|
-| Read-only | The mod never issues `api.cmd` commands. Safe to add/remove from any save; marked `cosmetic`. |
-| Local-first | No network, no telemetry. Everything lives on the player's disk. |
-| Windows and macOS first-class | Discovery, install, paths and opening files work on both; Linux/Proton best effort. |
-| Agent-agnostic | MCP is the main interface; CLI and reports work without any AI. |
-| Evidence over opinion | Every finding carries the numbers, the snapshot date and a source for any game-mechanic claim. |
-| English in code and docs | The agent answers in the player's language; data and docs stay English. |
+## Current delivery: usable, reviewable source build
 
-### Non-goals (v1)
+| Workstream | Source deliverable | Acceptance still required |
+| --- | --- | --- |
+| Portable setup | Read-only doctor, conservative Steam discovery, explicit overrides, portable mod install/uninstall | Clean-machine setup; real Windows and macOS game activation/refresh; Linux/Proton evidence where available |
+| Insights and reports | Explainable findings, six report kinds, annual coverage, decision follow-up, Markdown and offline HTML | Review collector-gap behavior and model units against real observations |
+| Agent experience | Analyst instructions, six prompts, knowledge/notes/latest-report resources; real stdio round trips verified | Rehearse configuration in the intended third-party desktop/client application |
+| Data safety | Verified receipts, strict input validation, protected pruning and identified-lineage conflict rejection | Persistent save-identity probe and fully isolated lineage storage before claiming multi-save support |
+| Public documentation | English quickstart, privacy, troubleshooting, reports, contribution guide and templates; installed-wheel smoke verified | Clean-machine and real-game quickstart rehearsal |
+| CI | Locked Python tests and package builds on Windows/macOS/Linux | First hosted run after a separately authorized push; configured CI is not executed CI |
 
-- Acting in the game (buying vehicles, editing lines).
-- Reading save files directly (zstd + binary format; reverse engineering).
-- A hosted service or a GUI app.
+See [review notes](review-notes.md) for evidence and remaining gates. No publishing, live mod installation or player-data changes are part of this local review.
 
-## 2. Names (decided)
+## Locally verified
 
-| Thing | Name |
-|---|---|
-| Product | TF3 Companion (README carries an "unofficial, not affiliated with Urban Games / Paradox" disclaimer) |
-| Repo / PyPI | `tf3-companion` (import `tf3companion`) |
-| CLI | `tf3c` |
-| MCP server | `tf3-companion` |
-| Mod id / display name | `tf3_companion_bridge` / TF3 Companion Bridge |
-| Snapshot files | `<userdata>/towns_industries/tf3c_snap_<gameTime>.lua`, request `tf3c_request.lua` |
-| Log prefix | `[tf3c]` |
+- Full behavior suite, including the Lua polling lifecycle, passes.
+- Actual CLI exercised install/doctor/import/refresh/report/export/uninstall with isolated synthetic history.
+- Real MCP stdio exercised tools, all prompts, resources, malformed/missing-data errors and the decision journal.
+- Wheel and source distribution built; wheel installed and exercised outside the checkout.
+- Annual HTML inspected in Chromium without scripts, external resource requests or horizontal overflow at the inspected desktop viewport.
+- All eight OpenSpec changes validate strictly. Detailed evidence and limitations are in [review notes](review-notes.md).
 
-## 3. Architecture
 
-```mermaid
-flowchart LR
-  subgraph Game["Transport Fever 3"]
-    MOD[TF3 Companion Bridge<br/>game script, read-only]
-  end
-  MOD -- "tf3c_snap_*.lua" --> UD[(game userdata)]
-  UD -- ingest, routed by save --> DB[(one SQLite per save<br/>user data dir)]
-  CLI[tf3c CLI] -- "tf3c_request.lua (refresh, interval)" --> UD
-  DB --> AN[analysis: findings,<br/>insights, follow-up]
-  AN --> MCP[MCP server<br/>tools · prompts · resources]
-  AN --> REP[reports<br/>Markdown · HTML · XLSX]
-  KB[(knowledge base<br/>shipped)] --> MCP
-  NOTES[(per-save notes<br/>+ decision journal)] --> MCP
-  MCP --> AG[any MCP agent]
-  CLI --> AN
-```
+## Next: release readiness
 
-## 4. Changes (OpenSpec), in implementation order
+1. **Prove safe save identity.** Validate bridge-owned persistent lineage across save/reload, copies, new games and collisions. Route snapshots, notes and decisions without mixing unrelated games; never infer identity from town names or ids.
+2. **Complete platform rehearsals.** Run install → enable → reload → refresh → first finding on real Windows and macOS installations. CI proves Python behavior, not game APIs or mod activation.
+3. **Settle unknown game semantics.** Verify `transportedYear`, lifespan units, station links and position provenance before using them in accounting or route-fit claims.
+4. **Exercise the release artifacts.** Inspect built wheel/sdist contents, perform an installed-wheel smoke run, validate mod bundle layout, and run Lua structural/harness checks where implemented. Stubs cannot prove game API signatures or persistence.
+5. **Capture real visuals.** Create original branding and player-approved screenshots of the mod list, a finding and an offline report. Verify thumbnail format in the actual game. No placeholder images or borrowed game artwork.
+6. **Prepare a reviewed release.** Confirm version/schema/mod-revision compatibility, changelog accuracy, license inclusion, privacy of fixtures and a complete manual checklist. Publication is a later, explicit action.
 
-| # | Change | Delivers |
-|---|---|---|
-| 1 | `rebrand-tf3-companion` | Rename to `tf3companion`/`tf3c`/`tf3_companion_bridge`; English everywhere; single output sink; data dir outside the repo; knowledge shipped as package data; player notes; finding `code`s; baseline specs; first commit |
-| 2 | `cross-platform-and-saves` | Windows/macOS discovery and real-machine acceptance; `doctor`; portable mod installation; verified persistent lineage ids and isolated histories; configurable interval; compression; schema 2 |
-| 3 | `analysis-insights` | Cargo config mismatch, full stocks, load trend, fleet fit vs catalog, idle capital, orphan lines, line scope economics, decision follow-up; `transportedYear` investigation; schema 3 (station positions and links) |
-| 4 | `basic-reports` | Company, lines, fleet, cargo, decision follow-up and **annual** reports; Markdown (with Mermaid) + offline HTML; XLSX export kept; `tf3c report`, MCP `report` |
-| 5 | `agent-experience` | MCP server instructions (analyst persona), prompts (`monthly-review`, `annual-review`, `line-triage`, `fleet-renewal`, `cargo-opportunities`, `decision-review`), resources; contributor `AGENTS.md` |
-| 6 | `release-readiness` | README, docs set, LICENSE, CHANGELOG, CONTRIBUTING, CI on Windows/macOS/Linux, Lua harness + luacheck, anonymised fixtures, mod artwork, issue templates, compatibility table, manual publish checklist |
+## Later: better longitudinal decisions
 
-Each change ends with an in-game check by the player when the mod changes, `uv run pytest`, and a local commit.
-Publishing (GitHub remote, PyPI, mod.io via the in-game Mod Hub) is a manual checklist at the end of change 6.
+- Reliable save selection and isolated histories once persistent lineage is demonstrated.
+- Collection interval controls and measured compression improvements without sacrificing evidence.
+- Station-linked cargo mismatch and route-scope economics with verified schema fields.
+- Vehicle suitability and renewal recommendations with verified units and catalog constraints.
+- Follow-up on player decisions after enough observed game time, with honest uncertainty.
 
-## 5. Key design decisions
+Future features remain OpenSpec work, not promises that all game mechanics are already known.
 
-- **One tested output path.** `app.saveUserdata("towns_industries", …)` worked on build 40420/macOS. Windows still needs real-game verification; do not generalise platform evidence.
-- **Save identity must not be guessed from towns.** Independent games can share town ids. Require a bridge-owned lineage id, persistence probes and lineage-scoped filenames before claiming save isolation.
-- **Interval through the request file.** This works with existing games without relying on unverified mod-parameter editing support.
-- **Size handled by compression**, not by lighter snapshots: benchmark the observed ≈570 KB JSON snapshots; retain existing raw-file pruning only after successful ingestion.
-- **Reports as Markdown first.** Conversation plus tables and charts proved more useful than the spreadsheet; HTML for the browser, XLSX as raw data.
-- **Persona in the MCP server.** Any agent gets the analyst behaviour from the server instructions; `AGENTS.md` is for contributors.
+## OpenSpec workstreams
 
-## 6. What the first sessions taught (input for change 3)
+| Plan | Scope |
+| --- | --- |
+| [Rebrand](../openspec/changes/rebrand-tf3-companion/) | Product/package names, English artifacts and local storage foundation |
+| [Cross-platform and saves](../openspec/changes/cross-platform-and-saves/) | Portable setup, discovery, save identity and collection controls |
+| [Analysis insights](../openspec/changes/analysis-insights/) | Cargo/fleet/stock/trend analysis and verified economic interpretation |
+| [Basic reports](../openspec/changes/basic-reports/) | Markdown, offline HTML and honest annual observation coverage |
+| [Agent experience](../openspec/changes/agent-experience/) | MCP analyst instructions, prompts and resources |
+| [Release readiness](../openspec/changes/release-readiness/) | Packaging, CI, documentation, fixtures, assets and manual release gates |
+| [Data integrity](../openspec/changes/data-integrity-hardening/) | Parser/model boundaries, verified import receipts and chronological queries |
+| [Service boundaries](../openspec/changes/service-boundary-hardening/) | Refresh locking, bridge acknowledgment, import errors and safe report output |
 
-Taken from the March–July 1983 sessions on the author's save:
+## Lessons that shape the design
 
-| Learning | Consequence |
-|---|---|
-| Trucks were set to the wrong cargo (Planks on a Logs line, Paper on a Bricks line); the player fixed both after we pointed it out | Automatic cargo config mismatch finding |
-| The player's hypothesis "the warehouse is full" was right (Logs 500/500); 62 of 108 industries had a full output stock | Full-stock findings, aggregated to avoid noise |
-| Every answer needed the caveat "load is an instant reading" | Load trend from history replaces instant load findings |
-| "Which vehicle suits this line?" | Fleet fit against the year's catalog |
-| 10 ships worth ≈$9.8M sat in depots | Idle-capital finding |
-| Profit is a rolling 12-month window, so fixes show slowly | Decision follow-up compares before/after once enough time passed |
-| Short local lines earned $22k/vehicle vs $647k on regional ones | Scope economics from stop distances, not from a naming mod |
-| The player needs full entity names to find things in game | Rule for every output |
-| `transportedYear` looked too low | Investigate before use |
+- Cargo configurations can be wrong even when a line runs: findings need explicit configuration evidence.
+- Full industry stocks indicate a potential bottleneck, not automatically a profitable route.
+- Instantaneous load is not sustained demand; compare observations before suggesting more vehicles.
+- Rolling annual profit responds slowly to changes and cannot be summed as monthly income.
+- Recommendations must name the affected entity and disclose incomplete collection.
 
-## 7. Platform plan
+## Boundaries
 
-| Platform | Discovery | Mod install | Validation |
-|---|---|---|---|
-| macOS | `~/Library/Application Support/Steam/userdata/<id>/3493540/local` (observed) | Planned portable CLI; staging-area installation observed with the prototype script | Real-game release gate |
-| Windows | Steam registry/default paths; TF3 userdata layout must be verified on Windows | Same planned command, with explicit path override | Real Windows installation, activation and refresh gate; CI alone is insufficient |
-| Linux / Proton | Candidate Steam/Flatpak locations | Same planned command | Best effort; disclose actual verification |
-
-## 8. Delivery gates and planning corrections
-
-- English-only maintained files, comments, messages and mod metadata. Player-provided entity names remain verbatim.
-- Annual reports disclose exact observation dates, gaps and partial-year coverage. Rolling `profitYear` values MUST NOT be summed into calendar-year income; a later-year snapshot does not prove the previous year was fully observed.
-- Scripts and unit tests do not establish Windows/game compatibility; record actual platform evidence.
-- Name availability and trademark clearance are not established by the exploratory search. Do not claim either.
-- License: MIT; credit Alexandre Lima. No remote, URL, package publication or mod upload is created in this local-development stage.
-- First commit excludes databases, snapshots and player notes. Preserve local backups and the installed prototype until the player-controlled reload.
+No automatic gameplay actions, hosted analytics service, telemetry or direct save-file reverse engineering are planned. Local analysis does not make an external AI client private: users control what they share with their provider. Trademark/name availability and distribution approvals have not been established. GitHub, PyPI and Mod Hub publication require a separate manual decision.

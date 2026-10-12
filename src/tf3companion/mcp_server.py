@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import sqlite3
 import subprocess
 from typing import Any, Callable, Literal, TypeVar
 
@@ -11,33 +12,10 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from .paths import ConfigError
 from .service import Companion, NoSnapshotError
+from .agent_experience import load_instructions, register_experience
 
-INSTRUCTIONS = """\
-You are the data analyst of the player's transport company in Transport Fever 3, working with the player.
-Collect, understand and discuss company data: diagnose problems, find opportunities, track outcomes and
-build knowledge over time. Answer in the user's language, directly and with numbers. You never act in
-the game: the player decides and executes.
 
-Data before opinions: start with status and findings; if the snapshot is old, use refresh with the game
-open and the mod enabled. Use export_spreadsheet for collaborative spreadsheet analysis and the company,
-line, vehicle, industry, town, opportunity and history tools to investigate. Cite the numbers behind each
-recommendation and the snapshot date. Consult knowledge (mechanics, strategy, cargo_economy,
-snapshot_schema) before claiming how the game works; mark unsupported explanations as hypotheses.
-Offer options and trade-offs, not orders. Record agreed decisions with record_decision (what, why,
-entities). Review planned decisions in later conversations, compare outcomes with the data, and close
-them with update_decision. Save durable game facts, goals, play style, regions and long-term decisions
-with save_notes.
-
-Snapshots are point-in-time readings. profitYear covers a rolling game-year window; a line
-with ageYears below one has partial profit figures. The interpretation of transportedYear remains
-unverified: do not use it for annual accounting until investigated. load is instantaneous occupancy,
-not an average: one snapshot cannot prove persistent crowding, idleness or unmet demand, or justify
-fleet-size changes on its own; compare earlier snapshots. The mod is read-only.
-Tell the player what to do and where, never execute game actions. Collection errors in status.latest.errors
-mean sections may be incomplete: warn before drawing conclusions that rely on them.
-"""
-
-server = MCPServer(name="tf3-companion", instructions=INSTRUCTIONS)
+server = MCPServer(name="tf3-companion", instructions=load_instructions())
 _companion: Companion | None = None
 
 
@@ -57,7 +35,7 @@ def tool(fn: F) -> F:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         try:
             return fn(*args, **kwargs)
-        except (NoSnapshotError, ConfigError, LookupError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+        except (NoSnapshotError, ConfigError, LookupError, ValueError, OSError, sqlite3.Error, subprocess.CalledProcessError) as exc:
             raise ToolError(str(exc)) from exc
     server.tool()(wrapper)
     return fn
@@ -148,7 +126,7 @@ def vehicle_catalog(carrier: Literal["ROAD", "RAIL", "TRAM", "WATER", "AIR"] | N
 
 
 @tool
-def export_spreadsheet(open_app: bool = True) -> dict[str, Any]:
+def export_spreadsheet(open_app: bool = False) -> dict[str, Any]:
     """Export an XLSX with summary, lines, vehicles, industries, towns, opportunities, findings, history charts and decisions under the data directory; optionally open the default application."""
     return companion().export_spreadsheet(open_app=open_app)
 
@@ -174,7 +152,7 @@ def list_decisions(status: Literal["planned", "done", "dropped"] | None = None, 
 @tool
 def knowledge(topic: str | None = None) -> dict[str, Any]:
     """Read packaged game knowledge; without a topic, list available topics."""
-    return companion().knowledge(topic)
+    return Companion.knowledge(topic)
 
 
 @tool
@@ -187,6 +165,22 @@ def save_notes(append: str | None = None) -> str:
 def log_tail(lines: int = 40) -> list[str]:
     """Latest [tf3c] game log lines for diagnosing snapshot collection."""
     return companion().log_tail(lines)
+
+
+@tool
+def doctor() -> dict[str, Any]:
+    """Diagnose setup and report fixes even when the game is not installed."""
+    from .setup_tools import doctor as diagnose
+    return diagnose()
+
+
+@tool
+def report(kind: Literal["company", "lines", "fleet", "cargo", "decisions", "annual"], year: int | None = None) -> str:
+    """Generate a Markdown report from stored observations. Annual coverage may be partial; rolling annual profits are not calendar-year totals."""
+    return companion().report(kind, year)["markdown"]
+
+
+register_experience(server, companion)
 
 
 def main() -> None:

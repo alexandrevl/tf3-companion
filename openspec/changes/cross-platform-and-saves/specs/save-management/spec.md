@@ -10,7 +10,7 @@ Keeps the history, notes, decisions and reports of each Transport Fever 3 game s
 The companion SHALL identify games by a bridge-owned persistent lineage id, not by town names or entity ids. Reloading and save-as SHALL retain the id; independently started games, including on the same scenario, SHALL receive different ids.
 
 #### Scenario: Same game, new save file
-- **WHEN** the player continues "Hollanda II - 13" as "Hollanda II - 14"
+- **WHEN** the player continues "Example Region - 13" as "Example Region - 14"
 - **THEN** snapshots from both files share one save id
 
 #### Scenario: Two games on the same scenario

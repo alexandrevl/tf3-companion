@@ -26,6 +26,10 @@ class Thresholds:
     unshipped_ratio: float = 0.5          # shipped / produced below this = cargo left behind
     profit_drop_ratio: float = 0.3        # line profit fell by more than 30% since previous snapshot
     min_profit_drop: int = 100_000
+    full_stock_ratio: float = 0.9
+    trend_snapshots: int = 6
+    trend_min_samples: int = 3
+    fit_improvement: float = 0.25
 
 
 @dataclass
@@ -196,12 +200,14 @@ def _line_findings(snap: Snapshot, prev: Snapshot | None, t: Thresholds) -> list
         name = row["name"] or f"line {row['id']}"
         mature = row["ageYears"] is not None and row["ageYears"] >= t.mature_years
 
-        if row["vehicles"] == 0:
+        if row["vehicles"] == 0 or row["stops"] < 2:
+            code = "line_orphan" if row["vehicles"] == 0 and row["stops"] < 2 else (
+                "line_no_vehicles" if row["vehicles"] == 0 else "line_no_stops")
             out.append(Finding(
-                "line_no_vehicles", "medium", "lines", f"{name}: no vehicles",
-                "The line exists but has no vehicles assigned.",
-                "Assign vehicles or delete the line if it has been abandoned.",
-                _entity("line", line), {"stops": row["stops"]},
+                code, "medium", "lines", f"{name}: incomplete line",
+                f"{row['vehicles']} vehicles and {row['stops']} stops.",
+                "Review the line in the game; assign vehicles and at least two stops, or remove abandoned lines.",
+                _entity("line", line), {"stops": row["stops"], "vehicles": row["vehicles"]},
             ))
 
         profit = row["profitYear"]
@@ -288,13 +294,21 @@ def _vehicle_findings(snap: Snapshot, t: Thresholds) -> list[Finding]:
                 "There may be too many vehicles on the line. Try removing one and monitor load.",
                 _entity("vehicle", v), row,
             ))
-    if idle:
-        value = sum(r.get("value") or 0 for r in idle)
+    total = sum(r.get("value") or 0 for r in idle)
+    depots = {d["id"]: d for d in snap.depots}
+    groups: dict[Any, list[dict[str, Any]]] = {}
+    for row in idle:
+        groups.setdefault(row["depot"], []).append(row)
+    for depot_id, rows in groups.items():
+        depot = depots.get(depot_id, {"id": depot_id, "name": "Unknown depot"})
+        name = depot.get("name") or f"Depot #{depot_id}"
+        value = sum(r.get("value") or 0 for r in rows)
         out.append(Finding(
-            "vehicles_idle_in_depot", "medium", "vehicles", f"{len(idle)} vehicle(s) idle in depots",
-            f"Without a line for {t.idle_depot_days}+ days. Total resale value: {value:,}.",
-            "Sell them or assign them to a line; idle vehicles only depreciate.",
-            None, {"vehicles": idle},
+            "fleet_idle_in_depot", "medium", "vehicles", f"{name}: {len(rows)} idle vehicle(s)",
+            f"No assigned line for {t.idle_depot_days}+ days; recorded resale value {value:,}.",
+            "Consider assigning or selling these vehicles after checking intended reserve capacity.",
+            _entity("depot", depot), {"vehicles": rows, "value": value, "totalIdleValue": total,
+                                    "idleDepotDays": t.idle_depot_days},
         ))
     return out
 
@@ -326,13 +340,36 @@ def _data_findings(snap: Snapshot) -> list[Finding]:
     )]
 
 
-def findings(snap: Snapshot, prev: Snapshot | None = None, t: Thresholds = Thresholds()) -> list[Finding]:
+def findings(
+    snap: Snapshot, prev: Snapshot | None = None, t: Thresholds = Thresholds(),
+    history: list[Snapshot] | None = None,
+) -> list[Finding]:
     out = (
         _line_findings(snap, prev, t)
         + _vehicle_findings(snap, t)
         + _industry_findings(snap, t)
+        + _stock_findings(snap, t)
         + _data_findings(snap)
     )
+    if history:
+        trends = load_trend(history, t)
+        sufficient = {r["id"] for r in trends if r["samples"] >= t.trend_min_samples}
+        out = [f for f in out if not (f.code in {"line_overloaded", "line_underused"}
+                                    and f.entity["id"] in sufficient)]
+        for row in trends:
+            line = snap.lines_by_id.get(row["id"])
+            if line is None or row["id"] not in sufficient:
+                continue
+            high = row["meanLoad"] >= t.overloaded_load
+            low = row["meanLoad"] <= t.underused_load and len(line.get("vehicles") or []) >= t.underused_min_vehicles
+            if high or low:
+                out.append(Finding(
+                    "line_load_persistently_high" if high else "line_load_persistently_low",
+                    "medium" if high else "low", "lines", f"{row['name']}: repeated sampled occupancy",
+                    "Sample mean is not a time average or proof of unmet demand.",
+                    "Inspect queues and complete trips before changing the fleet.",
+                    _entity("line", line), {**row, "threshold": t.overloaded_load if high else t.underused_load},
+                ))
     return sorted(out, key=lambda f: (SEVERITY_ORDER[f.severity], f.category, f.title))
 
 
@@ -438,3 +475,125 @@ def opportunities(snap: Snapshot, t: Thresholds = Thresholds(), limit: int = 20)
 
 def _pct(value: float | None) -> str:
     return "-" if value is None else f"{value * 100:.0f}%"
+
+
+def full_stocks(snap: Snapshot, t: Thresholds = Thresholds()) -> list[dict[str, Any]]:
+    """Measured stock fill; industry rows require verified output-cargo overlap."""
+    rows = []
+    for stock in snap.stocks:
+        count, capacity = stock.get("count"), stock.get("capacity")
+        if count is None or capacity is None or capacity <= 0 or count / capacity < t.full_stock_ratio:
+            continue
+        industry = snap.industries_by_id.get(stock.get("owner"))
+        if stock.get("kind") == "industry":
+            outputs = industry.get("outputs") or [] if industry else []
+            cargos = set(stock.get("cargos") or [])
+            matching = [f for f in outputs if f.get("cargo") in cargos]
+            if not matching:
+                continue
+            served = any((f.get("shippedYear") or 0) > 0 for f in matching)
+        else:
+            served = None
+        rows.append({**stock, "fill": count / capacity, "served": served,
+                     "name": stock.get("ownerName") or f"{stock.get('kind', 'Stock').title()} #{stock.get('owner')}",
+                     "cargoNames": [snap.cargo(c) for c in stock.get("cargos") or []]})
+    return rows
+
+
+def _stock_findings(snap: Snapshot, t: Thresholds) -> list[Finding]:
+    out, unserved = [], []
+    codes = {"industry": "industry_output_full", "warehouse": "warehouse_full", "station": "station_stock_full"}
+    for row in full_stocks(snap, t):
+        if row["served"] is False:
+            unserved.append(row)
+            continue
+        code = codes.get(row.get("kind"))
+        if code:
+            out.append(Finding(code, "medium", "industries", f"{row['name']}: stock full",
+                               f"{row['count']:,} of {row['capacity']:,} units at this sample.",
+                               "Inspect shipment connections and queues; fullness alone does not identify a cause.",
+                               {"type": row["kind"], "id": row.get("owner"), "name": row["name"]},
+                               {**row, "threshold": t.full_stock_ratio}))
+    if unserved:
+        out.append(Finding("industries_output_full_unserved", "low", "industries",
+                           f"{len(unserved)} unshipped output stocks full",
+                           "These output stocks have no recorded annual shipping.",
+                           "Review demand and network connections before proposing a route.", None,
+                           {"count": len(unserved), "stocks": sorted(unserved, key=lambda r: r["fill"], reverse=True)[:20],
+                            "threshold": t.full_stock_ratio}))
+    return out
+
+
+def load_trend(history: list[Snapshot], t: Thresholds = Thresholds()) -> list[dict[str, Any]]:
+    """Unweighted sample mean and sample-index slope, never a time average."""
+    monthly: dict[Any, Snapshot] = {}
+    for snap in sorted(history, key=lambda s: s.game_time):
+        key = (snap.date["year"], snap.date["month"]) if snap.date else ("time", snap.game_time)
+        monthly[key] = snap
+    samples = sorted(monthly.values(), key=lambda s: s.game_time)[-t.trend_snapshots:]
+    grouped: dict[int, list[tuple[Snapshot, dict[str, Any], float]]] = {}
+    for snap in samples:
+        for line in snap.lines:
+            load = line_load(line)
+            if load is not None:
+                grouped.setdefault(line["id"], []).append((snap, line, load))
+    rows = []
+    for line_id, points in grouped.items():
+        values = [p[2] for p in points]
+        n = len(values)
+        mean = sum(values) / n
+        center = (n - 1) / 2
+        denominator = sum((i - center) ** 2 for i in range(n))
+        slope = sum((i - center) * (v - mean) for i, v in enumerate(values)) / denominator if denominator else None
+        rows.append({"id": line_id, "name": points[-1][1].get("name") or f"Line #{line_id}",
+                     "meanLoad": mean, "latestLoad": values[-1], "samples": n, "slope": slope,
+                     "status": "sampled" if n >= t.trend_min_samples else "insufficient_history",
+                     "observations": [{"date": s.date_label, "load": v} for s, _, v in points]})
+    return rows
+
+
+def fleet_fit(snap: Snapshot, catalog_snap: Snapshot | None, t: Thresholds = Thresholds()) -> dict[str, Any]:
+    """A capacity-speed/cost heuristic only with explicitly verified measurement units."""
+    units = catalog_snap.meta.get("verifiedUnits", {}) if catalog_snap else {}
+    if not catalog_snap or not catalog_snap.catalog:
+        return {"status": "unavailable", "reason": "No catalog snapshot is stored.", "rows": []}
+    if units.get("topSpeed") != "m/s" or units.get("runningCosts") != "currency/year":
+        return {"status": "unavailable", "reason": "Catalog speed and annual running-cost units are not verified.",
+                "rows": [], "catalogDate": catalog_snap.date_label}
+    year = (snap.date or {}).get("year", snap.meta.get("year"))
+    if year is None:
+        return {"status": "unavailable", "reason": "Game year is missing.", "rows": []}
+
+    def score(model, cargo):
+        capacity = sum(c.get("capacity") or 0 for c in model.get("capacity") or [] if c.get("cargo") == cargo)
+        speed, cost = model.get("topSpeed"), model.get("runningCosts")
+        return capacity * speed / cost if capacity > 0 and speed and speed > 0 and cost and cost > 0 else None
+
+    def available(model):
+        start, end = model.get("yearFrom"), model.get("yearTo")
+        return (start is None or start <= 0 or start <= year) and (end is None or end <= 0 or year < end)
+
+    rows = []
+    catalog = catalog_snap.catalog
+    for vehicle in snap.vehicles:
+        configs = vehicle.get("loadConfig") or []
+        if not configs:
+            continue
+        cargo = max(configs, key=lambda c: c.get("capacity") or 0).get("cargo")
+        for model_id in vehicle.get("models") or []:
+            model = snap.models.get(model_id, {})
+            matches = [m for m in catalog if model.get("res") and m.get("res") == model["res"]]
+            current = matches[0] if len(matches) == 1 else None
+            current_score = score(current, cargo) if current else None
+            alternatives = [m for m in catalog if m.get("carrier") == vehicle.get("carrier")
+                            and available(m) and score(m, cargo) is not None]
+            best = max(alternatives, key=lambda m: score(m, cargo), default=None)
+            improvement = score(best, cargo) / current_score - 1 if best and current_score else None
+            rows.append({"vehicle": vehicle.get("name") or f"Vehicle #{vehicle['id']}",
+                         "model": model.get("name") or model.get("res") or f"Model #{model_id}",
+                         "cargo": snap.cargo(cargo), "score": current_score,
+                         "alternative": best.get("name") or best.get("res") if best else None,
+                         "improvement": improvement, "better": improvement is not None and improvement >= t.fit_improvement,
+                         "outOfProduction": not available(current) if current else None,
+                         "status": "matched" if current_score else "unmatched"})
+    return {"status": "heuristic", "catalogDate": catalog_snap.date_label, "rows": rows}

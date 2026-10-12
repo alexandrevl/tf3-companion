@@ -178,14 +178,24 @@ class _Parser:
             if tok and tok[1] == "[" and tok[0] == "op":
                 self.next()
                 key = self.value()
+                if key is None or isinstance(key, (list, dict)) or (
+                    isinstance(key, float) and math.isnan(key)
+                ):
+                    raise LuaDataError("unsupported table key")
+                if key in items:
+                    raise LuaDataError("duplicate or ambiguous table key")
                 self.expect("]")
                 self.expect("=")
                 items[key] = self.value()
             elif tok and tok[0] == "name" and nxt and nxt[1] == "=" and tok[1] not in _SPECIAL_NAMES:
                 self.next()
                 self.next()
+                if tok[1] in items:
+                    raise LuaDataError("duplicate table key")
                 items[tok[1]] = self.value()
             else:
+                if next_index in items:
+                    raise LuaDataError("duplicate or ambiguous table key")
                 items[next_index] = self.value()
                 next_index += 1
             if not (self.accept(",") or self.accept(";")):
@@ -211,7 +221,12 @@ def _number(text: str) -> int | float:
 
 def loads(text: str) -> Any:
     """Parse a Lua data document (``function data() return ... end``, ``return ...`` or a bare value)."""
-    return _Parser(text).document()
+    try:
+        return _Parser(text).document()
+    except (RecursionError, IndexError, OverflowError, UnicodeError, ValueError) as exc:
+        if isinstance(exc, LuaDataError):
+            raise
+        raise LuaDataError("invalid or excessively nested Lua data") from exc
 
 
 _IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")

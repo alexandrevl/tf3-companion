@@ -10,7 +10,7 @@ Source conventions (all paths relative to `Transport Fever 3/`):
 - Items without a direct source are marked `[INFERENCE]` or `[UNVERIFIED]`.
 - No TF1/TF2 facts have been used as established truth.
 
-Cross-references: `estrategia.md` (translated as `strategy.md`) cites the sections below by ID (M1…M12). References to `economia_cargas.md` correspond to the English `cargo_economy.md` topic.
+Cross-references: `strategy.md` cites these sections by ID (M1…M12); `cargo_economy.md` details cargo and industry chains.
 
 ---
 
@@ -84,7 +84,7 @@ Cross-references: `estrategia.md` (translated as `strategy.md`) cites the sectio
 **Sources of raw XP** (`town_growth.script.tl`; values 5/10/20 and 10/20/40 from WIKI:simulation:towns; XP = base × 2^tier):
 - Passenger reaching a destination by **line**: 5 XP (same town, tier 0), 10 XP (neighbouring town, tier 1), 20 XP (more distant town, tier 2).
   - Walking/car trips do not count (the `lastMoveMode` check requires `LINES`).
-- Cargo item delivered to a town building: 10 / 20 / 40 XP according to cargo tier (tier 0/1/2; see `economia_cargas.md`).
+- Cargo item delivered to a town building: 10 / 20 / 40 XP according to cargo tier (tier 0/1/2; see `cargo_economy.md`).
 - **Final XP = raw XP × authority multiplier** (below); headquarters grant an extra bonus starting at 5% (WIKI:simulation:towns).
 - Automatic growth per tick is zero (`growthPerTick` in `town_cargo_util.tl`), so growth only comes from transport.
 
@@ -127,13 +127,13 @@ Cross-references: `estrategia.md` (translated as `strategy.md`) cites the sectio
 - The new cargo type is the highest-weight candidate: tier within range gives weight 1, outside gives 0.01, multiplied by the imbalance between towns (`pickBiggest`).
 - Maximum demands per town: "Town Cargo Demands" option = 2/4/6 (`base/mod.json`, `BASE:difficulty_util.tl`).
 - Fish only becomes a demand if Fish production exists on the map (`isCargoAvailable`).
-- Annual quantity demanded is lower for complex cargo types (`townConsumptionFactor`; table in `economia_cargas.md`).
+- Annual quantity demanded is lower for complex cargo types (`townConsumptionFactor`; table in `cargo_economy.md`).
 
 ---
 
 ## M3 — Industries: production, levels, boosters
 
-**Structure** (`base/content/industries/<x>.zip:<x>/<x>.con.lua`, `industries/industryutil.lua`; details in `economia_cargas.md`):
+**Structure** (`base/content/industries/<x>.zip:<x>/<x>.con.lua`, `industries/industryutil.lua`; details in `cargo_economy.md`):
 - Production rules ("rules") with input → output and a **duration** (`capacity`). The duration unit is undocumented. [UNVERIFIED]
 - Primary industries (mines, farms, etc.) produce without inputs.
 - **Production level = number of "plots"** (fields, wells, galleries). Rule output is scaled by level / maximum level (`industryutil.lua:adjustStocklistRule`); the wiki gives output ranges (e.g. Coal "1–16").
@@ -157,7 +157,7 @@ Cross-references: `estrategia.md` (translated as `strategy.md`) cites the sectio
 - The "Transport Workers" subsidy exists for this (WIKI:management:subsidies).
 
 **Cargo booster** (primary industries only; `.con.lua` rule flagged by `booster`):
-- Consumes Tools, Machines or Fertilizer from input stock (type and amount: `economia_cargas.md`).
+- Consumes Tools, Machines or Fertilizer from input stock (type and amount: `cargo_economy.md`).
 - Industry factor: `boostFactor` randomly drawn from 0.5–1.5 (rounded to 0.01) at creation (`industryutil.lua:399-403`); production multiplied by 1 plus `boostFactor` (`base/content/gui.zip:gui/main/industry_util.tl`).
 - Stops when the input runs out (WIKI:simulation:industriescargos).
 - Whether the two boosters multiply: [UNVERIFIED].
@@ -307,7 +307,7 @@ Cross-references: `estrategia.md` (translated as `strategy.md`) cites the sectio
 
 ## M12 — Maximum delivery time per cargo type
 
-- Each cargo type has `timeToDeliverInSeconds` (table in `economia_cargas.md`, from `base/content/cargos/*.zip`). Delivery **after the deadline** does not reduce income, but counts as late in the "Delivery" rating (M2) (WIKI:management:companyandfinances#delivery_time).
+- Each cargo type has `timeToDeliverInSeconds` (table in `cargo_economy.md`, from `base/content/cargos/*.zip`). Delivery **after the deadline** does not reduce income, but counts as late in the "Delivery" rating (M2) (WIKI:management:companyandfinances#delivery_time).
 - The company's "Delivery Time" tab shows the expected deadline per cargo type (new TF3 feature, same source).
 - Values: from 900 (Meat) to 4500 (Iron Ore, Sand, Steel, Stone). Unit: seconds according to the field name; relationship to game days [UNVERIFIED].
 
@@ -325,5 +325,5 @@ Cross-references: `estrategia.md` (translated as `strategy.md`) cites the sectio
 - Degradation rate of `maintenanceState`, exact repair radius per depot/workshop type and what happens beyond `lifespan`.
 - Actual `vehiclePriceFactor` per vehicle.
 - Whether `posDifference` means destination minus origin (effect of elevation gain).
-- Wiki × code discrepancies: monthly interest/15-day instalments (loans); unused years before closure (10 versus 5); Livestock Farm and Furniture Factory have boosters in the wiki without rules in `.con.lua` (see `economia_cargas.md`).
+- Wiki × code discrepancies: monthly interest/15-day instalments (loans); unused years before closure (10 versus 5); Livestock Farm and Furniture Factory have boosters in the wiki without rules in `.con.lua` (see `cargo_economy.md`).
 - Wiki pages marked "not yet adapted"/"old revision": `gamemanual:management:companyandfinances` and `gamemanual:gameplayfaqs` appear as "old revision"; FAQ is empty.

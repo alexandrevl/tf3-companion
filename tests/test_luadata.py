@@ -9,7 +9,7 @@ def test_parses_game_userdata_document():
     text = """function data()
 return {
 \t-- comment
-\tname = "Hollanda II",
+	name = "Example Region",
 \tcount = -3,
 \tratio = 1.5e2,
 \tflags = { true, false, },
@@ -20,7 +20,7 @@ return {
 end
 """
     assert luadata.loads(text) == {
-        "name": "Hollanda II",
+        "name": "Example Region",
         "count": -3,
         "ratio": 150.0,
         "flags": [True, False],
@@ -60,3 +60,25 @@ def test_roundtrip_through_dumps():
 def test_rejects_malformed_documents(text):
     with pytest.raises(luadata.LuaDataError):
         luadata.loads(text)
+
+
+@pytest.mark.parametrize("text", [
+    "return os.execute('touch /tmp/unsafe')",
+    "return {} os.execute('anything')",
+    "return { [nil] = 1 }",
+    "return { [{}] = 1 }",
+    "return { [nan] = 1 }",
+    "return { [true] = 1, [1] = 2 }",
+    "return { a = 1, a = 2 }",
+    r'return "\999"',
+    r'return "\xzz"',
+    r'return "\u{110000}"',
+])
+def test_rejects_executable_or_ambiguous_data(text):
+    with pytest.raises(luadata.LuaDataError):
+        luadata.loads(text)
+
+
+def test_excessive_nesting_is_a_data_error():
+    with pytest.raises(luadata.LuaDataError):
+        luadata.loads("return " + "{" * 2000 + "}" * 2000)

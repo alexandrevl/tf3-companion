@@ -47,7 +47,7 @@ New mod data, collected in the existing station collector with `pcall` like the 
 | `mature_years` | 1.0 (existing) | scope, follow-up lines |
 | `followup_provisional` / `followup_mature` | 0.25 / 1.0 year | follow-up maturity |
 
-The band limits are initial guesses to be checked against the Hollanda II save's real distances (task 7.3); changing them is a one-line edit.
+The band limits are initial hypotheses to validate against player-approved real route observations (task 7.3), not calibrated constants.
 
 ### D3. Cargo mismatch
 Per line, `handled` = union of cargos produced by served industries at any stop (outputs), accepted by them (inputs), plus passengers/mail for stops with a served town. For each vehicle, mismatch when its `loadConfig` cargo set is non-empty and disjoint from `handled`. Partially overlapping configs (multi-cargo vehicles) are not flagged. Aggregate per (line, cargo set). `canCarry` is not used for the verdict (it lists what the model *could* carry) but is shown in evidence so the suggestion can say "switch to X".

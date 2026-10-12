@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report a reproducible problem with TF3 Companion or the bridge mod.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please check [docs/troubleshooting.md](docs/troubleshooting.md) first.
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: e.g. Windows 11 23H2, macOS 14.6 Sonoma, Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: game-build
+    attributes:
+      label: Transport Fever 3 Build
+      description: In-game build number (e.g. 40420)
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: TF3 Companion & Mod Revision
+      description: Output of `uv run tf3c --version` and mod revision from `mod.json`
+    validations:
+      required: true
+  - type: textarea
+    id: doctor-output
+    attributes:
+      label: tf3c doctor output
+      description: Run `uv run tf3c doctor` and paste the full output here (redacting any private paths).
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: log-output
+    attributes:
+      label: Game log lines ([tf3c])
+      description: Run `uv run tf3c log` or check `stdout.txt` for lines prefixed with `[tf3c]`.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: What steps led to the issue?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs Observed Behavior
+      description: What did you expect to happen, and what happened instead?
+    validations:
+      required: true

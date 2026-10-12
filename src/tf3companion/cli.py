@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
-from .paths import ConfigError
-from .service import Companion, NoSnapshotError
+from .paths import ConfigError, load_paths
+from .service import Companion, NoSnapshotError, open_default
 
 
 def _print(data: Any) -> None:
@@ -28,15 +30,21 @@ def _print_findings(items: list[dict[str, Any]]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from . import __version__
+
     parser = argparse.ArgumentParser(prog="tf3c", description="TF3 Companion: read-only Transport Fever 3 data analyst")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("doctor", help="diagnose setup without requiring the game to be installed")
+    p = sub.add_parser("mod", help="install or remove the bundled bridge")
+    p.add_argument("action", choices=("install", "uninstall"))
     sub.add_parser("status", help="data paths, mod and latest snapshot")
     sub.add_parser("ingest", help="import new snapshots into SQLite")
     p = sub.add_parser("refresh", help="request a fresh snapshot from the open game")
     p.add_argument("--timeout", type=float, default=30.0)
     sub.add_parser("overview", help="company overview")
     p = sub.add_parser("lines", help="company lines")
-    p.add_argument("--sort", default="profitYear")
+    p.add_argument("--sort", default="profitYear", choices=("profitYear", "transportedYear", "rate", "load", "vehicles", "ageYears"))
     p.add_argument("--limit", type=int, default=50)
     p = sub.add_parser("line", help="line details by id or name")
     p.add_argument("ref")
@@ -46,26 +54,47 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=int, default=20)
     p = sub.add_parser("notes", help="read or append dated player notes")
     p.add_argument("--append", metavar="TEXT")
+    p = sub.add_parser("knowledge", help="read packaged knowledge without game discovery")
+    p.add_argument("topic", nargs="?")
     p = sub.add_parser("log", help="mod lines from the game log")
     p.add_argument("--lines", type=int, default=40)
-    p = sub.add_parser("export", help="export an XLSX under the data directory")
+    p = sub.add_parser("export", help="export XLSX data")
     p.add_argument("--open", action="store_true", help="open using the default application")
+    p = sub.add_parser("report", help="generate evidence-backed Markdown or offline HTML")
+    p.add_argument("kind", choices=("company", "lines", "fleet", "cargo", "decisions", "annual"))
+    p.add_argument("--year", type=int)
+    p.add_argument("--html", action="store_true")
+    p.add_argument("--open", action="store_true")
     sub.add_parser("mcp", help="start the MCP server over stdio")
     args = parser.parse_args(argv)
 
-    if args.command == "mcp":
-        from .mcp_server import main as run_mcp
-        run_mcp()
-        return 0
-
     companion = None
     try:
+        if args.command == "mcp":
+            from .mcp_server import main as run_mcp
+            run_mcp()
+            return 0
+        if args.command == "doctor":
+            from .setup_tools import doctor
+            result = doctor()
+            _print(result)
+            return 0 if result["ok"] else 1
+        if args.command == "mod":
+            from .setup_tools import install_mod, uninstall_mod
+            _print((install_mod if args.action == "install" else uninstall_mod)(load_paths()))
+            return 0
+        if args.command == "knowledge":
+            result = Companion.knowledge(args.topic)
+            print(result["content"]) if args.topic else _print(result)
+            return 0
         companion = Companion()
         match args.command:
             case "status":
                 _print(companion.status())
             case "ingest":
-                _print(companion.ingest())
+                result = companion.ingest()
+                _print(result)
+                return 1 if result["failed"] else 0
             case "refresh":
                 result = companion.refresh(timeout_s=args.timeout)
                 _print(result)
@@ -89,7 +118,15 @@ def main(argv: list[str] | None = None) -> int:
                 print("\n".join(companion.log_tail(args.lines)))
             case "export":
                 _print(companion.export_spreadsheet(open_app=args.open))
-    except (NoSnapshotError, ConfigError, LookupError, ValueError, OSError, subprocess.CalledProcessError) as exc:
+            case "report":
+                result = companion.report(args.kind, args.year, args.html)
+                if args.open:
+                    try:
+                        open_default(Path(result.get("html_file", result["file"])))
+                    except (OSError, subprocess.CalledProcessError) as exc:
+                        print(f"warning: Report saved, but the default application could not open it: {exc}", file=sys.stderr)
+                _print({key: value for key, value in result.items() if key != "markdown"})
+    except (NoSnapshotError, ConfigError, LookupError, ValueError, OSError, sqlite3.Error, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     finally:

@@ -8,21 +8,7 @@ from pathlib import Path
 
 from platformdirs import user_data_path
 
-TF3_STEAM_APP_ID = "3493540"
-
-
-class ConfigError(RuntimeError):
-    pass
-
-
-def _detect_userdata_dir() -> Path:
-    steam_userdata = Path.home() / "Library/Application Support/Steam/userdata"
-    candidates = [p for p in steam_userdata.glob(f"*/{TF3_STEAM_APP_ID}/local") if p.is_dir()]
-    if not candidates:
-        raise ConfigError(
-            f"Transport Fever 3 userdata not found under {steam_userdata}; set TF3C_USERDATA_DIR"
-        )
-    return max(candidates, key=lambda p: p.stat().st_mtime)
+from .discovery import ConfigError, TF3_STEAM_APP_ID, discover_userdata
 
 
 @dataclass(frozen=True)
@@ -55,10 +41,14 @@ class Paths:
         return self.data / "notes.md"
 
 
-def load_paths() -> Paths:
-    userdata_env = os.environ.get("TF3C_USERDATA_DIR")
-    userdata = Path(userdata_env).expanduser() if userdata_env else _detect_userdata_dir()
+def data_directory() -> Path:
+    """Resolve companion storage without creating it (safe for diagnostics)."""
     data_env = os.environ.get("TF3C_DATA_DIR")
-    data = Path(data_env).expanduser() if data_env else user_data_path("tf3-companion", appauthor=False, roaming=False)
+    return Path(data_env).expanduser() if data_env else user_data_path("tf3-companion", appauthor=False, roaming=False)
+
+
+def load_paths() -> Paths:
+    userdata = discover_userdata()
+    data = data_directory()
     data.mkdir(parents=True, exist_ok=True)
     return Paths(userdata=userdata, data=data)

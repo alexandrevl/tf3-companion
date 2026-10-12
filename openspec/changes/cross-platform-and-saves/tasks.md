@@ -2,13 +2,18 @@
 
 ## 1. Game discovery
 
-- [ ] 1.1 Implement `discovery.py` (D1) with injectable platform/env/home/registry; verify pytest cases for Windows registry path, Windows default path, macOS, Linux native and Flatpak, two accounts, override, and the not-found message listing searched paths
-- [ ] 1.2 Wire `paths.py` to discovery and remove the macOS-only detection; verify `uv run tf3c status` still finds the author's userdata
+- [x] 1.1 Implement `discovery.py` (D1) with injectable platform/env/home/registry and regression cases for Windows registry/default paths, macOS, Linux native/Flatpak, ambiguous accounts, overrides and searched-path failures.
+- [x] 1.2 Wire `paths.py` to discovery, preserve existing single-store and request/snapshot paths, and remove macOS-only selection.
+- [x] 1.3 Run the discovery regression suite after integration.
+- [ ] 1.4 Validate Windows/Linux game layout with native players and rehearse authorized macOS game activation/status.
 
 ## 2. Mod bundling and installation
 
-- [ ] 2.1 Ship the mod in the wheel via hatch `force-include` to `tf3companion/_mod/` with a dev-checkout fallback (D3); verify `uv build` and that the wheel lists `tf3companion/_mod/tf3_companion_bridge/mod.json`
-- [ ] 2.2 Implement `tf3c mod install|uninstall` with reload hint, delete `scripts/install-mod.sh`; verify with a pytest on a temp userdata and by running `uv run tf3c mod install` on the author's machine
+- [x] 2.1 Configure wheel-only hatch `force-include` to `tf3companion/_mod/` and a source-checkout resource fallback.
+- [x] 2.2 Implement safe `install_mod(paths)` and `uninstall_mod(paths)` APIs with reload instructions; remove `scripts/install-mod.sh`; add isolated-folder, preservation, symlink and failed-copy regression cases.
+- [x] 2.3 Implement read-only structured `doctor()` independent of `Companion` and game installation; report game discovery, revisions, snapshots, logs, knowledge and single-store limitations.
+- [x] 2.4 Verify integrated CLI commands and preservation regressions; build, inspect and exercise bundled assets from a wheel outside the checkout.
+- [ ] 2.5 Rehearse the native installer and bridge activation with player-controlled real saves on Windows and macOS.
 
 ## 3. Save identity and storage
 
@@ -31,5 +36,5 @@
 ## 6. Migration and verification
 
 - [ ] 6.1 Bind the author's existing history and notes to the verified lineage id and compress existing rows without losing data; verify pre/post snapshot and decision counts, dates and entity metrics.
-- [ ] 6.2 In-game check: reinstall with `uv run tf3c mod install`, reload "Hollanda II", run `uv run tf3c config snapshots-per-year 12` and `uv run tf3c refresh`; verify the snapshot has `schemaVersion = 2`, `companyName` if available, lands in the same save, and `uv run tf3c doctor` exits 0
+- [ ] 6.2 In-game check: reinstall with `uv run tf3c mod install`, reload the intended test save, run `uv run tf3c config snapshots-per-year 12` and `uv run tf3c refresh`; verify schema 2, verified lineage and company name, same-save routing, and `tf3c doctor` exit status.
 - [ ] 6.3 Run `uv run pytest` green and commit

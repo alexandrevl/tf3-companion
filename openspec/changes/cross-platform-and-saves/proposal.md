@@ -9,7 +9,7 @@ still needs a bash script. These block any public release.
 ## What Changes
 
 - Game discovery on Windows, macOS and Linux (Steam/Proton): Steam root from the registry or default
-  locations, every Steam account folder holding TF3 data, most recently used chosen, override kept.
+  locations, every Steam account folder holding TF3 data, explicit override required for ambiguous accounts.
 - `tf3c doctor`: one report of what was found (OS, Steam root, accounts, userdata, mod installed/version,
   snapshot files, latest snapshot age, game log, data dir, active save) with a fix for each problem.
 - `tf3c mod install` / `tf3c mod uninstall`: copy the mod shipped inside the Python package into the game's
@@ -22,6 +22,15 @@ still needs a bash script. These block any public release.
 - Snapshot interval set from the companion: `tf3c config snapshots-per-year <1|4|12>` is carried in the request
   file and honoured by the mod (default 12). Mod gains `meta.companyName` when the API exposes it; schema version 2.
 - Stored snapshots are compressed in the database to keep long games small.
+
+### Implemented setup subset
+
+Portable discovery, independent read-only diagnostics, safe bundled-mod installation/removal and wheel
+asset mapping are implemented. The existing single-store paths remain compatible. Regression tests
+use isolated fake Steam trees; native Windows/Linux layouts and packaged-wheel behavior remain
+acceptance gates until exercised. No installer is run against a player's game during development.
+Save lineage, automatic per-save storage and interval configuration remain unimplemented pending
+the player-controlled API persistence probe; none is implied by setup diagnostics.
 
 ## Capabilities
 

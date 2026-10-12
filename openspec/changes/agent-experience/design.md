@@ -13,19 +13,19 @@
 ## Decisions
 
 ### D1. Instructions live in one packaged Markdown file
-`src/tf3companion/agent_instructions.md` (package data, same loading mechanism as `knowledge/`) holds the analyst brief. `mcp_server.py` reads it once at import and passes it to `MCPServer(instructions=...)`. Nothing else restates it: prompts say "follow the server instructions" and add only workflow steps; `AGENTS.md` links to the file rather than copying; `docs/agents.md` quotes nothing. A test asserts the seven required behaviours by keyword and that `AGENTS.md` shares no paragraph with the file.
-*Alternatives:* a Python string constant (harder for non-coders to edit, diffs noisy); keeping `AGENTS.md` as the source and generating the string at build time (couples the contributor guide to the persona, breaks in wheels where the repo file is absent).
+`src/tf3companion/agent_instructions.md` (package data, same loading mechanism as `knowledge/`) holds the analyst brief. `load_instructions()` reads it at import and passes it to `MCPServer(instructions=...)`. Nothing else restates it: prompts instruct the agent to follow server instructions and outline only workflow steps; `AGENTS.md` is strictly contributor-facing.
+*Alternatives:* a Python string constant (harder to edit and diff); keeping `AGENTS.md` as the source (couples contributor rules to the persona and fails when the repo is absent).
 
 ### D2. Keep instructions short and tool-referencing
 Target ≲ 60 lines. Sections: Role, Working method (numbered), Data caveats, Read-only, Decisions & notes, Style. Tool names appear in backticks; a test verifies each backticked name is a registered tool, prompt or resource name, so renames cannot silently rot the text.
 *Alternative:* describing behaviour without tool names — rejected, agents need the entry points (`status`, `findings`).
 
 ### D3. Prompts as plain functions returning one user message
-Each prompt is a small function decorated with `@server.prompt()` that returns a string built from a template constant in a `prompts.py` section of `mcp_server.py` (or a sibling module if it grows). Arguments are optional with defaults, validated before rendering (`decision-review.status` is a `Literal`; `annual-review.year` an `int | None`). Templates tell the agent *what to fetch and in which order* and *what the answer shape is*; they do not embed data (the agent fetches fresh data through tools, so prompts never go stale and never need a snapshot to render).
+Each prompt is a plain function decorated with `@server.prompt()` that returns a string built from workflow steps. Arguments are optional with defaults, validated before rendering (`decision_review.status` allows only `planned`, `done`, `dropped`; `annual_review.year` requires positive integers; entity references reject empty/control characters). Templates tell the agent *what to fetch and in which order* and *what the answer shape is*; they do not embed dynamic snapshots or make-up unverified tools.
 *Alternatives:* prompts that pre-fetch data and embed it (stale, large, fails when no snapshot); one generic prompt with a `workflow` argument (loses discovery in client UIs that list prompts as slash commands).
 
 ### D4. Resources: one template, three fixed URIs
-`tf3c://knowledge` (index), `tf3c://knowledge/{topic}` (template), `tf3c://notes` (active save), `tf3c://report/latest` (active save). All `text/markdown`. Resource handlers call the same `Companion` methods as the matching tools (`knowledge`, `save_notes`, the report lookup), so tool and resource cannot drift. Topic validation reuses the knowledge loader's error that lists topics. The latest report is chosen by modification time in the save's `reports/` folder; no new store schema.
+`tf3c://knowledge` (index), `tf3c://knowledge/{topic}` (template), `tf3c://notes` (current store), `tf3c://report/latest` (current store). All `text/markdown`. Knowledge resources use static `Companion.knowledge` and require no game discovery. Notes require an imported snapshot via `companion.current()`. The latest report delegates to `companion.latest_report()`. Topic validation uses the existing topic catalog.
 *Alternatives:* registering each topic as a static resource at import (breaks if topics are added at runtime); exposing the decision journal and snapshots as resources too — deferred, tools already cover them and large JSON resources are poorly supported by clients.
 
 ### D5. One error vocabulary

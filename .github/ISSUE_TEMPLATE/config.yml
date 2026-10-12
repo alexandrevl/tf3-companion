@@ -1,0 +1,7 @@
+contact_links:
+  - name: Troubleshooting Guide
+    url: https://github.com/alexandrevl/tf3/blob/main/docs/troubleshooting.md
+    about: Please review the troubleshooting guide before submitting bug reports.
+  - name: Roadmap & Planned Work
+    url: https://github.com/alexandrevl/tf3/blob/main/docs/ROADMAP.md
+    about: Check the current release roadmap and open workstreams.

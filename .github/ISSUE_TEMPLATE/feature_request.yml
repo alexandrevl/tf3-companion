@@ -1,0 +1,29 @@
+name: Feature Request
+description: Suggest an enhancement or new analysis rule for TF3 Companion.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please remember that TF3 Companion is **read-only** and **local-first**. We do not add gameplay-altering features or online services.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Company Problem or Analysis Need
+      description: What transport or economic challenge are you trying to understand?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution or Metric
+      description: How should the companion present or evaluate this data?
+    validations:
+      required: true
+  - type: textarea
+    id: mechanics-reference
+    attributes:
+      label: Game Mechanics Reference
+      description: Cite known Transport Fever 3 game mechanics or observations supporting this request.
+    validations:
+      required: false

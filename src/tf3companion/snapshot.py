@@ -29,15 +29,58 @@ class Snapshot:
     source: str = ""
     warnings: list[str] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.raw, dict) or not isinstance(self.raw.get("meta"), dict):
+            raise ValueError("snapshot requires a metadata table")
+        meta = self.meta
+        schema = meta.get("schemaVersion")
+        if type(schema) is not int or schema < 1:
+            raise ValueError("snapshot schemaVersion must be a positive integer")
+        if schema > SUPPORTED_SCHEMA:
+            raise ValueError(f"snapshot schema {schema} is newer than supported schema "
+                             f"{SUPPORTED_SCHEMA}; update TF3 Companion.")
+        for key in ("gameTime", "yearDuration", "requestId", "year"):
+            value = meta.get(key)
+            if (key == "gameTime" or value is not None) and (
+                type(value) is not int or not 0 <= value <= 2**63 - 1
+            ):
+                raise ValueError(f"meta.{key} must be a nonnegative 64-bit integer")
+        if "saveId" in meta and (not isinstance(meta["saveId"], str) or not meta["saveId"].strip()):
+            raise ValueError("meta.saveId must be a nonempty string")
+        date = meta.get("date")
+        if date is not None and date != [] and date != {}:
+            if not isinstance(date, dict) or any(type(date.get(k)) is not int for k in ("year", "month", "day")):
+                raise ValueError("meta.date requires integer year, month and day")
+            if not (0 <= date["year"] <= 2**63 - 1 and 1 <= date["month"] <= 12 and 1 <= date["day"] <= 31):
+                raise ValueError("meta.date year, month or day is out of range")
+        for section in ("company", "problems"):
+            value = self.raw.get(section)
+            if value is not None and value != [] and not isinstance(value, dict):
+                raise ValueError(f"{section} must be a table")
+        for section in ("lines", "vehicles", "stations", "industries", "towns", "cargos",
+                        "models", "stocks", "depots", "catalog", "errors"):
+            value = self.raw.get(section)
+            if value is not None and not isinstance(value, (list, dict)):
+                raise ValueError(f"{section} must be a collection")
+            entries = _list(value)
+            if section == "errors":
+                if any(not isinstance(entry, str) for entry in entries):
+                    raise ValueError("errors must contain strings")
+                continue
+            if any(not isinstance(entry, dict) for entry in entries):
+                raise ValueError(f"{section} must contain tables")
+            if section in ("lines", "vehicles", "stations", "industries", "towns", "cargos", "models"):
+                ids = [entry.get("id") for entry in entries]
+                if any(type(id_) is not int or not 0 <= id_ <= 2**63 - 1 for id_ in ids):
+                    raise ValueError(f"{section} requires nonnegative integer entity ids")
+                if len(set(ids)) != len(ids):
+                    raise ValueError(f"{section} contains duplicate entity ids")
+
     @classmethod
     def from_file(cls, path: Path) -> "Snapshot":
         data = luadata.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError(f"{path.name}: expected a table at top level")
-        schema = (data.get("meta") or {}).get("schemaVersion")
-        if schema is not None and schema > SUPPORTED_SCHEMA:
-            raise ValueError(f"{path.name}: snapshot schema {schema} is newer than supported schema "
-                             f"{SUPPORTED_SCHEMA}; update TF3 Companion.")
         return cls(raw=data, source=path.name)
 
     # ---- meta -----------------------------------------------------------------
@@ -163,7 +206,8 @@ class Snapshot:
 
 def snapshot_files(folders: list[Path]) -> list[Path]:
     """Snapshot files across the mod's output folders, oldest game time first."""
-    files = [
-        p for folder in folders if folder.is_dir() for p in folder.iterdir() if SNAPSHOT_FILE.match(p.name)
-    ]
-    return sorted(files, key=lambda p: int(SNAPSHOT_FILE.match(p.name).group(1)))
+    files = {
+        p.resolve() for folder in folders if folder.is_dir() for p in folder.iterdir()
+        if SNAPSHOT_FILE.match(p.name) and p.is_file() and not p.is_symlink()
+    }
+    return sorted(files, key=lambda p: (int(SNAPSHOT_FILE.match(p.name).group(1)), str(p)))

@@ -1,68 +1,111 @@
 # TF3 Companion
 
-An unofficial, local-first, read-only data analyst for **Transport Fever 3**. A small game mod exports company snapshots; the companion stores history in SQLite, explains problems and opportunities, exports spreadsheets, and serves the same data to any MCP-capable agent. You decide and act in the game. No telemetry or network service is required.
+**Understand your transport company without handing over the controls.** TF3 Companion is an unofficial, local-first, read-only analyst for Transport Fever 3. A small bridge mod exports snapshots; the companion keeps history, explains findings, generates reports and spreadsheets, and exposes the same data to MCP-capable agents. You decide and make every change in the game.
 
-Not affiliated with Urban Games or Paradox. Author: Alexandre Lima. License: MIT.
+Not affiliated with or endorsed by Urban Games or Paradox Interactive. Product names are used descriptively; no trademark clearance is claimed. Created by Alexandre Lima. [MIT license](LICENSE).
+
+## How it works
+
+```mermaid
+flowchart LR
+  Game[Game + read-only bridge] -->|snapshot files| Local[Local SQLite history]
+  Local --> Findings[Findings and opportunities]
+  Local --> Reports[Markdown / offline HTML / XLSX]
+  Local --> MCP[MCP agent]
+  Player[Player] -->|all gameplay decisions| Game
+```
+
+Collection and analysis require no hosted service or telemetry. Installing dependencies and connecting an AI client may use the network; the client can send requested game data to its provider. See [privacy](docs/privacy.md).
 
 ## Install from source
 
-Install [uv](https://docs.astral.sh/uv/) and Python 3.12 or newer, then in this repository:
+The package is **not published on PyPI yet**. Download or clone this repository using its actual GitHub location, then open a terminal in the checkout. Install [uv](https://docs.astral.sh/uv/); uv can provision the required Python 3.12+ interpreter.
 
-```sh
-uv sync
-uv run tf3c --help
+### Windows PowerShell
+
+```powershell
+Set-Location C:\Projects\tf3-companion
+uv sync --locked
+uv run tf3c doctor
+# Set this only if discovery fails or finds more than one game account:
+$env:TF3C_USERDATA_DIR = 'C:\Program Files (x86)\Steam\userdata\ACCOUNT_ID\3493540\local'
+uv run tf3c mod install
 ```
 
-The companion's data paths and default-app export opener support Windows and macOS; Linux is best effort. Game-folder auto-detection is currently macOS Steam only. On Windows or an alternate Steam installation, set `TF3C_USERDATA_DIR` to the game's userdata `local` folder. For Steam, the app id is `3493540`.
-
-Install the bundled mod on macOS (or a POSIX shell with the userdata override):
+### macOS
 
 ```sh
-scripts/install-mod.sh
+cd /path/to/tf3-companion
+uv sync --locked
+uv run tf3c doctor
+# Set this only if discovery fails or finds more than one game account:
+export TF3C_USERDATA_DIR="$HOME/Library/Application Support/Steam/userdata/ACCOUNT_ID/3493540/local"
+uv run tf3c mod install
 ```
 
-On Windows without a POSIX shell, copy `mod/tf3_companion_bridge/` to `<userdata>/staging_area/tf3_companion_bridge/`. In the game's mod list for **each save**, enable **TF3 Companion Bridge**, reload the save and save it. Renaming the prototype mod requires enabling the new mod per save; an installed folder alone does not activate it. The bridge only reads the simulation.
+Replace example checkout paths and `ACCOUNT_ID` with your own values. The userdata override must point to the game's `local` directory, not its executable or Steam library. Review the install output before proceeding. See [mod installation](docs/install-mod.md) for manual installation, updates and removal.
 
-## Use
+### Collect your first snapshot
+
+1. Open the game and enable **TF3 Companion Bridge** for the intended save.
+2. Reload that save and save it. An installed folder alone does not activate a mod.
+3. Keep the save loaded, then run:
 
 ```sh
+uv run tf3c refresh --timeout 30
 uv run tf3c status
-uv run tf3c refresh
+uv run tf3c findings
+```
+
+If the game has already exported snapshots, `uv run tf3c ingest` imports them without a refresh request. A timeout is not evidence of an empty company: check [troubleshooting](docs/troubleshooting.md).
+
+## Explore and discuss
+
+```sh
 uv run tf3c overview
 uv run tf3c lines
-uv run tf3c line "Your line name"
-uv run tf3c findings
+uv run tf3c line "Example line"
 uv run tf3c findings --json
 uv run tf3c opportunities
-uv run tf3c notes --append "A durable goal for this game"
+uv run tf3c notes --append "Review freight lines before expanding the fleet."
 uv run tf3c notes
 uv run tf3c export --open
 uv run tf3c log
 ```
 
-`ingest` imports files already written by the mod. Data queries automatically import new files. `refresh --timeout 30` asks the running, loaded game for a snapshot; if it times out, check mod activation and `tf3c log`. Snapshots are written to `<userdata>/towns_industries/tf3c_snap_<gameTime>.lua`; refresh requests use `tf3c_request.lua`. Log entries begin with `[tf3c]`. Successfully imported snapshots retain the ten newest raw files; history remains in the database.
+Reports and their coverage limits are described in [reports](docs/reports.md). To connect an agent, use an **absolute checkout path**:
 
-Annual profit covers a rolling game-year window and is partial for new lines. The interpretation of `transportedYear` remains unverified; do not use it for annual accounting until investigated. Vehicle load is a snapshot reading, not an average or proof of unmet demand; compare snapshots before changing fleet size. Collection errors can make sections incomplete.
+```sh
+uv run --project /absolute/path/to/tf3-companion tf3c mcp
+```
 
-## Data and environment
+See [agent setup](docs/agents.md) for Windows/macOS configuration examples. The server communicates over stdio, not a hosted endpoint.
 
-The current version keeps one store (not yet isolated per save):
+### Read the numbers carefully
 
-| Platform | Default companion data directory |
+- Vehicle `load` is an instantaneous observation, not average utilization or proof that more vehicles are needed.
+- `profitYear` is a rolling game-year measure; it must not be summed into calendar-year income.
+- The meaning of `transportedYear` is not yet verified for annual accounting.
+- Collector errors, missing snapshots and partial years limit conclusions.
+- The current store is not proven isolated per save. Do not mix unrelated saves in one companion data directory.
+
+## Compatibility and release status
+
+This is a source-development build, not a published release. Compatibility evidence is narrower than the intended platform support.
+
+| Area | Evidence / status |
 | --- | --- |
-| macOS | `~/Library/Application Support/tf3-companion` |
-| Windows | `%LOCALAPPDATA%\tf3-companion` |
-| Linux | `~/.local/share/tf3-companion` |
+| macOS game bridge | The existing OpenSpec notes record prototype snapshot output on game build 40420; the updated release still needs an in-game rehearsal. |
+| Windows | Portable source setup and discovery are implemented; a real Windows game installation, activation and refresh are not verified. |
+| Linux / Proton | Best-effort candidate discovery; live game compatibility is not verified. |
+| GitHub Actions | Windows/macOS/Linux locked tests and package build are configured; no hosted CI run is claimed. |
+| Save identity | Persistent lineage and end-to-end isolation remain release gates. |
 
-It contains `companion.db`, `notes.md` and `exports/`. Notes are appended under the latest snapshot's game date. Packaged knowledge is separate from player notes.
+No screenshots, logos, badges or published package links are presented as available before they exist. The [roadmap](docs/ROADMAP.md) distinguishes delivered source work, current review and planned release gates; OpenSpec remains the detailed acceptance record.
 
-- `TF3C_DATA_DIR`: override the companion data directory.
-- `TF3C_USERDATA_DIR`: override the game's userdata directory; required when auto-detection is unavailable.
+## Documentation
 
-Player data must not be committed. No automatic prototype migration is shipped; keep existing data and installed mods until you explicitly migrate and reload your save.
-
-## MCP
-
-Run `uv run tf3c mcp` for the stdio server named `tf3-companion`. `.mcp.json` configures this command for repository-aware clients. Tools cover status/refresh, company and entity queries, findings/opportunities, history, knowledge, dated notes (`save_notes`), decisions, logs and spreadsheet export. Server instructions describe the read-only analyst role; agents answer in the user's language.
-
-Contributor workflow: [AGENTS.md](AGENTS.md). Planned work: [docs/ROADMAP.md](docs/ROADMAP.md).
+- [Roadmap](docs/ROADMAP.md) · [Review evidence and open gates](docs/review-notes.md)
+- [Install the mod](docs/install-mod.md) · [Connect an agent](docs/agents.md)
+- [Reports](docs/reports.md) · [Privacy and storage](docs/privacy.md) · [Troubleshooting](docs/troubleshooting.md)
+- [Contribute](CONTRIBUTING.md) · [Contributor/agent guide](AGENTS.md)

@@ -28,13 +28,19 @@ reading Windows registry beyond the Steam path; GUI installers.
    - Windows: `HKCU\Software\Valve\Steam\SteamPath` (via `winreg`), then `%ProgramFiles(x86)%\Steam`, `%ProgramFiles%\Steam`.
    - macOS: `~/Library/Application Support/Steam`.
    - Linux: `~/.steam/steam`, `~/.local/share/Steam`, `~/.var/app/com.valvesoftware.Steam/.local/share/Steam`.
-3. Candidates `root/userdata/*/3493540/local`; choose by newest mtime of the candidate's `towns_industries` or the folder itself.
-Implemented in `discovery.py` as pure functions taking `platform`, `env`, `home` and a registry reader so tests can fake each OS on any CI runner.
+3. Candidates `root/userdata/*/3493540/local`; deduplicate aliases and select only when exactly one
+   candidate exists. Several accounts require `TF3C_USERDATA_DIR`, never an mtime-based guess.
+Implemented in `discovery.py` as functions taking `platform`, `env`, `home` and a registry reader so tests can fake each OS on any CI runner.
 
 ### D2 — Doctor
-`discovery.diagnose() -> list[Check(name, status: ok|warning|error, detail, fix)]`, shared by CLI (`tf3c doctor`,
-table output, exit 1 on any error) and MCP (`doctor`). Mod revision read from the installed `mod.json` (`revision`)
-versus the bundled one. Log check scans the last 2,000 lines of `crash_dump/stdout.txt` for `[tf3c]`.
+`setup_tools.doctor() -> dict` is independent of `Companion`, game discovery success and database
+construction. It never creates the data directory. The report includes `ok`, `platform`,
+`steam_roots`, `userdata_candidates`, `userdata`, `data_dir`, `checks`, `mod`, `snapshots`,
+`game_log` and `active_save` (null while the single store remains). Checks use
+`name`, `status` (`ok|warning|error`), `detail` and `fix`. The installed and bundled mod revisions
+come from `mod.json`; the recent log scan is bounded to 256 KiB and the last 2,000 lines.
+Missing game data is reported as an error rather than preventing the report. Packaged knowledge
+is checked independently. Warnings disclose missing snapshots/mods and the lack of save isolation.
 
 ### D3 — Bundled mod
 The mod stays at the repo root (`mod/tf3_companion_bridge/`), the single source for the release zip.
@@ -42,6 +48,11 @@ The wheel maps it with hatch `force-include` to `tf3companion/_mod/tf3_companion
 Runtime uses the bundled resource when installed and the repo-root folder in an editable checkout.
 `tf3c mod install` replaces only its own staging folder; unrelated mods are never touched.
 `scripts/install-mod.sh` is deleted.
+Installation stages a complete copy before moving aside the previous bridge; a failed replacement
+rename restores that previous folder. Only `staging_area/tf3_companion_bridge` is replaced or
+removed. Symlinks and Windows junctions in target ancestry or contents are refused. No installer
+operation touches snapshots, databases, notes or other mod folders. Explicit CLI actions are
+required; diagnostics never install or remove anything.
 
 ### D4 — Save lineage id and label
 Town entity ids are not a unique save identity: two games on the same scenario can share them.

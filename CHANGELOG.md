@@ -4,10 +4,16 @@
 
 ### Added
 
-- Approved English roadmap and six OpenSpec change plans for portable setup, save isolation, analyses, annual/basic reports, MCP workflows and release preparation.
+- English public roadmap and eight OpenSpec change plans, including data-integrity and service-boundary hardening.
 - MIT license and author credit for Alexandre Lima.
 - Dated player notes outside the repository, accessible through the CLI and MCP.
 - Stable finding codes and actionable rejection of newer snapshot schemas.
+- Portable Steam discovery, read-only `doctor` diagnostics and bundled mod installation/removal.
+- Six Markdown/offline HTML reports, including annual coverage and decision follow-up.
+- Six MCP review prompts, packaged analyst instructions and knowledge/notes/latest-report resources.
+- Verified import receipts, safe pruning, strict Lua/snapshot validation and identified-lineage conflict protection.
+- Three-platform CI configuration, contribution guide, privacy/troubleshooting documentation and issue templates.
+- Lua polling lifecycle regression coverage through Lupa.
 
 ### Changed
 
@@ -18,8 +24,20 @@
 - Bridge source uses the observed `towns_industries` output sink only.
 - Spreadsheet opening uses the operating system's default application.
 
+### Fixed
+
+- Invalid refresh timeouts no longer publish requests; concurrent refresh writers cannot replace one another's requests.
+- Log bounds reject zero instead of returning the entire file.
+- Current-state queries disclose failed imports rather than silently using older data.
+- Bridge revision 2 acknowledges requests only after successful writes and throttles failed attempts.
+- Catalog retirement boundaries and current reports exclude retained future samples after a rewind.
+- Rankings do not repeat lines when fewer than thirty exist; decision references survive renaming through baseline identity.
+- Reports escape untrusted Markdown/HTML; XLSX names cannot become formulas.
+- Default-application failures preserve exported files and report their paths.
+- Managed-folder symlink protection no longer rejects macOS system aliases above the configured userdata root.
+
 ### Validation status
 
-- The renamed bridge still requires a player-controlled reload and live refresh check.
-- Windows automatic discovery, per-save isolation and annual reports are specified, not implemented in this cutover.
-- No GitHub remote, package publication or mod upload is performed.
+- Local source tests, isolated CLI/MCP round trips, package builds, installed-wheel checks and browser report inspection are recorded in `docs/review-notes.md`.
+- Real Windows/game activation, persistent save lineage, thumbnail presentation and third-party GUI-client rehearsals remain release gates.
+- No live mod installation, player-data migration, GitHub remote, package publication or mod upload is performed during this review.

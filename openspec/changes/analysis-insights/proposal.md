@@ -1,6 +1,6 @@
 ## Why
 
-The first real sessions (March 1983, "Hollanda II" save) found the most valuable problems by hand: trucks configured for Planks on a Logs line, 62 of 108 industries with a full output stock, ten ships worth ≈$9.8M idle in depots, two empty lines. Every answer also carried the caveat "load is a snapshot, not an average". The data is already in the snapshots; the findings layer simply does not look at it. Turning these hand-made discoveries into stable, evidence-backed findings is what makes the companion useful without a human guiding the analysis.
+Early player sessions identified valuable problems manually: trucks configured for the wrong cargo, full industry output stocks, capital tied up in idle ships and incomplete lines. Those sessions also established that instantaneous load is not average utilization. The delivered findings cover verified stock and line evidence; cargo mismatch and calibrated suitability require additional verified collector fields and units.
 
 ## What Changes
 

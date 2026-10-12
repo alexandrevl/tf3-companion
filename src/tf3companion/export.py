@@ -22,15 +22,20 @@ BOLD = Font(name=FONT_NAME, size=FONT_SIZE, bold=True)
 REGULAR = Font(name=FONT_NAME, size=FONT_SIZE)
 
 
-def _cell(value: Any) -> Any:
+def _sanitize(value: Any) -> Any:
+    if isinstance(value, str):
+        return f"'{value}" if value.startswith(("=", "+", "-", "@")) else value
     if isinstance(value, (list, tuple)):
         return ", ".join(str(v) for v in value)
     if isinstance(value, dict):
         return ", ".join(f"{k}={v}" for k, v in value.items())
-    if isinstance(value, float) and value != value:  # NaN
+    if isinstance(value, float) and value != value:
         return None
     return value
 
+
+def _cell(value: Any) -> Any:
+    return _sanitize(value)
 
 PERCENT_KEYS = {"load", "lineUsage", "rating", "maintenanceState", "productionRating"}
 
@@ -305,8 +310,7 @@ def export_workbook(store: Store, snap: Snapshot, prev: Snapshot | None, folder:
     ws = wb.create_sheet("Findings")
     _table(ws, [
         ("Code", "code"), ("Severity", "severity"), ("Category", "category"), ("Title", "title"), ("Detail", "detail"), ("Suggestion", "suggestion"),
-    ], [f.to_dict() for f in analysis.findings(snap, prev)])
-
+    ], [f.to_dict() for f in analysis.findings(snap, prev, history=store.snapshots_for_year(snap.date['year']) if snap.date and hasattr(store, 'snapshots_for_year') else None)])
     history = store.company_history(limit=1000)
     ws = wb.create_sheet("History")
     _table(ws, [

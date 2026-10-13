@@ -17,6 +17,10 @@ flowchart LR
 
 Collection and analysis require no hosted service or telemetry. Installing dependencies and connecting an AI client may use the network; the client can send requested game data to its provider. See [privacy](docs/privacy.md).
 
+## Install with an AI assistant
+
+Prefer guided setup? Paste the request in [Install with an AI assistant](docs/agent-assisted-installation.md) into a local agent with terminal access, or into a browser chat that will give you commands to run. The assistant follows the [setup guide](src/tf3companion/setup_guide.md), asks before every change to your computer and reports each stage (package, game paths, bridge, activation, MCP, fresh snapshot, first report) as verified, pending or failing. You still enable the mod and play the game yourself.
+
 ## Install from source
 
 The package is **not published on PyPI yet**. Download or clone this repository using its actual GitHub location, then open a terminal in the checkout. Install [uv](https://docs.astral.sh/uv/); uv can provision the required Python 3.12+ interpreter.
@@ -106,6 +110,7 @@ No screenshots, logos, badges or published package links are presented as availa
 ## Documentation
 
 - [Roadmap](docs/ROADMAP.md) · [Review evidence and open gates](docs/review-notes.md)
+- [Install with an AI assistant](docs/agent-assisted-installation.md) · [Setup guide](src/tf3companion/setup_guide.md)
 - [Install the mod](docs/install-mod.md) · [Connect an agent](docs/agents.md)
 - [Reports](docs/reports.md) · [Privacy and storage](docs/privacy.md) · [Troubleshooting](docs/troubleshooting.md)
 - [Contribute](CONTRIBUTING.md) · [Contributor/agent guide](AGENTS.md)

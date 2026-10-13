@@ -31,16 +31,18 @@ All review runs used synthetic player folders. The real mod installation, player
 
 | Check | Observed result |
 | --- | --- |
-| `uv run pytest` | 107 passed, including the Lua write-failure/retry lifecycle, import safety, report semantics and installer preservation |
+| `uv run pytest` | 108 passed, including the Lua write-failure/retry lifecycle, import safety, report semantics, installer preservation and offline stdio onboarding |
 | `uv build` | Wheel and source distribution built successfully |
 | Artifact inspection | Wheel contains analyst instructions, four knowledge topics, bridge assets and MIT license; neither artifact contains player databases/spreadsheets |
 | Installed wheel | Version/knowledge/install/doctor/annual HTML/uninstall exercised outside the checkout; missing-game doctor did not create player storage |
 | Real CLI | Install, doctor, import, overview, findings, line detail, notes, requested refresh, six report kinds, XLSX and uninstall passed with isolated fixtures |
 | History retention | Thirteen monthly/baseline observations persisted in SQLite after raw-file pruning |
-| MCP stdio | 23 tools, six prompts, three resources and one resource template; tool/report/journal/error/prompt/resource calls exercised |
+| MCP stdio | 23 tools, seven prompts (`setup-check` plus six analysis prompts), four resources and one resource template; tool/report/journal/error/prompt/resource calls exercised |
+| Offline onboarding | From an installed wheel outside the checkout, with a missing game folder: `setup-check` and `tf3c://setup` returned the packaged guide, `doctor` reported `ok: false` with a `userdata` error, and no player storage was created |
+| Setup stages (fixtures) | Real CLI with a synthetic userdata folder: `doctor` returned `ok: true` while `installed_mod` and `snapshots` were warnings; after `mod install` revisions matched (2/2); a simulated bridge answered `refresh` (`1980-01-01`) and `report company` succeeded. Synthetic answers do not prove the real bridge or game |
 | Resource failure paths | Missing snapshot/report and corrupt-database reads returned readable protocol errors; knowledge remained available |
 | Browser | Generated annual HTML rendered in Chromium; zero scripts, zero external resource requests and no desktop horizontal overflow |
-| OpenSpec | Eight changes passed `openspec validate --all --strict` |
+| OpenSpec | Nine changes passed `openspec validate --all --strict` |
 
 Current compatibility identifiers: companion `0.1.0`, bridge revision `2`, snapshot schema `1`. This is source verification on macOS, not a public release or proof of real Windows/game compatibility.
 
@@ -57,3 +59,4 @@ The following items cannot be settled by local static analysis or automated test
 | **Real-game visual assets** | Assets / Branding | Verify thumbnail format and presentation in the actual game, then create original branding and player-approved screenshots. No placeholder assets are shipped. |
 | **First hosted CI run** | Quality / CI | Multi-platform GitHub Actions workflow (`ubuntu-latest`, `macos-latest`, `windows-latest`) is configured with locked dependencies; it must execute successfully on first upstream push. |
 | **Third-party client rehearsal** | User Experience | Protocol behavior was exercised through a real stdio SDK client. Claude Desktop/Claude Code/Codex/omp GUI configuration and a live-game review still need their own evidence. |
+| **Assistant-guided installation** | User Experience | Run the bootstrap request with a local terminal agent and with a text-only chat on clean Windows and macOS machines, through mod activation, a real refresh and the first report. |

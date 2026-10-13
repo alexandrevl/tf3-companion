@@ -20,9 +20,9 @@ These are source capabilities, not evidence of a published package or compatibil
 | --- | --- | --- |
 | Portable setup | Read-only doctor, conservative Steam discovery, explicit overrides, portable mod install/uninstall | Clean-machine setup; real Windows and macOS game activation/refresh; Linux/Proton evidence where available |
 | Insights and reports | Explainable findings, six report kinds, annual coverage, decision follow-up, Markdown and offline HTML | Review collector-gap behavior and model units against real observations |
-| Agent experience | Analyst instructions, six prompts, knowledge/notes/latest-report resources; real stdio round trips verified | Rehearse configuration in the intended third-party desktop/client application |
+| Agent experience | Analyst instructions, offline `setup-check` onboarding prompt and `tf3c://setup` guide, six analysis prompts, knowledge/notes/latest-report resources; real stdio round trips verified | Rehearse guided installation and configuration in the intended third-party desktop/client applications on Windows and macOS |
 | Data safety | Verified receipts, strict input validation, protected pruning and identified-lineage conflict rejection | Persistent save-identity probe and fully isolated lineage storage before claiming multi-save support |
-| Public documentation | English quickstart, privacy, troubleshooting, reports, contribution guide and templates; installed-wheel smoke verified | Clean-machine and real-game quickstart rehearsal |
+| Public documentation | English quickstart, agent-assisted installation entrypoint and canonical setup guide, privacy, troubleshooting, reports, contribution guide and templates; installed-wheel smoke verified | Clean-machine and real-game quickstart rehearsal, including an assistant-guided run |
 | CI | Locked Python tests and package builds on Windows/macOS/Linux | First hosted run after a separately authorized push; configured CI is not executed CI |
 
 See [review notes](review-notes.md) for evidence and remaining gates. No publishing, live mod installation or player-data changes are part of this local review.
@@ -31,10 +31,10 @@ See [review notes](review-notes.md) for evidence and remaining gates. No publish
 
 - Full behavior suite, including the Lua polling lifecycle, passes.
 - Actual CLI exercised install/doctor/import/refresh/report/export/uninstall with isolated synthetic history.
-- Real MCP stdio exercised tools, all prompts, resources, malformed/missing-data errors and the decision journal.
+- Real MCP stdio exercised tools, all prompts, resources, malformed/missing-data errors and the decision journal; setup guidance was retrieved from an installed wheel with no game or player storage.
 - Wheel and source distribution built; wheel installed and exercised outside the checkout.
 - Annual HTML inspected in Chromium without scripts, external resource requests or horizontal overflow at the inspected desktop viewport.
-- All eight OpenSpec changes validate strictly. Detailed evidence and limitations are in [review notes](review-notes.md).
+- All nine OpenSpec changes validate strictly. Detailed evidence and limitations are in [review notes](review-notes.md).
 
 
 ## Next: release readiness
@@ -68,6 +68,7 @@ Future features remain OpenSpec work, not promises that all game mechanics are a
 | [Release readiness](../openspec/changes/release-readiness/) | Packaging, CI, documentation, fixtures, assets and manual release gates |
 | [Data integrity](../openspec/changes/data-integrity-hardening/) | Parser/model boundaries, verified import receipts and chronological queries |
 | [Service boundaries](../openspec/changes/service-boundary-hardening/) | Refresh locking, bridge acknowledgment, import errors and safe report output |
+| [Agent-assisted installation](../openspec/changes/agent-assisted-installation/) | Pre-connection bootstrap request, offline MCP setup guidance and stage-based readiness evidence |
 
 ## Lessons that shape the design
 

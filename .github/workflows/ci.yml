@@ -33,3 +33,7 @@ jobs:
 
       - name: Build package (dry-run artifact check)
         run: uv build
+
+      - name: Check setup guidance ships in the wheel
+        shell: bash
+        run: uv run --isolated --no-project --python 3.12 --with "$(ls dist/*.whl)" python -c "from tf3companion.agent_experience import load_setup_guide, setup_check; assert load_setup_guide().strip() and setup_check().strip()"

@@ -1,6 +1,6 @@
 # Install, update and remove the bridge
 
-The bridge reads the simulation and writes snapshot userdata; it does not buy vehicles, edit lines or issue gameplay commands. Installing files changes your local mod folder and is a separate action from activating a mod in a save. Only perform it when you intend to change that installation.
+The bridge reads the simulation and writes snapshot userdata; it does not buy vehicles, edit lines or issue gameplay commands. Installing files changes your local mod folder and is a separate action from activating a mod in a save. Only perform it when you intend to change that installation. For the complete stage-by-stage procedure with an AI assistant, see the [setup guide](../src/tf3companion/setup_guide.md).
 
 ## Find the correct userdata directory
 

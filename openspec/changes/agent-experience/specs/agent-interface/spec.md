@@ -30,7 +30,7 @@ The server SHALL expose the following MCP prompts, each returning user-role guid
 
 #### Scenario: Listing prompts
 - **WHEN** a client lists prompts
-- **THEN** exactly the six names above are returned, each with a description
+- **THEN** the six analysis names above are returned, each with a description, together with the `setup-check` onboarding prompt defined by the `installation-onboarding` capability and no other prompts
 
 #### Scenario: Prompt references only existing tools
 - **WHEN** any prompt is rendered

@@ -4,13 +4,14 @@
 
 ### Added
 
-- English public roadmap and eight OpenSpec change plans, including data-integrity and service-boundary hardening.
+- English public roadmap and nine OpenSpec change plans, including data-integrity and service-boundary hardening and agent-assisted installation.
 - MIT license and author credit for Alexandre Lima.
 - Dated player notes outside the repository, accessible through the CLI and MCP.
 - Stable finding codes and actionable rejection of newer snapshot schemas.
 - Portable Steam discovery, read-only `doctor` diagnostics and bundled mod installation/removal.
 - Six Markdown/offline HTML reports, including annual coverage and decision follow-up.
 - Six MCP review prompts, packaged analyst instructions and knowledge/notes/latest-report resources.
+- Agent-assisted installation: a README bootstrap request, a canonical Windows/macOS setup guide with stage-by-stage evidence and recovery, and the offline `setup-check` MCP prompt and `tf3c://setup` resource, available without the game, snapshots or companion storage.
 - Verified import receipts, safe pruning, strict Lua/snapshot validation and identified-lineage conflict protection.
 - Three-platform CI configuration, contribution guide, privacy/troubleshooting documentation and issue templates.
 - Lua polling lifecycle regression coverage through Lupa.

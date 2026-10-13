@@ -2,7 +2,9 @@
 
 TF3 Companion runs an MCP **stdio** server. It is not a web service, and no API key is required by the companion. Your AI client may require its own account and may send tool outputs to a provider; see [privacy](privacy.md).
 
-Install the source environment first with `uv sync --locked`. The package is not yet on PyPI: do not use `uvx tf3-companion` as an installation shortcut.
+Install the source environment first with `uv sync --locked`. The package is not yet on PyPI: do not use `uvx tf3-companion` as an installation shortcut. For a guided, stage-by-stage installation, see [Install with an AI assistant](agent-assisted-installation.md) and the canonical [setup guide](../src/tf3companion/setup_guide.md).
+
+ChatGPT and other browser chats cannot launch this local stdio server; they can guide setup with commands you run yourself. Use a local MCP client for analysis.
 
 ## Launch command
 
@@ -95,6 +97,7 @@ Start with `status`, then findings; request `refresh` only when the game is open
 
 | Prompt | Optional argument |
 | --- | --- |
+| `setup-check` | None; works without the game or snapshots |
 | `monthly-review` | None |
 | `annual-review` | `year` |
 | `line-triage` | `line` id or name |
@@ -102,10 +105,10 @@ Start with `status`, then findings; request `refresh` only when the game is open
 | `cargo-opportunities` | `cargo` |
 | `decision-review` | `status`: `planned`, `done` or `dropped` (default `planned`) |
 
-Resources: `tf3c://knowledge` lists shipped topics; `tf3c://knowledge/{topic}` reads a topic; `tf3c://notes` exposes player notes; `tf3c://report/latest` reads the latest generated Markdown report. Missing reports require generating one first. Knowledge can be read without game discovery; data-dependent resources need the relevant snapshot/history.
+Resources: `tf3c://setup` is the installation and verification guide; `tf3c://knowledge` lists shipped topics; `tf3c://knowledge/{topic}` reads a topic; `tf3c://notes` exposes player notes; `tf3c://report/latest` reads the latest generated Markdown report. Missing reports require generating one first. Setup and knowledge can be read without game discovery or storage; data-dependent resources need the relevant snapshot/history.
 
 Tools expose company/entity data, findings, opportunities, history, knowledge, notes, decisions, logs, XLSX export and reports. The `report` tool accepts `kind`, optional `year` and `html`; it returns Markdown and local output paths, not an uploaded report. Recording notes or decisions changes companion data, not gameplay, and should reflect a real agreement with the player.
 
 ## Connection checks
 
-Run `uv run tf3c doctor` in the source checkout, then use the same executable, checkout path and environment in the client. Confirm a `status` response through the client before assuming configuration works. Approve only permissions you understand. Hosted CI cannot verify a desktop client's configuration or privacy behavior.
+Run `uv run tf3c doctor` in the source checkout, then use the same executable, checkout path and environment in the client. Confirm a `doctor` or `status` response through the client before assuming configuration works; `doctor.ok` alone does not mean the bridge is active or that snapshots exist. Approve only permissions you understand. Hosted CI cannot verify a desktop client's configuration or privacy behavior.

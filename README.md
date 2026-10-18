@@ -77,6 +77,20 @@ uv run tf3c export --open
 uv run tf3c log
 ```
 
+### Judge the company by your own rules
+
+A methodology is one shareable JSON file that classifies your lines, sets tolerances, adds recommendations and picks the reports. The neutral `default` reproduces the built-in findings; the packaged `local-feeder-intercity-trunk` is the author's own policy as an example. See [methodologies](docs/methodologies.md).
+
+```sh
+uv run tf3c methodology list
+uv run tf3c methodology validate src/tf3companion/methodology/examples/local-feeder-intercity-trunk.tf3c-methodology.json --strict
+uv run tf3c methodology use local-feeder-intercity-trunk
+uv run tf3c analyse
+uv run tf3c analyse --methodology default
+```
+
+`analyse` writes its reports to `reports/<game-date>__<methodology-id>@<version>/` under the companion data directory.
+
 Reports and their coverage limits are described in [reports](docs/reports.md). To connect an agent, use an **absolute checkout path**:
 
 ```sh

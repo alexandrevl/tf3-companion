@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tf3c-methodology/1",
+  "title": "TF3 Companion analysis methodology, schema 1",
+  "description": "Structure of a methodology file. This schema covers shape, types, enumerations, identifier patterns and length limits for editor support. The companion's own validator is authoritative and additionally checks cross-references (parameters, roles, markers, definitions, measures, capture names), regular-expression safety, condition depth, the file size and rule-count limits, known engine thresholds and finding codes, and report kinds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "version", "name", "description"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "schema": {"const": "tf3c-methodology/1"},
+    "id": {"type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 64},
+    "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "description": {"$ref": "#/$defs/requiredText"},
+    "author": {"$ref": "#/$defs/text"},
+    "parameters": {
+      "type": "object", "maxProperties": 100, "propertyNames": {"$ref": "#/$defs/ident"},
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["value"],
+        "properties": {
+          "value": {"oneOf": [{"type": "number"}, {"type": "string", "maxLength": 200}, {"type": "boolean"}]},
+          "description": {"$ref": "#/$defs/text"}
+        }
+      }
+    },
+    "markers": {
+      "type": "object", "maxProperties": 50, "propertyNames": {"$ref": "#/$defs/ident"},
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false, "required": ["label"],
+        "properties": {
+          "symbol": {"type": "string", "maxLength": 16},
+          "label": {"$ref": "#/$defs/requiredLabel"},
+          "description": {"$ref": "#/$defs/text"},
+          "finding": {"enum": ["high", "medium", "low"]}
+        }
+      }
+    },
+    "name_patterns": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "line": {
+          "type": "array", "maxItems": 20,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "pattern"],
+            "properties": {"id": {"$ref": "#/$defs/ident"}, "pattern": {"type": "string", "maxLength": 200}, "description": {"$ref": "#/$defs/text"}}
+          }
+        }
+      }
+    },
+    "definitions": {
+      "type": "object", "maxProperties": 100, "propertyNames": {"$ref": "#/$defs/ident"},
+      "additionalProperties": {"$ref": "#/$defs/condition"}
+    },
+    "roles": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "line": {"$ref": "#/$defs/roleList"}, "vehicle": {"$ref": "#/$defs/roleList"}, "industry": {"$ref": "#/$defs/roleList"},
+        "stock": {"$ref": "#/$defs/roleList"}, "town": {"$ref": "#/$defs/roleList"}
+      }
+    },
+    "engine": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "thresholds": {"type": "object", "maxProperties": 50, "additionalProperties": {"type": "number", "minimum": 0}},
+        "findings": {
+          "type": "array", "maxItems": 200,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["code", "action"],
+            "properties": {
+              "code": {"type": "string"}, "role": {"$ref": "#/$defs/ident"},
+              "action": {"enum": ["off", "set_severity"]}, "severity": {"enum": ["high", "medium", "low"]}
+            },
+            "if": {"properties": {"action": {"const": "set_severity"}}, "required": ["action"]},
+            "then": {"required": ["severity"]},
+            "else": {"not": {"required": ["severity"]}}
+          }
+        }
+      }
+    },
+    "rules": {"type": "array", "maxItems": 200, "items": {"oneOf": [{"$ref": "#/$defs/entityRule"}, {"$ref": "#/$defs/aggregateRule"}]}},
+    "recommendations": {
+      "type": "array", "maxItems": 200,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "when", "priority", "text"],
+        "properties": {
+          "id": {"$ref": "#/$defs/ident"},
+          "when": {
+            "type": "object", "additionalProperties": false, "required": ["rule", "marker"],
+            "properties": {"rule": {"$ref": "#/$defs/ident"}, "marker": {"$ref": "#/$defs/ident"}, "role": {"$ref": "#/$defs/ident"}}
+          },
+          "priority": {"type": "integer", "minimum": 1, "maximum": 5},
+          "text": {"$ref": "#/$defs/text"}, "rationale": {"$ref": "#/$defs/text"}
+        }
+      }
+    },
+    "ladders": {
+      "type": "array", "maxItems": 50,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "entity", "metric", "bands", "text"],
+        "properties": {
+          "id": {"$ref": "#/$defs/ident"}, "label": {"$ref": "#/$defs/label"}, "description": {"$ref": "#/$defs/text"},
+          "rationale": {"$ref": "#/$defs/text"}, "entity": {"const": "line"}, "role": {"$ref": "#/$defs/ident"},
+          "metric": {"$ref": "#/$defs/fieldName"},
+          "bands": {
+            "type": "array", "minItems": 1, "maxItems": 10,
+            "items": {
+              "type": "object", "additionalProperties": false, "required": ["mode"],
+              "properties": {"max_km": {"type": "number", "exclusiveMinimum": 0}, "mode": {"enum": ["ROAD", "RAIL", "TRAM", "WATER", "AIR"]}}
+            }
+          },
+          "text": {"$ref": "#/$defs/text"}
+        }
+      }
+    },
+    "reports": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "kinds": {"type": "array", "maxItems": 40, "uniqueItems": true, "items": {"type": "string"}},
+        "tables": {
+          "type": "array", "maxItems": 50,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "entity", "columns"],
+            "properties": {
+              "id": {"$ref": "#/$defs/ident"}, "label": {"$ref": "#/$defs/label"}, "entity": {"$ref": "#/$defs/entityKind"},
+              "role": {"$ref": "#/$defs/ident"}, "sort": {"$ref": "#/$defs/fieldName"}, "descending": {"type": "boolean"},
+              "columns": {"type": "array", "minItems": 1, "maxItems": 12, "items": {"$ref": "#/$defs/fieldName"}},
+              "limit": {"type": "integer", "minimum": 1, "maximum": 500}
+            }
+          }
+        },
+        "charts": {
+          "type": "array", "maxItems": 50,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["id", "type", "entity", "agg"],
+            "properties": {
+              "id": {"$ref": "#/$defs/ident"}, "label": {"$ref": "#/$defs/label"}, "type": {"enum": ["bar", "pie", "history_line"]},
+              "entity": {"$ref": "#/$defs/entityKind"}, "role": {"$ref": "#/$defs/ident"}, "metric": {"$ref": "#/$defs/fieldName"},
+              "agg": {"enum": ["sum", "count", "mean", "min", "max"]},
+              "group_by": {"anyOf": [{"const": "role"}, {"$ref": "#/$defs/fieldName"}]}
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ident": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$", "maxLength": 64},
+    "text": {"type": "string", "maxLength": 2000},
+    "requiredText": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "label": {"type": "string", "maxLength": 200},
+    "requiredLabel": {"type": "string", "minLength": 1, "maxLength": 200},
+    "fieldName": {"type": "string", "pattern": "^[a-z]+(\\.[a-z_][a-z0-9_]*)+$"},
+    "entityKind": {"enum": ["line", "vehicle", "stop", "industry", "stock", "town"]},
+    "literal": {"oneOf": [
+      {"type": "number"}, {"type": "string"}, {"type": "boolean"},
+      {"type": "array", "minItems": 1, "maxItems": 200, "items": {"type": ["number", "string", "boolean"]}},
+      {"type": "object", "additionalProperties": false, "required": ["param"], "properties": {"param": {"$ref": "#/$defs/ident"}}}
+    ]},
+    "condition": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["all"],
+       "properties": {"all": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"$ref": "#/$defs/condition"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["any"],
+       "properties": {"any": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"$ref": "#/$defs/condition"}}}},
+      {"type": "object", "additionalProperties": false, "required": ["not"], "properties": {"not": {"$ref": "#/$defs/condition"}}},
+      {"type": "object", "additionalProperties": false, "required": ["ref"], "properties": {"ref": {"$ref": "#/$defs/ident"}}},
+      {"type": "object", "additionalProperties": false, "required": ["any_member"], "properties": {"any_member": {"$ref": "#/$defs/condition"}}},
+      {"type": "object", "additionalProperties": false, "required": ["op"],
+       "properties": {
+         "field": {"$ref": "#/$defs/fieldName"}, "measure": {"$ref": "#/$defs/ident"},
+         "op": {"enum": ["eq", "ne", "lt", "le", "gt", "ge", "in", "not_in", "matches", "contains_any", "exists", "missing"]},
+         "value": {"$ref": "#/$defs/literal"}
+       },
+       "oneOf": [{"required": ["field"]}, {"required": ["measure"]}],
+       "if": {"properties": {"op": {"enum": ["exists", "missing"]}}},
+       "then": {"not": {"required": ["value"]}},
+       "else": {"required": ["value"]}}
+    ]},
+    "roleList": {
+      "type": "array", "maxItems": 20,
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "select"],
+        "properties": {
+          "id": {"$ref": "#/$defs/ident"}, "label": {"$ref": "#/$defs/label"}, "description": {"$ref": "#/$defs/text"},
+          "rationale": {"$ref": "#/$defs/text"}, "select": {"$ref": "#/$defs/condition"}
+        }
+      }
+    },
+    "outcome": {
+      "type": "object", "additionalProperties": false, "required": ["when", "marker"],
+      "properties": {"when": {"$ref": "#/$defs/condition"}, "marker": {"$ref": "#/$defs/ident"}, "message": {"$ref": "#/$defs/text"}}
+    },
+    "defaultOutcome": {
+      "type": "object", "additionalProperties": false, "required": ["marker"],
+      "properties": {"marker": {"$ref": "#/$defs/ident"}, "message": {"$ref": "#/$defs/text"}}
+    },
+    "entityRule": {
+      "type": "object", "additionalProperties": false, "required": ["id", "entity", "outcomes"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ident"}, "label": {"$ref": "#/$defs/label"}, "description": {"$ref": "#/$defs/text"},
+        "rationale": {"$ref": "#/$defs/text"}, "entity": {"enum": ["line", "vehicle", "industry", "stock", "town"]},
+        "role": {"$ref": "#/$defs/ident"},
+        "outcomes": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/outcome"}},
+        "default": {"$ref": "#/$defs/defaultOutcome"}
+      }
+    },
+    "measure": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["agg", "numerator", "denominator"],
+       "properties": {
+         "agg": {"const": "ratio"},
+         "numerator": {"$ref": "#/$defs/measureRef"}, "denominator": {"$ref": "#/$defs/measureRef"}
+       }},
+      {"type": "object", "additionalProperties": false, "required": ["agg"],
+       "properties": {
+         "agg": {"enum": ["sum", "count", "distinct_count", "min", "max"]},
+         "value": {"$ref": "#/$defs/fieldName"}, "where": {"$ref": "#/$defs/condition"},
+         "via": {"$ref": "#/$defs/fieldName"}, "distinct_by": {"$ref": "#/$defs/fieldName"}
+       },
+       "if": {"properties": {"agg": {"const": "count"}}},
+       "else": {"required": ["value"]}}
+    ]},
+    "measureRef": {
+      "type": "object", "additionalProperties": false, "required": ["measure"],
+      "properties": {"measure": {"$ref": "#/$defs/ident"}, "negate": {"type": "boolean"}}
+    },
+    "aggregateRule": {
+      "type": "object", "additionalProperties": false, "required": ["id", "entity", "aggregate"],
+      "properties": {
+        "id": {"$ref": "#/$defs/ident"}, "label": {"$ref": "#/$defs/label"}, "description": {"$ref": "#/$defs/text"},
+        "rationale": {"$ref": "#/$defs/text"}, "entity": {"$ref": "#/$defs/entityKind"}, "role": {"$ref": "#/$defs/ident"},
+        "aggregate": {
+          "type": "object", "additionalProperties": false, "required": ["group_by", "measures", "outcomes"],
+          "properties": {
+            "group_by": {"anyOf": [{"const": "town"}, {"$ref": "#/$defs/fieldName"}]},
+            "measures": {"type": "object", "minProperties": 1, "maxProperties": 20, "propertyNames": {"$ref": "#/$defs/ident"},
+                         "additionalProperties": {"$ref": "#/$defs/measure"}},
+            "having": {"$ref": "#/$defs/condition"},
+            "outcomes": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"$ref": "#/$defs/outcome"}},
+            "default": {"$ref": "#/$defs/defaultOutcome"}
+          }
+        }
+      }
+    }
+  }
+}

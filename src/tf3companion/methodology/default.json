@@ -1,0 +1,7 @@
+{
+  "schema": "tf3c-methodology/1",
+  "id": "default",
+  "version": "1.0.0",
+  "name": "Default (neutral)",
+  "description": "The neutral methodology: no roles, rules or overrides. Findings, severities and reports are exactly the engine's built-in ones."
+}

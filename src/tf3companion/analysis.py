@@ -15,6 +15,21 @@ from .snapshot import Snapshot
 
 SEVERITY_ORDER = {"high": 0, "medium": 1, "low": 2}
 
+# Stable finding codes the engine can emit, mapped to the entity kind whose methodology role
+# can scope an override (None: the finding has no role-bearing entity).
+FINDING_CODES: dict[str, str | None] = {
+    "line_orphan": "line", "line_no_vehicles": "line", "line_no_stops": "line",
+    "line_losing_money": "line", "line_overloaded": "line", "line_underused": "line",
+    "line_config_issue": "line", "line_profit_dropping": "line",
+    "line_load_persistently_high": "line", "line_load_persistently_low": "line",
+    "vehicle_no_path": "vehicle", "vehicle_losing_on_profitable_line": "vehicle",
+    "fleet_idle_in_depot": None,
+    "industry_closing": "industry",
+    "industry_output_full": "industry", "warehouse_full": None, "station_stock_full": None,
+    "industries_output_full_unserved": None,
+    "snapshot_collection_errors": None,
+}
+
 
 @dataclass(frozen=True)
 class Thresholds:
@@ -42,6 +57,9 @@ class Finding:
     suggestion: str
     entity: dict[str, Any] | None = None
     evidence: dict[str, Any] = field(default_factory=dict)
+    methodology: str | None = None        # id@version of the methodology applied
+    methodology_hash: str | None = None   # sha256:<12 hex> of the methodology file
+    source: str = "engine"                # engine | methodology
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -341,9 +359,17 @@ def _data_findings(snap: Snapshot) -> list[Finding]:
 
 
 def findings(
-    snap: Snapshot, prev: Snapshot | None = None, t: Thresholds = Thresholds(),
-    history: list[Snapshot] | None = None,
+    snap: Snapshot, prev: Snapshot | None = None, t: Thresholds | None = None,
+    history: list[Snapshot] | None = None, methodology: Any = None, verdicts: Any = None,
 ) -> list[Finding]:
+    """Engine findings, then the methodology's role-scoped overrides and rule findings.
+
+    `t` defaults to the defaults plus the methodology's `engine.thresholds`. Pass `verdicts` (from
+    `methodology.evaluate`) to avoid evaluating the methodology twice.
+    """
+    if t is None:
+        from .methodology import thresholds_for
+        t = thresholds_for(methodology)
     out = (
         _line_findings(snap, prev, t)
         + _vehicle_findings(snap, t)
@@ -370,6 +396,15 @@ def findings(
                     "Inspect queues and complete trips before changing the fleet.",
                     _entity("line", line), {**row, "threshold": t.overloaded_load if high else t.underused_load},
                 ))
+    if methodology is not None:
+        from .methodology import engine
+
+        if verdicts is None:
+            verdicts = engine.evaluate(methodology, snap)
+        out = engine.apply_finding_overrides(methodology, verdicts, out)
+        for item in out:
+            item.methodology, item.methodology_hash = methodology.identity, methodology.short_hash
+        out += engine.rule_findings(methodology, verdicts)
     return sorted(out, key=lambda f: (SEVERITY_ORDER[f.severity], f.category, f.title))
 
 

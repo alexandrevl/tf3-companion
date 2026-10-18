@@ -1,0 +1,53 @@
+{
+  "schema": "tf3c-methodology/1",
+  "id": "oil-chemicals-chain",
+  "version": "0.1.0",
+  "name": "Oil and chemicals chain, patient",
+  "description": "Tuned for crude oil -> refinery -> chemicals chains: judge the chain by stocks and deliveries before judging lines by profit.",
+  "parameters": {
+    "chain_maturity_years": {"value": 5},
+    "starved_input_ratio": {"value": 0.5},
+    "full_stock": {"value": 0.9}
+  },
+  "markers": {
+    "ok": {"symbol": "🟢", "label": "ok"},
+    "watch": {"symbol": "🟡", "label": "watch", "finding": "medium"},
+    "problem": {"symbol": "🔴", "label": "problem", "finding": "high"},
+    "maturing": {"symbol": "🔵", "label": "maturing"}
+  },
+  "roles": {
+    "line": [
+      {"id": "chain-freight", "select": {"field": "line.cargo_keys", "op": "contains_any", "value": ["crude_oil", "fuel", "chemicals", "plastic"]}}
+    ],
+    "industry": [
+      {"id": "chain-industry", "select": {"field": "industry.type", "op": "matches", "value": "oil|refiner|chemical|plastic"}}
+    ]
+  },
+  "engine": {"thresholds": {"mature_years": 5}},
+  "rules": [
+    {"id": "chain-line-result", "entity": "line", "role": "chain-freight",
+     "outcomes": [
+       {"when": {"all": [
+          {"field": "line.profit_year", "op": "lt", "value": 0},
+          {"field": "line.age_years", "op": "lt", "value": {"param": "chain_maturity_years"}}
+        ]}, "marker": "maturing"},
+       {"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "problem"}
+     ],
+     "default": {"marker": "ok"}},
+    {"id": "starved-consumer", "entity": "industry", "role": "chain-industry",
+     "outcomes": [
+       {"when": {"field": "industry.input_delivery_ratio", "op": "lt", "value": {"param": "starved_input_ratio"}}, "marker": "watch",
+        "message": "{industry.name} receives {industry.input_delivery_ratio|pct} of the input it could consume."}
+     ]},
+    {"id": "full-destination", "entity": "stock",
+     "outcomes": [
+       {"when": {"field": "stock.fill_ratio", "op": "ge", "value": {"param": "full_stock"}}, "marker": "problem",
+        "message": "{stock.owner_name} stock is {stock.fill_ratio|pct} full; deliveries to it can stall."}
+     ]}
+  ],
+  "recommendations": [
+    {"id": "unblock-destination", "when": {"rule": "full-destination", "marker": "problem"}, "priority": 1,
+     "text": "Raise outbound capacity or consumption at {stock.owner_name} before adding more feeding vehicles."}
+  ],
+  "reports": {"kinds": ["industries", "cargo", "bottlenecks"]}
+}

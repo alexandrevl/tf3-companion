@@ -1,0 +1,187 @@
+{
+  "schema": "tf3c-methodology/1",
+  "id": "local-feeder-intercity-trunk",
+  "version": "1.0.0",
+  "name": "Local feeders and intercity trunks",
+  "description": "Local passenger lines feed the town bus station and may lose money within a tolerance; towns are joined by intercity buses that must not lose relevantly; freight may lose money while maturing.",
+  "author": "TF3 Companion example: a port of the author's own rules. Edit the parameters to match your playstyle.",
+  "parameters": {
+    "intercity_loss_alert": {"value": 100000, "description": "Intercity passenger loss per year above which a line is a problem."},
+    "freight_maturity_years": {"value": 3, "description": "Freight losses are tolerated below this line age (game years)."},
+    "feeder_cost_ratio_alert": {"value": 0.25, "description": "Town local loss over intercity profit through the town."},
+    "high_load": {"value": 0.9, "description": "Instantaneous load at or above which a line is flagged."},
+    "air_per_terminal_watch": {"value": 3.0, "description": "Aircraft of the lines per terminal used at a station: check the game from here."},
+    "air_per_terminal_problem": {"value": 3.5, "description": "Aircraft per terminal at or above which the station is a problem. Still a screening number, not capacity."},
+    "maintenance_critical": {"value": 0.7, "description": "Vehicle maintenance state below which a vehicle is a problem."},
+    "maintenance_watch": {"value": 0.85, "description": "Vehicle maintenance state below which a vehicle is on watch."}
+  },
+  "markers": {
+    "ok": {"symbol": "🟢", "label": "ok"},
+    "watch": {"symbol": "🟡", "label": "watch", "finding": "low"},
+    "problem": {"symbol": "🔴", "label": "problem", "finding": "high"},
+    "maturing": {"symbol": "🔵", "label": "maturing"},
+    "local-loss-within-rule": {"symbol": "⚪", "label": "local loss within rule"}
+  },
+  "name_patterns": {
+    "line": [
+      {"id": "coded", "pattern": "^(?P<mode>\\S+) .*?-(?P<scope>LO|IC|RE)-(?P<n>\\d+)$"},
+      {"id": "first-word", "pattern": "^(?P<mode>\\S+)"}
+    ]
+  },
+  "definitions": {
+    "passenger": {
+      "any": [
+        {"all": [
+          {"field": "line.is_passenger_only", "op": "exists"},
+          {"field": "line.is_passenger_only", "op": "eq", "value": true}
+        ]},
+        {"all": [
+          {"field": "line.is_passenger_only", "op": "missing"},
+          {"field": "line.name_capture.mode", "op": "in", "value": ["Bus", "AP"]}
+        ]}
+      ]
+    }
+  },
+  "roles": {
+    "line": [
+      {"id": "local-passenger", "label": "Local passengers",
+       "select": {"all": [
+         {"ref": "passenger"},
+         {"any": [
+           {"all": [
+             {"field": "line.name_capture.scope", "op": "exists"},
+             {"field": "line.name_capture.scope", "op": "eq", "value": "LO"}
+           ]},
+           {"all": [
+             {"field": "line.name_capture.scope", "op": "missing"},
+             {"field": "line.town_count", "op": "le", "value": 1}
+           ]}
+         ]}
+       ]}},
+      {"id": "intercity-passenger", "label": "Intercity / regional passengers", "select": {"ref": "passenger"}},
+      {"id": "freight", "label": "Freight", "select": {"not": {"ref": "passenger"}}}
+    ],
+    "vehicle": [
+      {"id": "helicopter", "label": "Helicopters",
+       "select": {"field": "vehicle.line.name_capture.mode", "op": "eq", "value": "HC"}}
+    ]
+  },
+  "engine": {
+    "findings": [
+      {"code": "line_losing_money", "role": "local-passenger", "action": "off"},
+      {"code": "line_losing_money", "role": "intercity-passenger", "action": "off"},
+      {"code": "line_losing_money", "role": "freight", "action": "off"}
+    ]
+  },
+  "rules": [
+    {"id": "intercity-result", "label": "Intercity result", "entity": "line", "role": "intercity-passenger",
+     "rationale": "Trunk lines must not lose relevant money.",
+     "outcomes": [
+       {"when": {"field": "line.loss_year", "op": "gt", "value": {"param": "intercity_loss_alert"}}, "marker": "problem",
+        "message": "{line.name} loses {line.loss_year|money} a year, above the {param.intercity_loss_alert|money} tolerance."},
+       {"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "watch",
+        "message": "{line.name} loses {line.loss_year|money} a year, within tolerance."}
+     ],
+     "default": {"marker": "ok"}},
+    {"id": "freight-result", "label": "Freight result", "entity": "line", "role": "freight",
+     "rationale": "Freight may lose money while the line matures; after that it must pay.",
+     "outcomes": [
+       {"when": {"all": [
+          {"field": "line.profit_year", "op": "lt", "value": 0},
+          {"any": [
+            {"field": "line.age_years", "op": "lt", "value": {"param": "freight_maturity_years"}},
+            {"field": "line.age_years", "op": "missing"}
+          ]}
+        ]},
+        "marker": "maturing",
+        "message": "{line.name} is losing money but is younger than {param.freight_maturity_years|years}."},
+       {"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "problem",
+        "message": "{line.name} still loses {line.loss_year|money} after the maturity period."}
+     ],
+     "default": {"marker": "ok"}},
+    {"id": "local-result", "label": "Local line result", "entity": "line", "role": "local-passenger",
+     "rationale": "A local line may lose money because it feeds the intercity lines; the town balance decides.",
+     "outcomes": [
+       {"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "local-loss-within-rule"}
+     ],
+     "default": {"marker": "ok"}},
+    {"id": "high-load", "label": "High load", "entity": "line",
+     "outcomes": [
+       {"when": {"field": "line.load", "op": "ge", "value": {"param": "high_load"}}, "marker": "watch",
+        "message": "{line.name} was {line.load|pct} full at snapshot time (an instantaneous reading)."}
+     ]},
+    {"id": "vehicle-maintenance", "label": "Vehicle maintenance", "entity": "vehicle",
+     "outcomes": [
+       {"when": {"field": "vehicle.maintenance_state", "op": "lt", "value": {"param": "maintenance_critical"}}, "marker": "problem",
+        "message": "{vehicle.name} has maintenance state {vehicle.maintenance_state|pct}."},
+       {"when": {"field": "vehicle.maintenance_state", "op": "lt", "value": {"param": "maintenance_watch"}}, "marker": "watch",
+        "message": "{vehicle.name} has maintenance state {vehicle.maintenance_state|pct}."}
+     ],
+     "default": {"marker": "ok"}},
+    {"id": "town-feeder-balance", "label": "Town feeder balance", "entity": "line",
+     "rationale": "Local lines may cost money if the intercity lines through the town earn enough to carry them.",
+     "aggregate": {
+       "group_by": "town",
+       "measures": {
+         "local_result": {"agg": "sum", "value": "line.profit_year",
+                          "where": {"field": "line.role", "op": "eq", "value": "local-passenger"}, "via": "line.first_stop_town"},
+         "local_lines": {"agg": "count",
+                         "where": {"field": "line.role", "op": "eq", "value": "local-passenger"}, "via": "line.first_stop_town"},
+         "intercity_result": {"agg": "sum", "value": "line.profit_year",
+                              "where": {"field": "line.role", "op": "eq", "value": "intercity-passenger"}, "via": "line.stop_towns"},
+         "feeder_cost_ratio": {"agg": "ratio", "numerator": {"measure": "local_result", "negate": true},
+                               "denominator": {"measure": "intercity_result"}}
+       },
+       "having": {"measure": "local_lines", "op": "gt", "value": 0},
+       "outcomes": [
+         {"when": {"all": [
+            {"measure": "local_result", "op": "lt", "value": 0},
+            {"any": [
+              {"measure": "intercity_result", "op": "le", "value": 0},
+              {"measure": "feeder_cost_ratio", "op": "gt", "value": {"param": "feeder_cost_ratio_alert"}}
+            ]}
+          ]},
+          "marker": "problem",
+          "message": "Local lines in {group} have a result of {local_result|money}, over the tolerance against intercity {intercity_result|money}."},
+         {"when": {"measure": "local_result", "op": "lt", "value": 0}, "marker": "local-loss-within-rule",
+          "message": "Local lines in {group} have a result of {local_result|money}, within the tolerance against intercity {intercity_result|money}."}
+       ],
+       "default": {"marker": "ok"}
+     }},
+    {"id": "air-station-pressure", "label": "Air station pressure", "entity": "stop",
+     "rationale": "Aircraft of the lines divided by the terminals those lines use. Screening only: it is not capacity, arrivals or a queue.",
+     "aggregate": {
+       "group_by": "stop.station",
+       "having": {"any_member": {"field": "stop.line.carrier", "op": "eq", "value": "AIR"}},
+       "measures": {
+         "vehicles": {"agg": "sum", "value": "stop.line.vehicle_count", "distinct_by": "stop.line_id"},
+         "terminals": {"agg": "distinct_count", "value": "stop.terminal"},
+         "fleet_per_terminal": {"agg": "ratio", "numerator": {"measure": "vehicles"}, "denominator": {"measure": "terminals"}}
+       },
+       "outcomes": [
+         {"when": {"measure": "fleet_per_terminal", "op": "ge", "value": {"param": "air_per_terminal_problem"}}, "marker": "problem",
+          "message": "{group} has {fleet_per_terminal} aircraft per terminal used by its lines. Not capacity or queue: check the game for aircraft waiting to land before building."},
+         {"when": {"measure": "fleet_per_terminal", "op": "ge", "value": {"param": "air_per_terminal_watch"}}, "marker": "watch",
+          "message": "{group} has {fleet_per_terminal} aircraft per terminal used by its lines. Not capacity or queue: check the game for aircraft waiting to land before building."}
+       ],
+       "default": {"marker": "ok"}
+     }}
+  ],
+  "recommendations": [
+    {"id": "fix-intercity", "when": {"rule": "intercity-result", "marker": "problem"}, "priority": 1,
+     "text": "Review {line.name}: reduce vehicles, shorten the route or merge it with another trunk line."},
+    {"id": "fix-feeders", "when": {"rule": "town-feeder-balance", "marker": "problem"}, "priority": 2,
+     "text": "Local lines in {group} cost too much compared with the intercity profit through the town. Review the local network."},
+    {"id": "air-infrastructure-watch", "when": {"rule": "air-station-pressure", "marker": "watch"}, "priority": 3,
+     "text": "If aircraft really wait at {group}, build terminal infrastructure; adding vehicles will not help."},
+    {"id": "air-infrastructure-problem", "when": {"rule": "air-station-pressure", "marker": "problem"}, "priority": 2,
+     "text": "Check the game for aircraft waiting at {group}; if they do, build terminal infrastructure, because adding vehicles will not help."}
+  ],
+  "reports": {
+    "kinds": ["company", "lines-history", "towns", "cargo", "fleet"],
+    "tables": [
+      {"id": "helicopter-maintenance", "label": "Helicopter maintenance", "entity": "vehicle", "role": "helicopter",
+       "sort": "vehicle.maintenance_state", "columns": ["vehicle.line.name", "vehicle.name", "vehicle.maintenance_state"]}
+    ]
+  }
+}

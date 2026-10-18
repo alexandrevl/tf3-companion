@@ -23,6 +23,9 @@ def _print_findings(items: list[dict[str, Any]]) -> None:
         print("Nothing to report in this snapshot.")
         return
     icons = {"high": "!!", "medium": "! ", "low": "· "}
+    first = items[0]
+    if first.get("methodology"):
+        print(f"Methodology: {first['methodology']} ({first.get('methodology_hash')})")
     for finding in items:
         print(f"{icons[finding['severity']]} [{finding['category']}] {finding['title']}")
         print(f"     {finding['detail']}")
@@ -50,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("ref")
     p = sub.add_parser("findings", help="problems and recommendations")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--methodology", metavar="ID|FILE", help="id[@version] or a file path; default: save binding, then `default`")
     p = sub.add_parser("opportunities", help="unshipped cargo opportunities")
     p.add_argument("--limit", type=int, default=20)
     p = sub.add_parser("notes", help="read or append dated player notes")
@@ -61,11 +65,16 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("export", help="export XLSX data")
     p.add_argument("--open", action="store_true", help="open using the default application")
     p = sub.add_parser("report", help="generate evidence-backed Markdown or offline HTML")
-    p.add_argument("kind", choices=("company", "lines", "fleet", "cargo", "decisions", "annual"))
+    from .reports import VALID_KINDS
+    p.add_argument("kind", choices=VALID_KINDS)
     p.add_argument("--year", type=int)
     p.add_argument("--html", action="store_true")
     p.add_argument("--open", action="store_true")
+    p.add_argument("--methodology", metavar="ID|FILE", help="id[@version] or a file path; default: save binding, then `default`")
     sub.add_parser("mcp", help="start the MCP server over stdio")
+    from .methodology.cli import add_parsers
+
+    add_parsers(sub)
     args = parser.parse_args(argv)
 
     companion = None
@@ -87,7 +96,10 @@ def main(argv: list[str] | None = None) -> int:
             result = Companion.knowledge(args.topic)
             print(result["content"]) if args.topic else _print(result)
             return 0
-        companion = Companion()
+        if args.command == "methodology":
+            from .methodology.cli import run_methodology
+            return run_methodology(args)
+        companion = Companion(save=args.save) if args.command == "analyse" else Companion()
         match args.command:
             case "status":
                 _print(companion.status())
@@ -108,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
             case "line":
                 _print(companion.line_detail(args.ref))
             case "findings":
-                items = companion.findings()
+                items = companion.findings(methodology=args.methodology, allow_path=True)
                 _print(items) if args.json else _print_findings(items)
             case "opportunities":
                 _print(companion.opportunities(args.limit))
@@ -119,13 +131,18 @@ def main(argv: list[str] | None = None) -> int:
             case "export":
                 _print(companion.export_spreadsheet(open_app=args.open))
             case "report":
-                result = companion.report(args.kind, args.year, args.html)
+                result = companion.report(args.kind, args.year, args.html, methodology=args.methodology, allow_path=True)
                 if args.open:
                     try:
                         open_default(Path(result.get("html_file", result["file"])))
                     except (OSError, subprocess.CalledProcessError) as exc:
                         print(f"warning: Report saved, but the default application could not open it: {exc}", file=sys.stderr)
                 _print({key: value for key, value in result.items() if key != "markdown"})
+            case "analyse":
+                from .methodology.cli import parse_params, print_analysis
+
+                summary = companion.analyse(args.methodology, allow_path=True, param_overrides=parse_params(args.param))
+                _print(summary) if args.json else print_analysis(summary)
     except (NoSnapshotError, ConfigError, LookupError, ValueError, OSError, sqlite3.Error, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

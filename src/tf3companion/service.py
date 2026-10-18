@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from collections import deque
 from contextlib import contextmanager
@@ -17,6 +18,9 @@ from typing import Any
 from . import analysis, luadata
 from .paths import Paths, load_paths
 from .export import export_workbook
+from .methodology.lens import PROBE_SNAPSHOTS, Lens, build_lens
+from .methodology.resolve import Resolver, describe
+from .methodology.summary import DEFAULT_KINDS, summarise
 from .snapshot import Snapshot, snapshot_files
 from .store import Store
 
@@ -31,8 +35,11 @@ class NoSnapshotError(RuntimeError):
 
 
 class Companion:
-    def __init__(self, paths: Paths | None = None) -> None:
-        self.paths = paths or load_paths()
+    def __init__(self, paths: Paths | None = None, save: str | None = None) -> None:
+        base = paths or load_paths()
+        self.resolver = Resolver(base.data, save)
+        self.scope = self.resolver.scope
+        self.paths = dataclasses.replace(base, data=self.scope.root) if self.scope.isolated else base
         self.store = Store(self.paths.database)
 
     def close(self) -> None:
@@ -203,19 +210,6 @@ class Companion:
         rows = [analysis.town_row(t) for t in snap.towns]
         return _sorted(rows, "population")[:limit]
 
-    def findings(self, category: str | None = None, severity: str | None = None) -> list[dict[str, Any]]:
-        if category is not None and category not in ("finance", "lines", "vehicles", "industries", "data"):
-            raise ValueError("category must be finance, lines, vehicles, industries or data.")
-        if severity is not None and severity not in ("high", "medium", "low"):
-            raise ValueError("severity must be high, medium or low.")
-        snap, prev = self._with_prev()
-        items = analysis.findings(snap, prev)
-        if category:
-            items = [f for f in items if f.category == category]
-        if severity:
-            items = [f for f in items if f.severity == severity]
-        return [f.to_dict() for f in items]
-
     def opportunities(self, limit: int = 20) -> list[dict[str, Any]]:
         _positive_limit(limit)
         return analysis.opportunities(self.current(), limit=limit)
@@ -290,30 +284,99 @@ class Companion:
                 result["openError"] = f"Export saved, but the default application could not open it: {exc}"
         return result
 
-    def report(self, kind: str, year: int | None = None, html: bool = False) -> dict[str, Any]:
-        """Render a snapshot-backed report and replace output files atomically."""
+    def report(self, kind: str, year: int | None = None, html: bool = False, methodology: str | None = None,
+               allow_path: bool = False, param_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Render a snapshot-backed report into the methodology's lens folder, atomically."""
+        from .methodology import output
         from .reports import render_report
 
         snap = self.current()
-        markdown = render_report(self.store, kind, year=year)
+        lens = self.lens(methodology, snap, allow_path=allow_path, overrides=param_overrides)
+        markdown = render_report(self.store, kind, year=year, lens=lens)
         stem = f"annual-{year if year is not None else snap.meta.get('year', snap.meta.get('date', {}).get('year'))}" if kind == "annual" else kind
-        output = self.paths.data / "reports"
-        path = output / f"{stem}.md"
-        html_text = render_report(self.store, kind, year=year, html=True) if html else None
-        _atomic_text(path, markdown)
-        _atomic_text(output / "latest.md", markdown)
-        result = {"markdown": markdown, "file": str(path), "date": snap.date_label}
-        if html_text is not None:
-            html_path = output / f"{stem}.html"
-            _atomic_text(html_path, html_text)
-            result["html_file"] = str(html_path)
+        files_out = {f"{stem}.md": markdown}
+        result: dict[str, Any] = {"markdown": markdown, "date": snap.date_label, "methodology": lens.provenance()}
+        if html:
+            files_out[f"{stem}.html"] = render_report(self.store, kind, year=year, html=True, lens=lens)
+        folder = output.add_files(output.lens_folder(self.scope, snap, lens.methodology), files_out,
+                                  self._manifest(lens))
+        output.atomic_write(self.scope.reports / output.LATEST, markdown)
+        result["file"] = str(folder / f"{stem}.md")
+        result["folder"] = str(folder)
+        if html:
+            result["html_file"] = str(folder / f"{stem}.html")
         return result
 
     def latest_report(self) -> str:
-        path = self.paths.data / "reports" / "latest.md"
+        path = self.scope.reports / "latest.md"
         if not path.is_file():
             raise LookupError("No report generated yet. Call `report` or run `tf3c report company`.")
         return path.read_text(encoding="utf-8")
+
+    # ---- methodologies ------------------------------------------------------------
+    def lens(self, request: str | None, snap: Snapshot | None = None, *, allow_path: bool = False,
+             overrides: dict[str, Any] | None = None) -> Lens:
+        """Resolve the effective methodology (request > binding > default) and apply it to the snapshot."""
+        snap = snap or self.current()
+        methodology, origin = self.resolver.resolve(request, allow_path=allow_path)
+        return build_lens(self.store, snap, methodology, origin, overrides)
+
+    def _manifest(self, lens: Lens) -> dict[str, Any]:
+        v = lens.verdicts
+        return {
+            "methodology": lens.provenance(), "snapshot": v.snapshot, "save": self.scope.describe(),
+            "skipped": v.skipped, "unsupported": v.unsupported, "notEvaluable": v.not_evaluable,
+            "counts": v.counts(), "disabledFindings": v.disabled_findings,
+        }
+
+    def list_methodologies(self) -> dict[str, Any]:
+        return self.resolver.listing()
+
+    def methodology_detail(self, ref: str, allow_path: bool = False) -> dict[str, Any]:
+        """Description, roles, rules, parameters and data needs; methodology free text sits under `untrusted`."""
+        from .methodology.support import snapshot_probe, static_probe
+
+        m, origin = self.resolver.resolve(ref, allow_path=allow_path)
+        self.ingest()  # the probe looks at the stored snapshots, so import any new ones first
+        probe = snapshot_probe(self.store.recent_snapshots(PROBE_SNAPSHOTS)) if self.store.latest() else static_probe
+        return describe(m, origin, self.scope, probe)
+
+    def analyse(self, methodology: str | None = None, allow_path: bool = False,
+                param_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Evaluate the methodology on the latest snapshot, write its report bundle and summarise."""
+        from .methodology import output
+        from .reports import render_report
+
+        snap, prev = self._with_prev()  # NoSnapshotError before anything is written
+        lens = self.lens(methodology, snap, allow_path=allow_path, overrides=param_overrides)
+        m, v = lens.methodology, lens.verdicts
+        found = analysis.findings(snap, prev, methodology=m, verdicts=v)
+        kinds = list((m.data.get("reports") or {}).get("kinds") or DEFAULT_KINDS)
+        kinds = [k for k in dict.fromkeys(kinds) if k != "methodology"]
+        reports_out: dict[str, str] = {}
+        for kind in kinds:
+            try:
+                reports_out[f"{kind}.md"] = render_report(self.store, kind, lens=lens)
+            except ValueError as exc:
+                raise ValueError(f"Report '{kind}' of {m.identity} could not be generated: {exc}") from exc
+        reports_out["methodology.md"] = render_report(self.store, "methodology", lens=lens)
+        folder = output.write_bundle(output.lens_folder(self.scope, snap, m), reports_out, self._manifest(lens))
+        return summarise(lens, found, folder, sorted([*reports_out, output.MANIFEST]), self.scope)
+
+    def findings(self, category: str | None = None, severity: str | None = None, methodology: str | None = None,
+                 allow_path: bool = False) -> list[dict[str, Any]]:
+        if category is not None and category not in ("finance", "lines", "vehicles", "industries", "data"):
+            raise ValueError("category must be finance, lines, vehicles, industries or data.")
+        if severity is not None and severity not in ("high", "medium", "low"):
+            raise ValueError("severity must be high, medium or low.")
+        snap, prev = self._with_prev()
+        lens = self.lens(methodology, snap, allow_path=allow_path)
+        items = analysis.findings(snap, prev, methodology=lens.methodology, verdicts=lens.verdicts)
+        if category:
+            items = [f for f in items if f.category == category]
+        if severity:
+            items = [f for f in items if f.severity == severity]
+        return [f.to_dict() for f in items]
 
     # ---- decisions ---------------------------------------------------------------
     def record_decision(self, title: str, rationale: str, entities: list[Any] | None = None) -> dict[str, Any]:

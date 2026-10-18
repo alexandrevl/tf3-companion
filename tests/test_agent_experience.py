@@ -18,7 +18,8 @@ from tf3companion.agent_experience import (
     line_triage,
 )
 
-ANALYSIS_PROMPTS = {"monthly-review", "annual-review", "line-triage", "fleet-renewal", "cargo-opportunities", "decision-review"}
+ANALYSIS_PROMPTS = {"monthly-review", "annual-review", "line-triage", "fleet-renewal", "cargo-opportunities", "decision-review",
+                    "apply-methodology"}
 
 
 def test_decision_review_validates_status_choices():

@@ -1,0 +1,22 @@
+{
+  "schema": "tf3c-methodology/1",
+  "id": "mode-ladder",
+  "version": "0.1.0",
+  "name": "Mode by distance ladder",
+  "description": "Needs station positions, which this release does not collect: the ladder rule is unsupported here and evaluated only in tests with synthetic positions.",
+  "markers": {"ok": {"symbol": "", "label": "ok"}},
+  "roles": {
+    "line": [
+      {"id": "intercity-passenger", "select": {"field": "line.is_passenger_only", "op": "eq", "value": true}}
+    ]
+  },
+  "rules": [
+    {"id": "passenger-lines", "entity": "line", "role": "intercity-passenger",
+     "outcomes": [{"when": {"field": "line.vehicle_count", "op": "ge", "value": 0}, "marker": "ok"}]}
+  ],
+  "ladders": [
+    {"id": "mode-by-distance", "entity": "line", "role": "intercity-passenger", "metric": "line.route_km",
+     "bands": [{"max_km": 40, "mode": "ROAD"}, {"max_km": 150, "mode": "RAIL"}, {"mode": "AIR"}],
+     "text": "{line.name} spans {line.route_km|km}; the band suggests {band.mode}, the line runs on {line.carrier}."}
+  ]
+}

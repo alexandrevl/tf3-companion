@@ -7,7 +7,7 @@ Thank you for contributing to TF3 Companion. This project is an unofficial, loca
 1. **Read-only:** Never execute gameplay commands, purchase vehicles, or alter simulation state.
 2. **Local-first:** No telemetry, cloud databases, or background network requests. All analyses remain on the user's machine.
 3. **Evidence over assumption:** Every finding, recommendation, and report must be tied to verified observations and explicitly cite game mechanics.
-4. **Clean language separation:** Maintain all code, comments, documentation, and error messages in English. Agents communicate with players in their preferred language via MCP instructions.
+4. **Clean language separation:** Write everything in English: code, identifiers, file and folder names, comments, docstrings, string literals, tests, scripts, docs, commit messages and OpenSpec artifacts. This includes gitignored locations such as `data/` and `scripts/`. Agents may converse with players in their preferred language via MCP instructions, but that never reaches files or commits. See [AGENTS.md](AGENTS.md).
 5. **Privacy in testing:** Never commit real player snapshots, personal computer paths, save names, or Steam IDs to the repository.
 
 ---
@@ -56,6 +56,8 @@ docs/              # Markdown guides and reference
 openspec/          # Specification changes and architectural tasks
 tests/             # Unit and integration test suites
 ```
+
+Branding (colours, typography, logo, voice, generated art) follows [docs/brand/identity.md](docs/brand/identity.md); colours and typefaces come only from `assets/brand/tokens.json`.
 
 ---
 

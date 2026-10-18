@@ -18,7 +18,11 @@ from . import analysis
 from .snapshot import Snapshot
 from .store import Store
 
-VALID_KINDS = ("company", "lines", "fleet", "cargo", "decisions", "annual")
+VALID_KINDS = (
+    "company", "lines", "fleet", "cargo", "decisions", "annual",
+    "history", "vehicle-roi", "lines-history", "industries", "towns",
+    "expansion", "bottlenecks", "methodology",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -71,8 +75,16 @@ class ReportDocument:
 
 def _escape_md(text: Any) -> str:
     s = str(text if text is not None else "-")
-    s = html.escape(s.replace("\n", " ").replace("\r", " "), quote=False)
+    s = re.sub(r"[\x00-\x1f\x7f]", " ", s)
+    s = html.escape(s, quote=False)
     return re.sub(r"([\\`*_\[\]()!|])", r"\\\1", s)
+
+
+def _escape_block(text: Any) -> str:
+    """Escape text that starts a Markdown paragraph: also neutralise headings, quotes, lists, rules and fences."""
+    s = _escape_md(text)
+    s = re.sub(r"^(\s*)([#>+\-~=])", r"\1\\\2", s)
+    return re.sub(r"^(\s*\d+)([.)])", r"\1\\\2", s)
 
 
 def _clean_mermaid(text: Any, limit: int = 40) -> str:
@@ -125,7 +137,7 @@ def render_markdown(doc: ReportDocument) -> str:
         if isinstance(b, Heading):
             out.append(f"{'#' * b.level} {_escape_md(b.text)}\n")
         elif isinstance(b, Paragraph):
-            out.append(f"{_escape_md(b.text)}\n")
+            out.append(f"{_escape_block(b.text)}\n")
         elif isinstance(b, Note):
             out.append(f"> **{_escape_md(b.label)}:** {_escape_md(b.text)}\n")
         elif isinstance(b, Table):
@@ -862,8 +874,11 @@ def _build_annual_report(store: Store, year: int | None = None) -> ReportDocumen
 # Public Report Generation Entry Point
 # ---------------------------------------------------------------------------
 
-def render_report(store: Store, kind: str, year: int | None = None, html: bool = False) -> str:
+def render_report(store: Store, kind: str, year: int | None = None, html: bool = False,
+                  thresholds: analysis.Thresholds | None = None, lens: Any = None) -> str:
     """Pure in-memory report generation without disk writing or service dependency."""
+    if thresholds is None and lens is not None:
+        thresholds = lens.thresholds
     if year is not None and (isinstance(year, bool) or not isinstance(year, int) or not 0 <= year <= 2**63 - 1):
         raise ValueError("year must be a nonnegative 64-bit integer.")
     if year is not None and kind != "annual":
@@ -883,7 +898,31 @@ def render_report(store: Store, kind: str, year: int | None = None, html: bool =
         doc = _build_decisions_report(store)
     elif kind == "annual":
         doc = _build_annual_report(store, year)
-    else:
-        raise ValueError(f"Unknown report kind '{kind}'")
+    elif kind == "methodology":
+        from . import report_methodology
 
+        doc = report_methodology.build(store, lens)
+    else:
+        # Local imports keep extension builders free to reuse the document model.
+        from . import (
+            report_history, report_vehicle_roi, report_lines_history,
+            report_industries, report_towns, report_expansion, report_bottlenecks,
+        )
+
+        builders = {
+            "history": report_history.build,
+            "vehicle-roi": report_vehicle_roi.build,
+            "lines-history": report_lines_history.build,
+            "industries": report_industries.build,
+            "towns": report_towns.build,
+            "expansion": report_expansion.build,
+            "bottlenecks": report_bottlenecks.build,
+        }
+        if kind in ("vehicle-roi", "lines-history", "industries"):
+            doc = builders[kind](store, thresholds)
+        else:
+            doc = builders[kind](store)
+
+    if lens is not None and kind != "methodology":
+        doc.header.extend(lens.header())
     return render_html(doc) if html else render_markdown(doc)

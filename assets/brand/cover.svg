@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TF3 Companion Bridge - cover (1920x1080). Transit map of the product (design D11).
+  Colours: dark theme tokens from assets/brand/tokens.json only.
+    canvas #171B1F  surface-raised #22282E  border #343C45  text #E6E6E6  text-muted #B3B3B3
+    accent #6DB0F2 (Diagnose)  mode-road #FF8C00 (Grow)  mode-rail #C38FFF (Report)  mode-tram #D86FC6 (Decide)
+    signal #FFC40C (ONLY the arrow of the brand mark)
+  Layout: chip centre (960,540), 240x240 -> x 840..1080, y 420..660 (inside the central 1080x1080 square).
+  Chip pins: left/right at y 500 (Diagnose) and y 580 (Grow); top/bottom at x 920 (Report) and x 1000 (Decide / spare).
+  Lines are drawn first, then chip, termini and stations on top. Angles: 0 / 45 / 90 degrees only.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <title>TF3 Companion Bridge</title>
+  <desc>A transit map: the snapshot database, the TF3 Companion MCP chip and your AI agent, connected by four workflow lines named after the real MCP tools.</desc>
+
+  <defs>
+    <pattern id="dots" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="1.5" fill="#343C45" opacity="0.6"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect id="background" width="1920" height="1080" fill="#171B1F"/>
+  <rect id="background-dots" width="1920" height="1080" fill="url(#dots)"/>
+
+  <!-- Workflow line legend -->
+  <g id="workflow-legend" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="22" fill="#E6E6E6">
+    <path d="M1400 112 H1440" stroke="#6DB0F2" stroke-width="8" stroke-linecap="round"/>
+    <text x="1456" y="120">Diagnose</text>
+    <path d="M1400 152 H1440" stroke="#FF8C00" stroke-width="8" stroke-linecap="round"/>
+    <text x="1456" y="160">Grow</text>
+    <path d="M1400 192 H1440" stroke="#C38FFF" stroke-width="8" stroke-linecap="round"/>
+    <text x="1456" y="200">Report</text>
+    <path d="M1400 232 H1440" stroke="#D86FC6" stroke-width="8" stroke-linecap="round"/>
+    <text x="1456" y="240">Decide</text>
+  </g>
+
+  <!-- ===== Lines (stroke 14, round caps/joins) ===== -->
+  <g id="lines" fill="none" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path id="line-diagnose-path" d="M220 500 H1710" stroke="#6DB0F2"/>
+    <path id="line-grow-path" d="M220 580 H1710" stroke="#FF8C00"/>
+    <path id="line-report-path" d="M920 150 V1000" stroke="#C38FFF"/>
+    <path id="line-decide-path" d="M1000 660 V740 L1100 840 H1600 L1770 670 V600" stroke="#D86FC6"/>
+  </g>
+
+  <!-- ===== Trains (small chips riding the lines) ===== -->
+  <g id="trains" stroke="#171B1F" stroke-width="3">
+    <g id="train-diagnose" transform="translate(1200 500)">
+      <rect x="-26" y="-4" width="10" height="8" rx="2" fill="#6DB0F2"/><rect x="16" y="-4" width="10" height="8" rx="2" fill="#6DB0F2"/>
+      <rect x="-16" y="-16" width="32" height="32" rx="7" fill="#6DB0F2"/>
+    </g>
+    <g id="train-grow" transform="translate(465 580)">
+      <rect x="-26" y="-4" width="10" height="8" rx="2" fill="#FF8C00"/><rect x="16" y="-4" width="10" height="8" rx="2" fill="#FF8C00"/>
+      <rect x="-16" y="-16" width="32" height="32" rx="7" fill="#FF8C00"/>
+    </g>
+    <g id="train-report" transform="translate(920 215)">
+      <rect x="-4" y="-26" width="8" height="10" rx="2" fill="#C38FFF"/><rect x="-4" y="16" width="8" height="10" rx="2" fill="#C38FFF"/>
+      <rect x="-16" y="-16" width="32" height="32" rx="7" fill="#C38FFF"/>
+    </g>
+  </g>
+
+  <!-- ===== Central chip: MCP ===== -->
+  <g id="chip">
+    <!-- pins: 24x12 bars, two per side -->
+    <g fill="#E6E6E6">
+      <rect x="816" y="494" width="26" height="12" rx="3"/><rect x="816" y="574" width="26" height="12" rx="3"/>
+      <rect x="1078" y="494" width="26" height="12" rx="3"/><rect x="1078" y="574" width="26" height="12" rx="3"/>
+      <rect x="914" y="396" width="12" height="26" rx="3"/><rect x="994" y="396" width="12" height="26" rx="3"/>
+      <rect x="914" y="658" width="12" height="26" rx="3"/><rect x="994" y="658" width="12" height="26" rx="3"/>
+    </g>
+    <rect x="840" y="420" width="240" height="240" rx="28" fill="#22282E" stroke="#E6E6E6" stroke-width="6"/>
+    <text x="960" y="560" text-anchor="middle" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="76" fill="#E6E6E6">MCP</text>
+    <text x="960" y="598" text-anchor="middle" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="22" fill="#B3B3B3">TF3 Companion</text>
+  </g>
+
+  <!-- ===== Termini ===== -->
+  <g id="terminus-snapshots">
+    <!-- database cylinder -->
+    <path d="M120 504 V576 A50 14 0 0 0 220 576 V504" fill="#22282E" stroke="#E6E6E6" stroke-width="5"/>
+    <path d="M120 540 A50 14 0 0 0 220 540" fill="none" stroke="#E6E6E6" stroke-width="5"/>
+    <ellipse cx="170" cy="504" rx="50" ry="14" fill="#22282E" stroke="#E6E6E6" stroke-width="5"/>
+    <text x="170" y="645" text-anchor="middle" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="22" fill="#E6E6E6">Snapshots</text>
+  </g>
+
+  <g id="terminus-agent">
+    <!-- speech bubble with tail bottom-right -->
+    <path d="M1732 470 H1808 A22 22 0 0 1 1830 492 V578 A22 22 0 0 1 1808 600 H1816 L1822 626 L1790 600 H1732 A22 22 0 0 1 1710 578 V492 A22 22 0 0 1 1732 470 Z" fill="#22282E" stroke="#E6E6E6" stroke-width="5" stroke-linejoin="round"/>
+    <circle cx="1744" cy="535" r="6" fill="#E6E6E6"/><circle cx="1770" cy="535" r="6" fill="#E6E6E6"/><circle cx="1796" cy="535" r="6" fill="#E6E6E6"/>
+    <text x="1770" y="440" text-anchor="middle" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="22" fill="#E6E6E6">Your AI agent</text>
+  </g>
+
+  <g id="terminus-game">
+    <rect x="880" y="96" width="80" height="58" rx="10" fill="#22282E" stroke="#E6E6E6" stroke-width="5"/>
+    <path d="M912 112 L934 125 L912 138 Z" fill="#E6E6E6"/>
+    <text x="985" y="120" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="22" fill="#E6E6E6">Your game</text>
+    <text x="985" y="143" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">bridge mod</text>
+  </g>
+
+  <!-- ===== Stations: circle (cx,cy) r12, fill text, ring in line colour; labels = name (sans) + tool (mono) ===== -->
+  <g id="line-diagnose" stroke="#6DB0F2" stroke-width="6" fill="#E6E6E6">
+    <circle cx="330" cy="500" r="12"/>   <!-- Status -->
+    <circle cx="600" cy="500" r="12"/>   <!-- Findings -->
+    <circle cx="1320" cy="500" r="12"/>  <!-- Line detail -->
+    <circle cx="1590" cy="500" r="12"/>  <!-- Vehicle catalog -->
+  </g>
+  <g id="labels-diagnose" text-anchor="middle">
+    <text x="330" y="450" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Status</text>
+    <text x="330" y="473" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">status</text>
+    <text x="600" y="450" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Findings</text>
+    <text x="600" y="473" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">findings</text>
+    <text x="1320" y="450" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Line detail</text>
+    <text x="1320" y="473" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">line_detail</text>
+    <text x="1590" y="450" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Vehicle catalog</text>
+    <text x="1590" y="473" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">vehicle_catalog</text>
+  </g>
+
+  <g id="line-grow" stroke="#FF8C00" stroke-width="6" fill="#E6E6E6">
+    <circle cx="330" cy="580" r="12"/>   <!-- Industries -->
+    <circle cx="600" cy="580" r="12"/>   <!-- Opportunities -->
+    <circle cx="1450" cy="580" r="12"/>  <!-- Stocks -->
+  </g>
+  <g id="labels-grow" text-anchor="middle">
+    <text x="330" y="630" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Industries</text>
+    <text x="330" y="653" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">list_industries</text>
+    <text x="600" y="630" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Opportunities</text>
+    <text x="600" y="653" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">opportunities</text>
+    <text x="1450" y="630" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Stocks</text>
+    <text x="1450" y="653" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">list_stocks</text>
+  </g>
+
+  <g id="line-report" stroke="#C38FFF" stroke-width="6" fill="#E6E6E6">
+    <circle cx="920" cy="300" r="12"/>   <!-- Refresh -->
+    <circle cx="920" cy="760" r="12"/>   <!-- Company history -->
+    <circle cx="920" cy="870" r="12"/>   <!-- Reports -->
+    <circle cx="920" cy="980" r="12"/>   <!-- Spreadsheet -->
+  </g>
+  <g id="labels-report">
+    <g text-anchor="start">
+      <text x="948" y="299" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Refresh</text>
+      <text x="948" y="322" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">refresh</text>
+    </g>
+    <g text-anchor="end">
+      <text x="892" y="759" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Company history</text>
+      <text x="892" y="782" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">company_history</text>
+      <text x="892" y="869" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Reports</text>
+      <text x="892" y="892" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">report</text>
+      <text x="892" y="979" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Spreadsheet</text>
+      <text x="892" y="1002" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">export_spreadsheet</text>
+    </g>
+  </g>
+
+  <g id="line-decide" stroke="#D86FC6" stroke-width="6" fill="#E6E6E6">
+    <circle cx="1250" cy="840" r="12"/>  <!-- Decisions -->
+    <circle cx="1480" cy="840" r="12"/>  <!-- Notes -->
+  </g>
+  <g id="labels-decide" text-anchor="middle">
+    <text x="1250" y="790" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Decisions</text>
+    <text x="1250" y="813" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">record_decision</text>
+    <text x="1480" y="790" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="21" fill="#E6E6E6">Notes</text>
+    <text x="1480" y="813" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="16" fill="#B3B3B3">save_notes</text>
+  </g>
+
+  <!-- ===== Brand block (top-left) ===== -->
+  <g id="brand-block">
+    <!-- mark: contract geometry (200-unit scale, spans x 34..223, y 38..162) scaled 0.5 -->
+    <g transform="translate(60 52) scale(0.5) translate(-34 -38)" fill="none">
+      <path d="M150 50 L90 50 L60 80 L60 120 L90 150 L150 150 L185 115 L215 115" stroke="#6DB0F2" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M200 100 L215 115 L200 130" stroke="#FFC40C" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="150" cy="50" r="12" fill="#E6E6E6" stroke="#6DB0F2" stroke-width="6"/>
+      <circle cx="150" cy="150" r="12" fill="#E6E6E6" stroke="#6DB0F2" stroke-width="6"/>
+      <g stroke="#E6E6E6" stroke-width="4" stroke-linecap="round">
+        <path d="M36 88 H42 M36 112 H42 M78 88 H84 M78 112 H84"/>
+      </g>
+      <rect x="42" y="82" width="36" height="36" rx="6" fill="#E6E6E6" stroke="#6DB0F2" stroke-width="5"/>
+    </g>
+    <text x="175" y="86" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="700" font-size="40" fill="#E6E6E6">TF3 Companion <tspan font-weight="400">Bridge</tspan></text>
+    <text x="60" y="140" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="22" fill="#B3B3B3">Ask your company anything - lines, loads and losses.</text>
+  </g>
+
+  <!-- ===== Disclaimer (bottom-left) ===== -->
+  <text id="disclaimer" x="60" y="1040" font-family="Lato, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="14" fill="#B3B3B3">Unofficial. Not affiliated with or endorsed by Urban Games or Paradox Interactive.</text>
+</svg>

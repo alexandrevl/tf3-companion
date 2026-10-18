@@ -41,6 +41,8 @@
 
 ## 6. Mod assets and mod.io publishing doc
 
+> Tasks 6.1 to 6.5 are superseded by the `mod-listing-assets` change (mod description, cover, logo, gallery slots, `docs/publishing-mod.md`, listing checks). Implement them there, not here; close them in this change once `mod-listing-assets` is archived. `scripts/make_assets.py` and `scripts/check_listing.py` exist already; release_check.sh in 4.3 should call `check_listing.py` for the gallery rule in 6.4.
+
 - [ ] 6.1 Establish thumbnail facts. Static facts already seen: binary strings `image_00.tga`, `_metadata/mod.io_fileid.txt`, gallery media types; stock mods use `_metadata/0.png` (1920x1080). Empirically test in the game's mod list: place a test `image_00.tga` in the mod root and a PNG in `_metadata/` (separately), restart, see which is shown, and which size/format loads (also try the `Mod Hub` publish preview if it shows the logo). Verify: a short note with screenshots/observations is saved in `docs/publishing-mod.md` ("Verified in build 40420 on macOS"); if the in-game check is impossible, say so in the doc and ship both files.
 - [ ] 6.2 Create original artwork `assets/logo.svg`, `assets/logo.png` (e.g. 512x512 for mod.io logo), and `scripts/make_assets.py` (Pillow in dev group) that renders `mod/tf3_companion_bridge/image_00.tga` at the size found in 6.1; no Urban Games/Paradox artwork or marks. Verify: script reproducible (same hash twice), `file` reports a valid TGA/PNG with the expected dimensions, image opens in the in-game mod list (6.1 setup).
 - [ ] 6.3 Finalise English-only mod metadata, author Alexandre Lima, disclaimer and tags. Leave the URL unset until a real repository exists. Verify JSON parses and metadata appears correctly in the game's mod list.

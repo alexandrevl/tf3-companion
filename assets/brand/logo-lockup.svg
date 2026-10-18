@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 172" width="920" height="172" role="img" aria-label="TF3 Companion">
+  <g transform="translate(-10 -14)">
+  <g transform="translate(0 0)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M150 50 L90 50 L60 80 L60 120 L90 150 L150 150 L185 115 L215 115" stroke="#6DB0F2" stroke-width="16"/>
+    <path d="M200 100 L215 115 L200 130" stroke="#FFC40C" stroke-width="10"/>
+    <circle cx="150" cy="50" r="12" fill="#E6E6E6" stroke="#6DB0F2" stroke-width="6"/>
+    <circle cx="150" cy="150" r="12" fill="#E6E6E6" stroke="#6DB0F2" stroke-width="6"/>
+    <rect x="42" y="82" width="36" height="36" rx="6" fill="#E6E6E6" stroke="#6DB0F2" stroke-width="5"/>
+    <path d="M36 88 H42 M78 88 H84 M36 112 H42 M78 112 H84" stroke="#E6E6E6" stroke-width="4"/>
+  </g>
+  </g>
+  <text x="253" y="117" font-family="Lato, &quot;Segoe UI&quot;, &quot;Helvetica Neue&quot;, Arial, sans-serif" font-weight="700" font-size="86" fill="#E6E6E6">TF3 Companion</text>
+</svg>

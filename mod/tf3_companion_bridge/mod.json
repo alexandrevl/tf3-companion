@@ -1,6 +1,6 @@
 {
     "modId": "tf3_companion_bridge",
-    "revision": 2,
+    "revision": 3,
     "severityAdd": "None",
     "severityRemove": "None",
     "visible": true,

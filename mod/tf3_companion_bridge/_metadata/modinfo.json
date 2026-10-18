@@ -1,7 +1,7 @@
 {
     "name": "TF3 Companion Bridge",
-    "summary": "Exports a read-only snapshot of your company for TF3 Companion.",
-    "description": "Periodically writes a read-only snapshot of the player's company (finances, lines, vehicles, stations, industries, towns) to the userdata folder (towns_industries/tf3c_snap_*.lua). Does not change the simulation.",
+    "summary": "Read-only company data export for the TF3 Companion analyst. Changes nothing in your game.",
+    "description": "Turn your Transport Fever 3 company into something an AI analyst can read.\n\nTF3 Companion Bridge periodically saves a read-only snapshot of your company: finances, lines, vehicles, stations, industries and towns. The free, local TF3 Companion app reads those snapshots and lets an AI assistant of your choice find losing lines, unserved industries, full stocks and expansion opportunities. You decide and make every change in the game yourself.\n\nWhat it does\n- Writes a snapshot file to your userdata folder (towns_industries/tf3c_snap_*.lua).\n- Answers refresh requests from the Companion app.\n\nWhat it does not do\n- It never changes the simulation, your money, your vehicles or your save.\n- It sends nothing over the network. Everything stays on your machine.\n\nRequires the TF3 Companion app to analyse the snapshots. Without it the mod only writes snapshot files.\n\nUnofficial community project. Not affiliated with or endorsed by Urban Games or Paradox Interactive. Transport Fever is their trademark.",
     "authors": [
         {
             "name": "Alexandre Lima",

@@ -69,6 +69,42 @@ uv run tf3c doctor
 
 ---
 
+## Game files, logs and crashes
+
+Locations below are relative to `<userdata>`, the `.../Steam/userdata/<account id>/3493540/local` folder (`3493540` is the Transport Fever 3 Steam app id) that `tf3c status` reports or that `TF3C_USERDATA_DIR` overrides. The ones marked "checked" are the paths TF3 Companion itself uses (`discovery.py`, `paths.py`); the rest come from MPFever's published research (MIT) and are not verified by this project.
+
+| What | Location | Notes |
+|---|---|---|
+| Snapshots and refresh request (checked) | `towns_industries/` | `tf3c_snap_<gameTime>.lua`, `tf3c_request.lua` |
+| Mod staging (checked) | `staging_area/tf3_companion_bridge/` | `mod.json` directly inside |
+| Game log (checked) | `crash_dump/stdout.txt` | What `tf3c log` reads |
+| Crash dumps | `crash_dump/` (newest files) | Written by the game when it crashes |
+| Saves, crash saves, autosaves | `save/` | A save is `<name>.sav` plus extra files that start with `<name>.sav.`; autosaves start with `autosave_`, crash saves with `crash_` and carry the world name and date |
+| Mods and settings | `mods/`, `settings.lua`, `profile.lua` | The game rewrites `settings.lua` when it exits, so edit it only while the game is closed |
+
+### Symptom: `uv run tf3c log` prints `Log not found: <path>`
+
+- **Cause:** `<userdata>/crash_dump/stdout.txt` does not exist: the game has never started under this userdata folder, or `TF3C_USERDATA_DIR` points to a different account folder.
+- **Fix:** Start the game once, then run `uv run tf3c status` to confirm the userdata path and look for `crash_dump/stdout.txt` inside it.
+
+### Symptom: `uv run tf3c log` shows no lines, or lines from an earlier session are gone
+
+- **Cause 1:** The game rewrites `stdout.txt` at every start, so the log of a previous run is lost once the game is launched again. The file may also not be complete until the game has closed (MPFever research, not verified here).
+- **Cause 2:** `tf3c log` prints only the lines that contain `[tf3c]`, newest last, up to `--lines` (default 40). Other game output is not shown; open `crash_dump/stdout.txt` directly for it.
+- **Fix:** Copy `stdout.txt` somewhere safe before relaunching the game when you need the evidence of a crash or a failed collection, then read the copy.
+
+### Symptom: The game crashed or was closed after an error
+
+- **Cause:** Crashes leave a dump in `crash_dump/` and a crash save (`crash_<world>_<date>.sav`) in `save/`. A crashed game process can stay open after writing its crash save. A crash save keeps the state that caused the crash (MPFever research, not verified here).
+- **Fix:** Close the leftover process, copy `crash_dump/stdout.txt` and the newest dump, then continue from an earlier save or autosave instead of the crash save. When reporting, include the `[tf3c]` lines and say whether the bridge mod was enabled.
+
+### Symptom: Many dump files appear in `crash_dump/` and the game freezes briefly
+
+- **Cause:** MPFever measured that each failed property read inside a script makes the game write a dump and stall (about 0.1 s even inside `pcall`). A collector that probes unknown members in a loop can therefore flood the folder.
+- **Fix:** Check `uv run tf3c log --lines 100` for repeated `[tf3c]` collector errors and report them; do not keep re-requesting snapshots while they repeat.
+
+---
+
 ## MCP agent connection issues
 
 ### Symptom: GUI client (Claude Desktop / Cursor) says server failed to start

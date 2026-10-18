@@ -1,5 +1,7 @@
 # Cargo economy: cargo types, industries and chains (base TF3)
 
+> **Evidence legend (imported research).** `MPF:<file>` cites a file of MPFever (https://github.com/dkdknight/MPFever, MIT, studied at commit `ae5fc96`; paths relative to its repository root). `[ADOPTED: observed|code|assumed|claim]` marks a fact taken on the MPFever author's word and not verified by this project; the class is the author's own: observed = measured by the author, code = read by the author in game code or the engine, assumed = the author's assumption, claim = stated without evidence. Every statement is paraphrased. `[INFERENCE]`, `[UNVERIFIED]` and `[DISCREPANCY]` keep their existing meaning.
+
 Source conventions (paths relative to `Transport Fever 3/`):
 - **CARGO:x** = `base/content/cargos/x.zip:x/x.cargo.lua`
 - **IND:x** = `base/content/industries/x.zip:x/x.con.lua`
@@ -171,6 +173,21 @@ Effects on cargo types (removal of `cargoCategories` in `ECO:*.eco.lua`):
 
 ---
 
+## 5. Research notes (imported MPFever evidence)
+
+Each note names the section it affects. None changes a value in §1 to §4; they confirm or sharpen them. Builds: 40408 or 40420; entries that do not name the build are marked inferred.
+
+- **Affects §1 deadlines (`mechanics.md` M12, M13) — sharpening.** Late deliveries are counted per line and per cargo type over a window of half a game year, and the delivery rating uses at least 10 delivered items; the raw late share is then rescaled (M13), so the Deadline column feeds a quantity that can be attributed to individual lines. [ADOPTED: code] (MPF:mod/mpfever_1/content/mpfever_progression.lua:103-111) and (MPF:mod/mpfever_1/content/mpfever_progression.lua:170-179,190-207)
+- **Affects §1 town demands and town XP (M2, M13) — confirmation.** A company's own rating in a town is the lowest of the town's shared rating and the company's own happiness and on-time ratings, so cargo delivered to meet a demand grows the town only as far as that lowest rating allows; happiness and delivery are per-company inputs. [ADOPTED: code] (MPF:mod/mpfever_1/content/mpfever_progression.lua:9-18,313-316)
+- **Affects §1 town demands (M2, M16) — confirmation.** Terrain edits near a town lower its reputation, which is one of the ratings in that minimum (build 40420, inferred). [ADOPTED: observed] (MPF:docs/CHANGELOG.txt:381-386)
+- **Affects §1 income statement (M1) — [UNVERIFIED].** The price event for delivery income, `OnCalcTicketPrice`, receives parameter entries that expose the line entity, so income is computed per line delivery. [ADOPTED: code] (MPF:mod/mpfever_1/content/mpfever_co.lua:259-285) The research gives no other field of those entries, so it neither confirms nor contradicts the equal pay per cargo type stated in §1. Check: dump the parameter entries of one delivery.
+- **Affects §2 closure and founding (M4) — sharpening.** Industry events such as closure and the founding of new industries are random draws made by the engine, identical between games only when the seeds and inputs are identical; they are not functions of time alone. [ADOPTED: observed] (MPF:docs/CHANGELOG.txt:681-683,721-722)
+- **Affects §2 industry age (M4) — new.** An industry points at its construction entity, and a construction has a `timeBuilt` field, so industry age is readable; the "Industry Founded" notification is created by each game's interface, which scans industries every 5 s of game time. [ADOPTED: code] (MPF:mod/mpfever_1/content/mpfever_ui.script.lua:1612-1640)
+- **Affects §2 stocks (M3, M9) — confirmation.** The stock sizes in §2 are per-stock counts held in the `STOCK_LIST` component, while cargo in transit is simulated as individual cargo entities. [ADOPTED: code] (MPF:docs/RESEARCH.md:168,184)
+- **Affects §1 town demands (M16) — [UNVERIFIED].** A street upgrade through a town moves or removes town buildings (M16), but the research does not say whether that changes the town's capacities and therefore the quantities in its demands. Check: read `list_towns` capacities before and after one upgrade.
+
+---
+
 ## Sources and gaps
 
 **Verified in files:** all 32 industry `.con.lua` files (inputs/outputs/stocks/booster/duration), 37 `.cargo.lua` files (class, deadline), `ECO:placementparamsutil.lua` + 5 `.eco.lua` files (tiers, demands, climates, fallbacks), wiki `simulation:industriescargos` and `simulation:towns`.
@@ -184,3 +201,4 @@ Effects on cargo types (removal of `cargoCategories` in `ECO:*.eco.lua`):
 - Wiki × `.con.lua` discrepancies: Fertilizer (Chemical Plant vs Oil Refinery), Oil Platform (Tools vs Machines), Livestock Farm (7/3/4 vs 8/4/5, Machines booster only in the wiki), Furniture Factory (Machines booster only in the wiki), Grain consumption by Brewery (only in `.con.lua`).
 - Availability of Vegetables in the subarctic (`removeTags OUTPUT_VEGETABLES` in `ECO:subarctic.eco.lua`, but Farm remains; effect on demand unverified).
 - Campaign/mission content (special cargo types) is out of scope.
+- Research-note items marked [UNVERIFIED] in §5 (equal pay in `OnCalcTicketPrice`, effect of removed town buildings on demand) and the unverified rating formulas of M13.

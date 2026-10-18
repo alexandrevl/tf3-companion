@@ -96,6 +96,11 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
   - Noise and pollution from vehicles/stations near residential areas lower ratings; prefer cleaner vehicles near neighbourhoods (noise and pollution values are in each vehicle's shop entry, WIKI linesvehicles). `[I]`
 - Growing towns increases world population → raises **company rank** (perks, §M11), but inflation reduces income per item as rank rises (§M1). See H17.
 
+**H12b — Where Delivery is a town's lowest rating, keep the late share small, not just "mostly on time".** `[?]`
+- Based on: `mechanics.md` §M13, §M12, §M2. The rescale comes from MPFever's reading of the game's rating code and has not been checked against the game's own script.
+- At the default sensitivity the on-time fraction is rescaled so that 0.30 rates 0 and 1.0 rates 1 (§M13 table). `[INFERENCE]` A raw 90% on time then rates about 0.86, 80% about 0.71 and 70% about 0.57, and because authority is the lowest of the ratings (H12), a modest late share can be what holds growth back.
+- Compare the town's displayed Delivery rating with transit time against the cargo's deadline (`cargo_economy.md` §1) before acting; the collector does not emit per-line late counts (see `snapshot_schema.md`, collector gaps).
+
 ---
 
 ## F. Maintenance and replacement
@@ -140,6 +145,10 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 - Based on: §M1 (inflation multiplier by rank; default Normal reaches ×0.75 at rank 15) and §M11.
 - Income per item falls as company rank rises; compensate with volume/distance/capacity, not just more short routes.
 
+**H17b — Before attributing falling income to rank, check which rank is in force.** `[?]`
+- Based on: §M14, §M1, §M11. Experience is the highest world population the game has seen, so it never falls; a rank can be reached without being taken. Whether inflation and perks follow the rank taken or the rank reached is unverified.
+- If the company window shows a rank reached but not taken, compare income per item before and after taking it; until then, do not assume which rank drives the decline in H17.
+
 **H18 — Confirm game difficulty before calibrating.** `[V]`
 - Based on: `base/mod.json`, `BASE:difficulty_util.tl` (§M1, §M3, §M4, §M6).
 - Income ×0.5–1.5; vehicle/infrastructure/maintenance costs ×0.5–1.5; industry productivity ×0.5–2; closure ×0–8; maintenance effect ×0–2. The snapshot should contain these parameters (otherwise ask the player).
@@ -147,6 +156,20 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 **H19 — Subsidies: accept only when the objective matches something that would be done anyway.** `[V]` for the rules, `[I]` for evaluation
 - Based on: WIKI subsidies — declining has no cost; failure reverses the advance payment and may incur a fine; "Fair/Risky/Very Risky" risk shortens the deadline and raises the target. Rewards: money, town XP, temporary 2× income.
 - Types: supply an idle industry, supply a town, connect towns, transport workers (fits H11).
+
+---
+
+## I. Building near towns and stops
+
+**H20 — Count the town buildings a street upgrade takes, not only its price.** `[?]`
+- Based on: §M16, §M2. Upgrading a street through a town moves or removes town buildings and places them again at random spots. One measured example (build 40420, inferred; large community map) cost 8.4 M and removed 35 town buildings with the engine's own upgrade. Terrain edits and automatic removal also feed the town script's scoring of a build, which lowers reputation by an unmeasured amount.
+- For a town meant to grow (H12), treat an upgrade through a built-up street as a cost in buildings and reputation as well as money; the size of the reputation effect needs a before-and-after read of the rating.
+
+**H21 — Undo a building mistake before saving and reloading.** `[?]`
+- Based on: §M16. Demolishing something just built can refund its cost, but only on the game that built it, and only while the interface still remembers it; the list is forgotten after a reload, and a plain removal costs money. The refund window and percentage are unverified.
+
+**H22 — If a new bus or tram stop does not appear, check that the street has sidewalk lanes.** `[?]`
+- Based on: §M16, §M5. On a street without sidewalk lanes the stop tool adds platform lanes; if that fails the engine accepts the build and silently drops the stop. This is one cause of "missing" stops, not the only one.
 
 ---
 
@@ -171,3 +194,4 @@ Key: `[V]` = basis verified in code/wiki; `[I]` = an inference to test; `[?]` = 
 - Whether worker and cargo boosters stack (H11).
 - `vehiclePriceFactor` (comfort/ticket price) per vehicle.
 - Vehicle Factory behaviour outside the tropical climate.
+- Reputation cost of terrain edits and street upgrades, refund window, and the rating rescale behind H12b, H17b and H20 to H22 rest on imported, unverified evidence (§M13, §M14, §M16).

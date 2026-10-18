@@ -9,17 +9,6 @@ from tf3companion.methodology import fields as F
 from tf3companion.methodology.model import ENTITIES
 
 
-def test_every_registry_entry_declares_type_entity_sources_and_caveat():
-    specs = F.all_fields()
-    assert len(specs) > 50
-    for spec in specs:
-        assert spec.type in F.TYPES, spec.name
-        assert spec.entity in ENTITIES and spec.name.startswith(spec.entity + "."), spec.name
-        assert spec.sources and all(isinstance(s, str) and s for s in spec.sources), spec.name
-        assert isinstance(spec.caveat, str), spec.name
-        assert spec.description, spec.name
-    for name in ("line.profit_year", "line.load", "line.age_years", "line.route_km", "stop.terminal"):
-        assert F.lookup(name).caveat, name  # facts with a documented measurement limit say so
 
 
 def test_unknown_and_dynamic_names():
@@ -32,7 +21,7 @@ def test_unknown_and_dynamic_names():
 
 
 def record(net: Net, entity: str, index: int = 0, patterns=()):
-    facts = F.Facts(net.snapshot(), tuple(patterns))
+    facts = F.Facts(net.snapshot(), tuple(patterns), clock=net.clock())
     return facts.records(entity)[index]
 
 

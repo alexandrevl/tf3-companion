@@ -1,17 +1,34 @@
 """Evaluator: three-valued logic, availability, roles, rules, aggregates, recommendations and ladders."""
 from __future__ import annotations
 
+from dataclasses import replace
 import itertools
 from pathlib import Path
 
 import pytest
 
 from methodology_helpers import FREIGHT, PASSENGERS, Net, cond, markers_of, methodology, rule, run
-from tf3companion.methodology import load_file
+from tf3companion.methodology import MethodologyError, load_file
+from tf3companion.methodology import fields
+from tf3companion.methodology.prepare import inspect
 from tf3companion.methodology.conditions import compare, evaluate as eval_condition, first_true
 
 FIXTURES = Path(__file__).parent / "fixtures" / "methodologies"
 T, F_, U = True, False, None
+
+@pytest.fixture
+def geometry_capability(monkeypatch):
+    """Exercise evaluator geometry with an explicitly supported hypothetical collector capability."""
+    name = "line.route_km"
+    monkeypatch.setitem(fields._REGISTRY, name, replace(fields.lookup(name), collected=True))
+
+
+def test_current_release_rejects_geometry_even_if_a_draft_snapshot_contains_positions():
+    m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
+    with pytest.raises(MethodologyError) as error:
+        run(m, ladder_net(95, "ROAD"))
+    assert any(issue.category == "unsupported-capability" and issue.itemId == "mode-by-distance"
+               for issue in error.value.issues)
 
 
 class Scope:
@@ -86,7 +103,7 @@ def test_unknown_before_a_true_outcome_makes_the_entity_not_evaluable():
 
 # ---- availability ---------------------------------------------------------------------
 
-def test_known_field_without_snapshot_data_is_skipped():
+def test_known_field_without_snapshot_data_is_skipped(geometry_capability):
     net = Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta").line(100, "L", [1, 2], profit=-1)
     m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
     verdicts = run(m, net)
@@ -96,19 +113,20 @@ def test_known_field_without_snapshot_data_is_skipped():
     assert rule(verdicts, "passenger-lines").status == "ok"  # the other rules are still evaluated
 
 
-def test_typo_field_is_unsupported_and_other_rules_run():
+def test_typo_is_inspectable_but_blocks_application_of_the_whole_policy():
     net = Net().station(1, "A", 10, "Alpha").line(100, "L", [1], profit=-5)
     m = methodology(rules=[
         {"id": "typo", "entity": "line", "outcomes": [{"when": cond("line.profit_yeer", "lt", 0), "marker": "problem"}]},
         {"id": "good", "entity": "line", "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "problem"}]},
     ])
-    verdicts = run(m, net)
-    assert rule(verdicts, "typo").status == "unsupported"
-    assert "unknown field 'line.profit_yeer'" in rule(verdicts, "typo").reason
-    assert "line.profit_year" in rule(verdicts, "typo").reason  # nearest-name suggestion
-    assert rule(verdicts, "typo").hits == []
-    assert markers_of(verdicts, "good") == {"L": "problem"}
-    assert verdicts.counts()["unsupported"] == 1
+    _, diagnostic = inspect(m.raw)
+    assert diagnostic["structurallyValid"] and not diagnostic["activationEligible"]
+    support = {entry["id"]: entry["status"] for entry in diagnostic["rules"]}
+    assert support == {"typo": "unsupported", "good": "ok"}
+    assert any(issue["ruleId"] == "typo" and issue["category"] == "unsupported-field"
+               for issue in diagnostic["diagnostics"])
+    with pytest.raises(MethodologyError):
+        run(m, net)
 
 
 def test_per_entity_missing_value_counts_as_not_evaluable():
@@ -239,8 +257,9 @@ def test_parameter_override_at_apply_time():
     verdicts = run(graded_rules(), net, overrides={"loss_alert": 200_000})
     assert markers_of(verdicts, "loss") == {"Big": "watch"}
     assert verdicts.parameters["loss_alert"] == 200_000 and verdicts.overrides == {"loss_alert": 200_000}
-    with pytest.raises(ValueError, match="Unknown parameter"):
+    with pytest.raises(MethodologyError) as failure:
         run(graded_rules(), net, overrides={"nope": 1})
+    assert [(i.path, i.category) for i in failure.value.issues] == [("/overrides/nope", "override")]
 
 
 # ---- aggregates -----------------------------------------------------------------------------------------------
@@ -385,7 +404,7 @@ def test_recommendation_from_a_rule_hit_with_evidence_and_role_filter():
     assert item["evidence"]["entity"]["name"] == "Coal" and item["evidence"]["values"]["line.loss_year"] == 9_000
 
 
-def test_recommendation_is_skipped_when_its_trigger_is_skipped():
+def test_recommendation_is_skipped_when_its_trigger_is_skipped(geometry_capability):
     m = methodology(
         rules=[{"id": "needs-positions", "entity": "line", "outcomes": [{"when": cond("line.route_km", "gt", 10), "marker": "problem"}]}],
         recommendations=[{"id": "go", "when": {"rule": "needs-positions", "marker": "problem"}, "priority": 1, "text": "Go."}])
@@ -403,7 +422,7 @@ def ladder_net(distance_km: float, carrier: str) -> Net:
     return net.line(100, "Trunk", [1, 2], carrier=carrier)
 
 
-def test_ladder_recommends_the_band_mode_when_the_carrier_differs():
+def test_ladder_recommends_the_band_mode_when_the_carrier_differs(geometry_capability):
     m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
     verdicts = run(m, ladder_net(95, "ROAD"))
     ladder = verdicts.ladders[0]
@@ -415,12 +434,12 @@ def test_ladder_recommends_the_band_mode_when_the_carrier_differs():
 
 
 @pytest.mark.parametrize("km, carrier", [(20, "ROAD"), (95, "RAIL"), (300, "AIR")])
-def test_ladder_is_silent_when_the_carrier_matches_the_band(km, carrier):
+def test_ladder_is_silent_when_the_carrier_matches_the_band(km, carrier, geometry_capability):
     m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
     assert run(m, ladder_net(km, carrier)).ladders[0].items == []
 
 
-def test_ladder_band_edges_belong_to_the_next_band():
+def test_ladder_band_edges_belong_to_the_next_band(geometry_capability):
     m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
     item = run(m, ladder_net(40, "ROAD")).ladders[0].items[0]
     assert item["evidence"]["band"]["mode"] == "RAIL"  # exactly 40 km is no longer "below 40 km"

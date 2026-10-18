@@ -47,6 +47,22 @@ class Issue:
 
     path: str
     message: str
+    category: str = "structure"
+    code: str = "invalid-structure"
+    severity: str = "error"
+    itemKind: str | None = None
+    itemId: str | None = None
+    ruleId: str | None = None
+    hint: str | None = None
+    line: int | None = None
+    column: int | None = None
+    relatedPaths: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        from dataclasses import asdict
+        value = asdict(self)
+        value["relatedPaths"] = list(self.relatedPaths)
+        return value
 
     def __str__(self) -> str:
         return f"{self.path or '/'}: {self.message}"
@@ -71,6 +87,8 @@ class Methodology:
     source: str = "file"        # packaged | user | file
     path: str | None = None
     raw: bytes = field(default=b"", repr=False)
+    selection: Mapping[str, Any] = field(default_factory=dict)
+    effective_overrides: Mapping[str, Any] = field(default_factory=dict, repr=False)
 
     @property
     def id(self) -> str:

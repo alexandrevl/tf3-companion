@@ -37,9 +37,10 @@ rules using them are skipped until the collector provides it.
 named group captured by the first matching `name_patterns` entry; it is missing when no pattern matches. Every entity
 has a `<entity>.role` field holding the role this methodology assigned, or `unclassified`.
 
-Measurement caveats apply to every methodology: `line.load` is an instantaneous reading, `profitYear` is a rolling game
-year (partial for young lines) and never calendar income, `line.age_years` is the oldest vehicle's age (a lower bound), and
-ages divide by `meta.yearDuration`, which can differ from the calendar year.
+Measurement caveats apply to every methodology: `line.load` is instantaneous and `profitYear` is a rolling query-window
+observation, never calendar income. Ages use `game-calendar-v1`: 365.25 elapsed Gregorian calendar days per GAME-YEAR,
+with exact dated anchors or bounded interpolation spanning at least seven days. Unsupported purchases are unknown,
+never nominal-duration estimates. Line age is the oldest currently assigned vehicle proxy, not creation or first observation.
 """
 
 

@@ -35,6 +35,8 @@ class Entry:
     sha256: str | None
     error: str | None = None
     methodology: Methodology | None = None
+    diagnostics: list[dict[str, Any]] | None = None
+    activation_eligible: bool = False
 
     @property
     def identity(self) -> str | None:
@@ -43,7 +45,8 @@ class Entry:
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "version": self.version, "identity": self.identity, "name": self.name,
                 "source": self.source, "file": self.file, "status": self.status,
-                "hash": f"sha256:{self.sha256[:12]}" if self.sha256 else None, "error": self.error}
+                "hash": f"sha256:{self.sha256[:12]}" if self.sha256 else None, "error": self.error,
+                "activationEligible": self.activation_eligible, "diagnostics": self.diagnostics or []}
 
 
 def parse_ref(ref: str) -> tuple[str, str | None]:
@@ -80,12 +83,14 @@ class Library:
 
     @staticmethod
     def _entry(raw: bytes, source: str, label: str, path: Path | None) -> Entry:
-        try:
-            m = parse(raw, source=source, path=str(path) if path else label, label=label)
-        except MethodologyError as exc:
+        from .prepare import inspect
+        m, report = inspect(raw, source=source, path=str(path) if path else label)
+        if m is None:
             ident = _lenient_identity(raw)
-            return Entry(ident[0], ident[1], ident[2], source, label, "invalid", content_hash(raw), str(exc))
-        return Entry(m.id, m.version, m.name, source, label, "valid", m.sha256, None, m)
+            return Entry(ident[0], ident[1], ident[2], source, label, "invalid", content_hash(raw),
+                         "; ".join(report["errors"]), diagnostics=report["diagnostics"])
+        return Entry(m.id, m.version, m.name, source, label, "valid", m.sha256, None, m,
+                     report["diagnostics"], report["activationEligible"])
 
     @staticmethod
     def _mark_conflicts(entries: list[Entry]) -> list[Entry]:
@@ -99,6 +104,9 @@ class Library:
                 for entry in group:
                     entry.status = "conflict"
                     entry.error = f"{identity} is declared by files with different content: {files}"
+                    entry.activation_eligible = False
+                    entry.diagnostics = [*(entry.diagnostics or []), Issue(
+                        "", entry.error, category="conflict", code="identity-conflict").to_dict()]
         return entries
 
     # ---- resolution -----------------------------------------------------------------
@@ -126,7 +134,8 @@ class Library:
 
     # ---- import / export ------------------------------------------------------------
     def import_file(self, path: Path, force: bool = False) -> dict[str, Any]:
-        m = load_file(Path(path))
+        from .prepare import prepare
+        m = prepare(load_file(Path(path)))
         target = self.directory / f"{m.id}@{m.version}{FILE_SUFFIX}"
         for entry in self.entries():
             if entry.status == "invalid" or entry.identity != m.identity or entry.sha256 == m.sha256:

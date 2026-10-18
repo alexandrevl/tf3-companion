@@ -66,8 +66,9 @@ def _register(name: str, type_: str, sources: tuple[str, ...], description: str,
 class Facts:
     """Per-snapshot lookups shared by every record, built once."""
 
-    def __init__(self, snap: Snapshot, name_patterns: tuple[tuple[str, str], ...] = ()) -> None:
+    def __init__(self, snap: Snapshot, name_patterns: tuple[tuple[str, str], ...] = (), *, clock=None) -> None:
         self.snap = snap
+        self.clock = clock
         self.name_patterns = name_patterns
         self._line_rows: dict[int, dict[str, Any]] = {}
         self._captures: dict[int, dict[str, str]] = {}
@@ -325,11 +326,11 @@ _register("line.transported_year", NUMBER, ("lines[].transportedYear",), "Items 
 _register("line.rate", NUMBER, ("lines[].rate",), "Line throughput rate reported by the game.", lambda r: r.raw.get("rate"))
 _register("line.load", NUMBER, ("lines[].capacity[]",), "Occupancy of the line's vehicles, 0 to 1.",
           _line_unrounded_load, caveat="Instantaneous reading at snapshot time, not an average.")
-_register("line.age_years", NUMBER, ("vehicles[].purchaseTime", "meta.yearDuration"),
-          "Age of the oldest vehicle on the line, in game years.",
-          lambda r: analysis.line_age_years(r.facts.snap, r.raw),
-          caveat="Lower bound for the line's age (no creation date is collected); divided by meta.yearDuration, "
-                 "which may differ from the calendar year.")
+_register("line.age_years", NUMBER, ("vehicles[].purchaseTime", "meta.date", "(dated history and scope)"),
+          "Oldest currently assigned vehicle age proxy, in calendar GAME-YEAR.",
+          lambda r: analysis.line_age_years(r.facts.snap, r.raw, clock=r.facts.clock),
+          caveat="Not line creation or first-observed age. Exact anchors or bounded interpolation only; "
+                 "365.25 calendar days per GAME-YEAR; unsupported purchases are unknown.")
 _register("line.is_passenger_only", BOOL, ("lines[].capacity[]",),
           "True when every positive-capacity entry of the line is passengers (cargo id 0).",
           lambda r: (lambda ids: None if not ids else all(i == PASSENGER_CARGO_ID for i in ids))(_cargo_ids(r.raw)),
@@ -380,9 +381,9 @@ _register("vehicle.maintenance_state", NUMBER, ("vehicles[].maintenanceState",),
 _register("vehicle.model_family", STRING, ("vehicles[].models", "models[].res"),
           "Vehicle family from the model resource path. Observed in a real snapshot: `bus`, `truck`, `plane`, `helicopter`, `ship`.",
           _vehicle_family, derived=True)
-_register("vehicle.age_years", NUMBER, ("vehicles[].purchaseTime", "meta.yearDuration"), "Vehicle age in game years.",
-          lambda r: r.facts.snap.age_years(r.raw.get("purchaseTime")),
-          caveat="Divided by meta.yearDuration, which may differ from the calendar year.")
+_register("vehicle.age_years", NUMBER, ("vehicles[].purchaseTime", "meta.date", "(dated history and scope)"), "Vehicle age in calendar GAME-YEAR.",
+          lambda r: r.facts.snap.age_years(r.raw.get("purchaseTime"), clock=r.facts.clock),
+          caveat="Exact anchors or bounded interpolation only; unsupported old purchases are unknown; no nominal fallback.")
 _register("vehicle.profit_year", NUMBER, ("vehicles[].profitYear",), "Rolling game-year profit of the vehicle.",
           lambda r: r.raw.get("profitYear"), caveat="Rolling game year, not calendar income.")
 _register("vehicle.state", STRING, ("vehicles[].state",), "Vehicle state reported by the game.", lambda r: r.raw.get("state"))

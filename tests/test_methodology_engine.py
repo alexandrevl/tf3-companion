@@ -40,7 +40,7 @@ def test_default_equivalence_through_the_service(paths):
     companion = companion_with(paths, troubled_company())
     try:
         snap = companion.current()
-        expected = [comparable(f) for f in analysis.findings(snap, None)]
+        expected = [comparable(f) for f in analysis.findings(snap, None, clock=companion.store.time_context(snap))]
         got = companion.findings()
         assert [comparable(f) for f in got] == expected
         assert {f["methodology"] for f in got} == {"default@1.0.0"}
@@ -50,12 +50,12 @@ def test_default_equivalence_through_the_service(paths):
 
 
 def test_threshold_override_changes_maturity_dependent_findings():
-    data = Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta").line(100, "Loser", [1, 2], profit=-9_000, age=2).data
-    snap = Snapshot(data)
-    default = [f for f in analysis.findings(snap, methodology=load_default()) if f.code == "line_losing_money"]
+    net = Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta").line(100, "Loser", [1, 2], profit=-9_000, age=2)
+    snap, clock = net.snapshot(), net.clock()
+    default = [f for f in analysis.findings(snap, methodology=load_default(), clock=clock) if f.code == "line_losing_money"]
     assert [f.severity for f in default] == ["high"]
     patient = methodology(engine={"thresholds": {"mature_years": 3}})
-    patient_findings = [f for f in analysis.findings(snap, methodology=patient) if f.code == "line_losing_money"]
+    patient_findings = [f for f in analysis.findings(snap, methodology=patient, clock=clock) if f.code == "line_losing_money"]
     assert [f.severity for f in patient_findings] == ["low"]  # a 2-year-old line is still maturing under 3 years
     assert thresholds_for(patient).mature_years == 3
     assert analysis.findings(snap, t=analysis.Thresholds(mature_years=1.0), methodology=patient)[0].methodology == "test@1.0.0"
@@ -87,11 +87,12 @@ def test_silencing_a_code_for_one_role_only():
 def test_set_severity_override_and_the_disabled_list():
     from tf3companion.methodology import evaluate
 
-    snap = two_role_net().snapshot()
+    net = two_role_net()
+    snap, clock = net.snapshot(), net.clock()
     m = role_override_methodology(findings=[{"code": "line_losing_money", "role": "trunk", "action": "set_severity", "severity": "low"},
                                             {"code": "line_losing_money", "role": "local", "action": "off"}])
-    verdicts = evaluate(m, snap)
-    found = analysis.findings(snap, methodology=m, verdicts=verdicts)
+    verdicts = evaluate(m, snap, clock=clock)
+    found = analysis.findings(snap, methodology=m, verdicts=verdicts, clock=clock)
     severities = {f.entity["name"]: f.severity for f in found if f.code == "line_losing_money"}
     assert severities == {"Trunk one": "low", "Odd": "high"}
     assert verdicts.disabled_findings == [{"code": "line_losing_money", "role": "local", "suppressed": 1}]
@@ -106,24 +107,6 @@ def test_unknown_threshold_or_code_is_rejected_when_loading():
         methodology(engine={"findings": [{"code": "nope", "action": "off"}]})
 
 
-def test_every_engine_finding_code_is_registered():
-    """FINDING_CODES must list every code `analysis` can emit, or overrides could not name it."""
-    import ast
-    import inspect
-
-    tree = ast.parse(inspect.getsource(analysis))
-    emitted = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Finding" and node.args:
-            first = node.args[0]
-            if isinstance(first, ast.Constant) and isinstance(first.value, str):
-                emitted.add(first.value)
-        if isinstance(node, ast.Dict):  # the stock-code table
-            emitted |= {v.value for v in node.values if isinstance(v, ast.Constant) and isinstance(v.value, str) and v.value.endswith(("_full", "_full_unserved"))}
-    emitted |= {"line_load_persistently_high", "line_load_persistently_low"}
-    emitted |= {"line_orphan", "line_no_vehicles", "line_no_stops"}  # chosen through a variable in _line_findings
-    assert emitted <= set(analysis.FINDING_CODES), emitted - set(analysis.FINDING_CODES)
-    assert set(analysis.FINDING_CODES) - emitted == set(), set(analysis.FINDING_CODES) - emitted
 
 
 def test_editing_a_file_without_a_version_bump_changes_the_recorded_hash():

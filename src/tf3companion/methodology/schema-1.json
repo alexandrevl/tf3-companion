@@ -14,6 +14,44 @@
     "name": {"type": "string", "minLength": 1, "maxLength": 200},
     "description": {"$ref": "#/$defs/requiredText"},
     "author": {"$ref": "#/$defs/text"},
+    "report_policies": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "industries": {"type": "object", "additionalProperties": false, "properties": {
+          "below_capacity_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+          "production_decline_min": {"type": "number", "minimum": 0, "maximum": 1000000000}
+        }},
+        "lines-history": {"type": "object", "additionalProperties": false, "properties": {
+          "relative_change_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+          "noise_factor": {"type": "number", "minimum": 0, "maximum": 10},
+          "floor_share": {"type": "number", "minimum": 0, "maximum": 1}
+        }},
+        "bottlenecks": {"type": "object", "additionalProperties": false, "properties": {
+          "persistence_streak": {"type": "integer", "minimum": 3, "maximum": 36},
+          "noisy_min_share": {"type": "number", "minimum": 0, "maximum": 1},
+          "pileup_min": {"type": "integer", "minimum": 2, "maximum": 1000},
+          "long_wait_days": {"type": "number", "exclusiveMinimum": 0, "maximum": 36500},
+          "rising_stock_min_fill": {"type": "number", "minimum": 0, "maximum": 1},
+          "rising_stock_min_slope": {"type": "number", "exclusiveMinimum": 0, "maximum": 1}
+        }},
+        "expansion": {"type": "object", "additionalProperties": false, "properties": {
+          "weight_volume": {"type": "number", "minimum": 0, "maximum": 100},
+          "weight_distance": {"type": "number", "minimum": 0, "maximum": 100},
+          "weight_urgency": {"type": "number", "minimum": 0, "maximum": 100},
+          "weight_pull": {"type": "number", "minimum": 0, "maximum": 100},
+          "weight_chain": {"type": "number", "minimum": 0, "maximum": 100},
+          "weight_proven": {"type": "number", "minimum": 0, "maximum": 100},
+          "volume_reference": {"type": "number", "exclusiveMinimum": 0, "maximum": 1000000000},
+          "distance_short_km": {"type": "number", "minimum": 0, "maximum": 100000},
+          "distance_sweet_from_km": {"type": "number", "minimum": 0, "maximum": 100000},
+          "distance_sweet_to_km": {"type": "number", "minimum": 0, "maximum": 100000},
+          "distance_long_km": {"type": "number", "minimum": 0, "maximum": 100000},
+          "distance_long_floor": {"type": "number", "minimum": 0, "maximum": 1},
+          "closing_penalty": {"type": "number", "minimum": 0, "maximum": 100},
+          "full_input_penalty": {"type": "number", "minimum": 0, "maximum": 100}
+        }}
+      }
+    },
     "parameters": {
       "type": "object", "maxProperties": 100, "propertyNames": {"$ref": "#/$defs/ident"},
       "additionalProperties": {

@@ -14,7 +14,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from . import analysis
+from . import analysis, facts
 from .snapshot import Snapshot
 from .store import Store
 
@@ -108,19 +108,6 @@ def _fmt(val: Any) -> str:
 
 def _fmt_pct(val: float | None) -> str:
     return "-" if val is None else f"{val * 100:.1f}%"
-
-
-def _fmt_change(curr: int | float | None, prev: int | float | None) -> str:
-    if curr is None or prev is None:
-        return "-"
-    diff = curr - prev
-    return f"{'+' if diff > 0 else ''}{_fmt(diff)}"
-
-
-def _entity_name(entity: dict[str, Any] | None, kind: str = "Entity") -> str:
-    if not entity:
-        return f"{kind} #unknown"
-    return entity.get("name") or f"{kind.title()} #{entity.get('id', 'unknown')}"
 
 
 # ---------------------------------------------------------------------------
@@ -335,538 +322,330 @@ def _base_header(snap: Snapshot, count: int) -> list[tuple[str, str]]:
     ]
 
 
-def _recent_current(store: Store, limit: int) -> list[Snapshot]:
-    latest = store.latest()
-    if latest is None:
-        raise ValueError("No snapshot found. Load a save with the bridge enabled and run tf3c refresh.")
-    return store.recent_snapshots(limit=limit, game_time=latest.game_time)
+def _header(h: facts.Header) -> list[tuple[str, str]]:
+    return [
+        ("Company / Save", h.company),
+        ("Latest Sample Date", h.date_label),
+        ("Snapshots Used", str(h.samples_used)),
+        ("Collection Errors", "; ".join(h.errors) if h.errors else "None reported"),
+        ("Measurement Limits", "Load is instantaneous; annual profit is a rolling window; transportedYear accounting is unverified."),
+    ]
 
 
-def _build_company_report(store: Store) -> ReportDocument:
-    snaps = _recent_current(store, 36)
-    if not snaps:
-        raise ValueError("no snapshot found")
-    latest = snaps[-1]
-    prev = snaps[-2] if len(snaps) > 1 else None
-    y_ago = None
-    if latest.date:
-        for s in reversed(snaps):
-            if s.date and s.date.get("year") == latest.date["year"] - 1 and s.date.get("month") == latest.date["month"]:
-                y_ago = s
-                break
+def _fmt_delta(change: int | float | None) -> str:
+    """Display form of a delta the analysis layer already computed."""
+    if change is None:
+        return "-"
+    return f"{'+' if change > 0 else ''}{_fmt(change)}"
 
-    ov = analysis.company_overview(latest, prev)
-    c = latest.company
+
+def _line_label(row: dict[str, Any]) -> str:
+    return row.get("name") or f"Line #{row['id']}"
+
+
+def _finance_chart(title: str, points: Sequence[facts.FinancePoint]) -> Chart | None:
+    """Balance/loan chart over the samples where both are known; the table keeps every sample."""
+    known = [p for p in points if p.balance is not None and p.loan is not None]
+    if len(known) < 2:
+        return None
+    return Chart("line", title, [p.date_label for p in known],
+                 [("Balance", [float(p.balance) for p in known]), ("Loan", [float(p.loan) for p in known])])
+
+
+def _build_company_report(data: facts.CompanyFacts) -> ReportDocument:
+    ind = {i.key: i for i in data.indicators}
+
+    def row(label: str, key: str, previous: bool = True) -> list[Any]:
+        i = ind[key]
+        if key in ("balance", "loan"):
+            return [label, i.current, _fmt_delta(i.since_previous), _fmt_delta(i.since_year_ago)]
+        if key in ("lines", "vehicles"):
+            return [label, i.current, i.since_previous, i.since_year_ago]
+        return [label, i.current, None, None]
+
     blocks: list[Any] = [
         Heading(2, "Company Status"),
         Paragraph("Operational standing and rolling annual totals at the latest snapshot sample."),
-        Table(
-            ["Indicator", "Value", "Previous Sample Change", "Year-Ago Change"],
-            [
-                ["Cash Balance", c.get("balance"), _fmt_change(c.get("balance"), prev.company.get("balance") if prev else None),
-                 _fmt_change(c.get("balance"), y_ago.company.get("balance") if y_ago else None)],
-                ["Outstanding Loan", c.get("loan"), _fmt_change(c.get("loan"), prev.company.get("loan") if prev else None),
-                 _fmt_change(c.get("loan"), y_ago.company.get("loan") if y_ago else None)],
-                ["Net Position (Balance - Loan)", (c.get("balance") or 0) - (c.get("loan") or 0), None, None],
-                ["Company Value", c.get("value"), None, None],
-                ["Lines", len(latest.lines), len(latest.lines) - len(prev.lines) if prev else None,
-                 len(latest.lines) - len(y_ago.lines) if y_ago else None],
-                ["Vehicles", len(latest.vehicles), len(latest.vehicles) - len(prev.vehicles) if prev else None,
-                 len(latest.vehicles) - len(y_ago.vehicles) if y_ago else None],
-                ["Total Rolling Annual Line Profit", ov.get("linesProfitYear"), None, None],
-            ],
-            ["left", "right", "right", "right"]
-        ),
-        Note("Semantics Notice", "Annual line profit is a rolling 12-month figure at this sample date, not a calendar sum.")
+        Table(["Indicator", "Value", "Previous Sample Change", "Year-Ago Change"],
+              [row("Cash Balance", "balance"), row("Outstanding Loan", "loan"),
+               row("Net Position (Balance - Loan)", "net_position"), row("Company Value", "company_value"),
+               row("Lines", "lines"), row("Vehicles", "vehicles"),
+               row("Total Rolling Annual Line Profit", "lines_profit_year")],
+              ["left", "right", "right", "right"]),
+        Note("Semantics Notice", "Annual line profit is a rolling 12-month figure at this sample date, not a calendar sum."),
     ]
-
-    modal = analysis.modal_summary(latest)
+    modal = data.modal
     if modal:
         blocks.extend([
             Heading(2, "Results by Transport Mode"),
-            Table(
-                ["Mode", "Lines", "Vehicles", "Rolling Annual Profit", "Profit / Vehicle", "Losing Lines"],
-                [[m["carrier"], m["lines"], m["vehicles"], m["profitYear"], m["profitPerVehicle"], m["losingLines"]] for m in modal],
-                ["left", "right", "right", "right", "right", "right"]
-            ),
+            Table(["Mode", "Lines", "Vehicles", "Rolling Annual Profit", "Profit / Vehicle", "Losing Lines"],
+                  [[m["carrier"], m["lines"], m["vehicles"], m["profitYear"], m["profitPerVehicle"], m["losingLines"]] for m in modal],
+                  ["left", "right", "right", "right", "right", "right"]),
             Chart("bar", "Annual Profit by Mode", [m["carrier"] for m in modal],
-                  [("Profit", [float(m["profitYear"] or 0) for m in modal])])
+                  [("Profit", [float(m["profitYear"]) for m in modal])]),
+            Chart("pie", "Vehicle Mix by Mode", [m["carrier"] for m in modal],
+                  [(m["carrier"], [float(m["vehicles"])]) for m in modal]),
         ])
-        blocks.append(Chart("pie", "Vehicle Mix by Mode", [m["carrier"] for m in modal],
-                            [(m["carrier"], [float(m["vehicles"])]) for m in modal]))
-
-    if len(snaps) > 1:
-        hist_rows = [[s.date_label, s.company.get("balance"), s.company.get("loan")] for s in snaps]
-        blocks.extend([
-            Heading(2, "Financial Sample History"),
-            Table(["Date", "Balance", "Loan"], hist_rows, ["left", "right", "right"]),
-            Chart("line", "Balance and Loan History", [s.date_label for s in snaps],
-                  [("Balance", [float(s.company.get("balance") or 0) for s in snaps]),
-                   ("Loan", [float(s.company.get("loan") or 0) for s in snaps])])
-        ])
+    if len(data.history) > 1:
+        blocks.extend([Heading(2, "Financial Sample History"),
+                       Table(["Date", "Balance", "Loan"], [[p.date_label, p.balance, p.loan] for p in data.history],
+                             ["left", "right", "right"])])
+        chart = _finance_chart("Balance and Loan History", data.history)
+        if chart:
+            blocks.append(chart)
     else:
         blocks.append(Note("History Notice", "Only a single snapshot sample exists; historical trend charts are omitted."))
+    blocks.append(Note("Calendar baseline", f"At/before 365.25 calendar days ago: {data.year_ago_date or 'unavailable'}; "
+                       f"actual elapsed GAME-YEAR: {data.elapsed_game_years}. Rolling finance values are unchanged; "
+                       "this calendar comparison does not prove a complete profitYear query window."))
+    return ReportDocument("company", "Company Performance Report", _header(data.header), blocks)
 
-    return ReportDocument("company", "Company Performance Report", _base_header(latest, len(snaps)), blocks)
+
+def _line_table(rows: Sequence[dict[str, Any]]) -> Table:
+    return Table(["Line", "Carrier", "Vehicles", "Rolling Annual Profit", "Load (Instant)"],
+                 [[_line_label(r), r["carrier"], r["vehicles"], r["profitYear"], _fmt_pct(r["load"])] for r in rows],
+                 ["left", "left", "right", "right", "right"])
 
 
-def _build_lines_report(store: Store) -> ReportDocument:
-    snaps = _recent_current(store, 12)
-    if not snaps:
-        raise ValueError("no snapshot found")
-    latest = snaps[-1]
-    prev = snaps[-2] if len(snaps) > 1 else None
-    rows = [analysis.line_row(latest, line) for line in latest.lines]
-    by_profit = sorted(rows, key=lambda r: (r["profitYear"] if r["profitYear"] is not None else -10**15), reverse=True)
-
-    n = len(by_profit)
+def _build_lines_report(data: facts.LinesFacts) -> ReportDocument:
+    n = len(data.ranked)
     top_n = min(15, n)
-    top_rows = by_profit[:top_n]
+    top_rows = data.ranked[:top_n]
     bottom_n = min(15, n - top_n)
-    bottom_rows = by_profit[-bottom_n:] if bottom_n else []
-
-    blocks: list[Any] = [
-        Heading(2, f"Most Profitable Lines ({len(top_rows)})"),
-        Table(
-            ["Line", "Carrier", "Vehicles", "Rolling Annual Profit", "Load (Instant)"],
-            [[r["name"] or f"Line #{r['id']}", r["carrier"], r["vehicles"], r["profitYear"], _fmt_pct(r["load"])] for r in top_rows],
-            ["left", "left", "right", "right", "right"]
-        )
-    ]
+    bottom_rows = data.ranked[-bottom_n:] if bottom_n else []
+    blocks: list[Any] = [Heading(2, f"Most Profitable Lines ({len(top_rows)})"), _line_table(top_rows)]
     if bottom_rows:
-        blocks.extend([
-            Heading(2, f"Least Profitable Lines ({len(bottom_rows)})"),
-            Table(
-                ["Line", "Carrier", "Vehicles", "Rolling Annual Profit", "Load (Instant)"],
-                [[r["name"] or f"Line #{r['id']}", r["carrier"], r["vehicles"], r["profitYear"], _fmt_pct(r["load"])] for r in bottom_rows],
-                ["left", "left", "right", "right", "right"]
-            )
-        ])
-
-    losing = [r for r in rows if r["profitYear"] is not None and r["profitYear"] < 0]
-    if losing:
-        line_findings = [f for f in analysis.findings(latest, prev) if f.category == "lines"]
-        table_rows = []
-        for r in losing:
-            causes = [f.code for f in line_findings if f.entity and f.entity.get("id") == r["id"]]
-            table_rows.append([r["name"] or f"Line #{r['id']}", r["profitYear"], ", ".join(causes) or "unspecified"])
-        blocks.extend([
-            Heading(2, "Loss-Making Lines and Identified Findings"),
-            Table(["Line", "Rolling Annual Loss", "Finding Codes"], table_rows, ["left", "right", "left"])
-        ])
-
-    empty = [r for r in rows if r["vehicles"] == 0]
-    if empty:
-        blocks.extend([
-            Heading(2, "Lines Without Vehicles"),
-            Table(["Line", "Stops", "Rate"], [[r["name"] or f"Line #{r['id']}", r["stops"], r["rate"]] for r in empty], ["left", "right", "right"])
-        ])
-    no_stops = [r for r in rows if r["stops"] < 2]
-    if no_stops:
-        blocks.extend([
-            Heading(2, "Lines Without a Usable Stop Pair"),
-            Table(["Line", "Stops", "Vehicles"],
-                  [[r["name"] or f"Line #{r['id']}", r["stops"], r["vehicles"]] for r in no_stops])
-        ])
-
-    trends = analysis.load_trend(snaps)
-    if trends:
+        blocks.extend([Heading(2, f"Least Profitable Lines ({len(bottom_rows)})"), _line_table(bottom_rows)])
+    if data.losing:
+        blocks.extend([Heading(2, "Loss-Making Lines and Identified Findings"),
+                       Table(["Line", "Rolling Annual Loss", "Finding Codes"],
+                             [[_line_label(r), r["profitYear"], ", ".join(codes) or "unspecified"] for r, codes in data.losing],
+                             ["left", "right", "left"])])
+    if data.empty:
+        blocks.extend([Heading(2, "Lines Without Vehicles"),
+                       Table(["Line", "Stops", "Rate"], [[_line_label(r), r["stops"], r["rate"]] for r in data.empty],
+                             ["left", "right", "right"])])
+    if data.no_stop_pair:
+        blocks.extend([Heading(2, "Lines Without a Usable Stop Pair"),
+                       Table(["Line", "Stops", "Vehicles"], [[_line_label(r), r["stops"], r["vehicles"]] for r in data.no_stop_pair])])
+    if data.trends:
         blocks.extend([
             Heading(2, "Occupancy Sample Trends"),
-            Paragraph(f"Derived from {len(snaps)} recent snapshot sample points (sample index slope, not time averages)."),
-            Table(
-                ["Line", "Mean Sampled Occupancy", "Latest Occupancy", "Samples", "Occupancy Slope / Sample", "Status"],
-                [[t["name"], _fmt_pct(t["meanLoad"]), _fmt_pct(t["latestLoad"]), t["samples"], t["slope"], t["status"]] for t in trends],
-                ["left", "right", "right", "right", "right", "left"]
-            )
+            Paragraph(f"Derived from {data.samples} recent snapshot sample points (sample index slope, not time averages)."),
+            Table(["Line", "Mean Sampled Occupancy", "Latest Occupancy", "Samples", "Occupancy Slope / Sample", "Status"],
+                  [[t["name"], _fmt_pct(t["meanLoad"]), _fmt_pct(t["latestLoad"]), t["samples"], t["slope"], t["status"]]
+                   for t in data.trends],
+                  ["left", "right", "right", "right", "right", "left"]),
         ])
+    return ReportDocument("lines", "Lines Performance Report", _header(data.header), blocks)
 
-    return ReportDocument("lines", "Lines Performance Report", _base_header(latest, len(snaps)), blocks)
 
-
-def _build_fleet_report(store: Store) -> ReportDocument:
-    snaps = _recent_current(store, 1)
-    if not snaps:
-        raise ValueError("no snapshot found")
-    latest = snaps[-1]
-    catalog_snap = store.latest_with_catalog(game_time=latest.game_time)
-    rows = [analysis.vehicle_row(latest, v) for v in latest.vehicles]
-
-    losing = [r for r in rows if r["profitYear"] is not None and r["profitYear"] < 0]
+def _build_fleet_report(data: facts.FleetFacts) -> ReportDocument:
     blocks: list[Any] = [
         Heading(2, "Loss-Making Vehicles"),
-        Table(
-            ["Vehicle", "Line", "Carrier", "Age (Years)", "Rolling Annual Profit", "Value"],
-            [[r["name"] or f"Vehicle #{r['id']}", r["lineName"] or "Unassigned", r["carrier"], r["ageYears"], r["profitYear"], r["value"]]
-             for r in sorted(losing, key=lambda x: x["profitYear"] or 0)[:20]],
-            ["left", "left", "left", "right", "right", "right"]
-        )
-    ]
-    blocks.extend([
+        Table(["Vehicle", "Line", "Carrier", "Age (GAME-YEAR)", "Rolling Annual Profit", "Value"],
+              [[r["name"] or f"Vehicle #{r['id']}", r["lineName"] or "Unassigned", r["carrier"], r["ageYears"], r["profitYear"], r["value"]]
+               for r in data.losing[:20]],
+              ["left", "left", "left", "right", "right", "right"]),
         Heading(2, "Fleet Age and Model Lifespan"),
-        Table(["Vehicle", "Age (Years)", "Models", "Model Lifespan (Raw Units)"],
+        Table(["Vehicle", "Age (GAME-YEAR)", "Models", "Model Lifespan (Raw Units)"],
               [[r["name"] or f"Vehicle #{r['id']}", r["ageYears"], ", ".join(r["models"]) or "Unknown",
-                ", ".join(_fmt(latest.models.get(m, {}).get("lifespan"))
-                          for m in vehicle.get("models") or []) or "Unknown"]
-               for vehicle, r in zip(latest.vehicles, rows)]),
-        Note("Unit Limit", "Model lifespan units are unverified; no age/lifespan ratio or expiry claim is inferred.")
-    ])
-    if catalog_snap:
-        year = (latest.date or {}).get("year", latest.meta.get("year"))
-        expired = [model for model in catalog_snap.catalog
-                   if year is not None and model.get("yearTo") is not None
-                   and 0 < model["yearTo"] <= year]
+                ", ".join(_fmt(span) for span in spans) or "Unknown"] for r, spans in data.aging]),
+        Note("Unit Limit", "Model lifespan units are unverified; no age/lifespan ratio or expiry claim is inferred."),
+    ]
+    if data.catalog_date:
         blocks.extend([
             Heading(2, "Stored Catalog Models No Longer in Production"),
             Table(["Model", "Carrier", "Retirement Year"],
-                  [[model.get("name") or model.get("res") or f"Model #{model.get('id')}",
-                    model.get("carrier"), model["yearTo"]] for model in expired]),
-            Note("Catalog Coverage", f"Catalog sampled on {catalog_snap.date_label}; models absent from that sample cannot be classified.")
+                  [[m.get("name") or m.get("res") or f"Model #{m.get('id')}", m.get("carrier"), m["yearTo"]]
+                   for m in data.retired_models]),
+            Note("Catalog Coverage", f"Catalog sampled on {data.catalog_date}; models absent from that sample cannot be classified."),
         ])
-
-    idle_depot = [r for r in rows if r["state"] == "IN_DEPOT" and not r["line"]]
-    if idle_depot:
-        depot_map = {d["id"]: d.get("name") or f"Depot #{d['id']}" for d in latest.depots}
+    if data.idle_in_depot:
         blocks.extend([
             Heading(2, "Idle Capital in Depots"),
-            Table(
-                ["Vehicle", "Depot", "Days In Depot", "Recorded Asset Value"],
-                [[r["name"] or f"Vehicle #{r['id']}", depot_map.get(r["depot"], "Unknown Depot"), r["daysInDepot"], r["value"]]
-                 for r in idle_depot],
-                ["left", "left", "right", "right"]
-            ),
-            Paragraph(f"Total tied-up capital in depots: {_fmt(sum(r['value'] or 0 for r in idle_depot))} recorded currency units.")
+            Table(["Vehicle", "Depot", "Days In Depot", "Recorded Asset Value"],
+                  [[r["name"] or f"Vehicle #{r['id']}", r["depotName"], r["daysInDepot"], r["value"]] for r in data.idle_in_depot],
+                  ["left", "left", "right", "right"]),
+            Paragraph(f"Known tied-up capital in depots: {_fmt(data.idle_value_known)} recorded currency units"
+                      + (f"; {data.idle_value_unknown} vehicle(s) have no recorded value, so this is a known subtotal."
+                         if data.idle_value_unknown else ".")),
         ])
-
-    fit = analysis.fleet_fit(latest, catalog_snap)
+    fit = data.fit
     blocks.append(Heading(2, "Fleet Fit Analysis"))
     if fit["status"] == "unavailable":
         blocks.append(Note("Analysis Pending", f"{fit['reason']} Catalog fitness requires verified units."))
     else:
-        fit_rows = fit.get("rows", [])
         blocks.append(Table(
             ["Vehicle", "Current Model", "Main Cargo", "Score", "Best Replacement", "Potential Improvement", "Better Available"],
             [[r["vehicle"], r["model"], r["cargo"], r["score"], r["alternative"], _fmt_pct(r["improvement"]), r["better"]]
-             for r in fit_rows[:25]],
-            ["left", "left", "left", "right", "left", "right", "center"]
-        ))
-
-    return ReportDocument("fleet", "Fleet Composition and Capital Report", _base_header(latest, len(snaps)), blocks)
+             for r in fit.get("rows", [])[:25]],
+            ["left", "left", "left", "right", "left", "right", "center"]))
+    return ReportDocument("fleet", "Fleet Composition and Capital Report", _header(data.header), blocks)
 
 
-def _build_cargo_report(store: Store) -> ReportDocument:
-    snaps = _recent_current(store, 1)
-    if not snaps:
-        raise ValueError("no snapshot found")
-    latest = snaps[-1]
-
+def _build_cargo_report(data: facts.CargoFacts) -> ReportDocument:
     blocks: list[Any] = []
-    full = analysis.full_stocks(latest)
-    if full:
+    percent = f"{data.full_stock_ratio * 100:g}%"
+    if data.full_stocks:
         blocks.extend([
-            Heading(2, "Stocks Near Capacity (≥90% Full)"),
-            Table(
-                ["Facility", "Kind", "Cargos", "Count", "Capacity", "Fill Ratio", "Actively Served"],
-                [[r["name"], r["kind"], ", ".join(r["cargoNames"]), r["count"], r["capacity"], _fmt_pct(r["fill"]),
-                  "Yes" if r["served"] else ("No" if r["served"] is False else "-")] for r in full],
-                ["left", "left", "left", "right", "right", "right", "center"]
-            )
+            Heading(2, f"Stocks Near Capacity (≥{percent} Full)"),
+            Table(["Facility", "Kind", "Cargos", "Count", "Capacity", "Fill Ratio", "Actively Served"],
+                  [[r["name"], r["kind"], ", ".join(r["cargoNames"]), r["count"], r["capacity"], _fmt_pct(r["fill"]),
+                    "Yes" if r["served"] else ("No" if r["served"] is False else "-")] for r in data.full_stocks],
+                  ["left", "left", "left", "right", "right", "right", "center"]),
         ])
     else:
-        blocks.append(Paragraph("No stocks currently exceed the 90% fullness threshold."))
-
-    ops = analysis.opportunities(latest)
-    unshipped = [o for o in ops if o.get("kind") == "unshipped"]
-    if unshipped:
+        blocks.append(Paragraph(f"No stocks currently exceed the {percent} fullness threshold."))
+    if data.unshipped:
         blocks.extend([
             Heading(2, "Unshipped Production Opportunities"),
-            Table(
-                ["Producer", "Cargo", "Produced / Year", "Shipped / Year", "Unshipped / Year", "Nearest Consumer", "Distance (km)"],
-                [[o["producer"]["name"] or f"Industry #{o['producer']['id']}", o["cargo"], o["producedYear"], o["shippedYear"],
-                  o["unshippedYear"], o["nearestConsumers"][0]["name"] if o["nearestConsumers"] else "None",
-                  o["nearestConsumers"][0]["distanceKm"] if o["nearestConsumers"] else None] for o in unshipped[:15]],
-                ["left", "left", "right", "right", "right", "left", "right"]
-            ),
-            Note("Feasibility Boundary", "Straight-line distance does not promise transport feasibility or rail route availability.")
+            Table(["Producer", "Cargo", "Produced / Year", "Shipped / Year", "Unshipped / Year", "Nearest Consumer", "Distance (km)"],
+                  [[o["producer"]["name"] or f"Industry #{o['producer']['id']}", o["cargo"], o["producedYear"], o["shippedYear"],
+                    o["unshippedYear"], o["nearestConsumers"][0]["name"] if o["nearestConsumers"] else "None",
+                    o["nearestConsumers"][0]["distanceKm"] if o["nearestConsumers"] else None] for o in data.unshipped[:15]],
+                  ["left", "left", "right", "right", "right", "left", "right"]),
+            Note("Feasibility Boundary", "Straight-line distance does not promise transport feasibility or rail route availability."),
         ])
-
-    closing = [ind for ind in latest.industries if ind.get("closureTimeStamp") or ind.get("id") in set(latest.problems.get("closingIndustries") or [])]
-    if closing:
+    if data.closing:
         blocks.extend([
             Heading(2, "Scheduled Industry Closures"),
-            Table(
-                ["Industry", "Type", "Closing Timestamp"],
-                [[ind.get("name") or f"Industry #{ind['id']}", ind.get("type", "-"), ind.get("closureTimeStamp", "Flagged")] for ind in closing],
-                ["left", "left", "left"]
-            )
+            Table(["Industry", "Type", "Closing Timestamp"],
+                  [[ind.get("name") or f"Industry #{ind['id']}", ind.get("type", "-"), ind.get("closureTimeStamp", "Flagged")]
+                   for ind in data.closing],
+                  ["left", "left", "left"]),
         ])
-
-    return ReportDocument("cargo", "Cargo Production and Flow Report", _base_header(latest, len(snaps)), blocks)
-
-
-def _resolve_entity(snap: Snapshot | None, reference: Any) -> tuple[str, dict[str, Any]] | None:
-    if snap is None:
-        return None
-    kind = None
-    if isinstance(reference, dict):
-        kind = reference.get("type") or reference.get("kind")
-        reference = reference.get("id", reference.get("name"))
-    elif isinstance(reference, str) and reference.partition(":")[0] in ("line", "vehicle"):
-        kind, _, reference = reference.partition(":")
-    if kind is not None and kind not in ("line", "vehicle"):
-        return None
-    collections = {"line": snap.lines, "vehicle": snap.vehicles}
-    candidates = [(entity_kind, entity) for entity_kind, entries in collections.items()
-                  if kind is None or entity_kind == kind for entity in entries]
-    text = str(reference).casefold()
-    if type(reference) is int or (isinstance(reference, str) and reference.isdigit()):
-        matches = [(k, e) for k, e in candidates if e["id"] == int(reference)]
-    else:
-        matches = [(k, e) for k, e in candidates if (e.get("name") or "").casefold() == text]
-        if not matches and text and reference is not None:
-            matches = [(k, e) for k, e in candidates if text in (e.get("name") or "").casefold()]
-    return matches[0] if len(matches) == 1 else None
+    return ReportDocument("cargo", "Cargo Production and Flow Report", _header(data.header), blocks)
 
 
-def _decision_details(store: Store, decision: dict[str, Any], comparison: Snapshot) -> list[Any]:
-    recorded_time = decision.get("game_time")
-    baseline = store.snapshot_at_or_before(recorded_time) if recorded_time is not None else None
-    age = (comparison.game_time - recorded_time) / comparison.year_duration if recorded_time is not None and comparison.year_duration else None
-    window = ("window unknown" if age is None else "comparison precedes decision" if age < 0 else
-              "profit window not yet complete" if age < 1 else "window complete")
-    blocks: list[Any] = [Heading(3, f"Decision #{decision['id']}: {decision['title']}"),
-                         Paragraph(f"Rationale: {decision['rationale']}"),
-                         Note("Profit Window", window)]
+def _decision_details(item: facts.DecisionComparison) -> list[Any]:
+    decision = item.decision
+    blocks: list[Any] = [
+        Heading(3, f"Decision #{decision['id']}: {decision['title']}"),
+        Paragraph(f"Rationale: {decision['rationale']}"),
+        Note("Calendar elapsed", f"elapsedGameYears={item.elapsed_game_years}; {item.elapsed_reason}; GAME-YEAR"),
+        Note("Nominal query-window diagnostic", f"elapsedNominalWindows={item.elapsed_nominal_windows}; "
+                                                "not proof of a complete profitYear window or causality."),
+    ]
     rows = []
-    for reference in decision.get("entities") or []:
-        resolved = _resolve_entity(baseline, reference) or _resolve_entity(comparison, reference)
-        if resolved is None:
-            rows.append([str(reference), "Unresolved or no longer tracked", None, None, None])
+    for entity in item.entities:
+        if not entity.resolved:
+            rows.append([entity.reference, "Unresolved or no longer tracked", None, None, None])
             continue
-        kind, entity = resolved
-        before = _resolve_entity(baseline, {"type": kind, "id": entity["id"]})
-        after = _resolve_entity(comparison, {"type": kind, "id": entity["id"]})
-        old, new = before[1] if before else None, after[1] if after else None
-        name = (new or old).get("name") or f"{kind.title()} #{entity['id']}"
-        if new is None:
-            blocks.append(Note("Entity Removed", f"{name}: entity no longer exists in the comparison snapshot."))
-        metrics = [("Rolling Annual Profit", old.get("profitYear") if old else None, new.get("profitYear") if new else None)]
-        if kind == "line":
-            metrics.extend([
-                ("Vehicles", len(old.get("vehicles") or []) if old else None, len(new.get("vehicles") or []) if new else None),
-                ("Instant Load Ratio", analysis.line_load(old) if old else None, analysis.line_load(new) if new else None)
-            ])
-        for metric, old_value, new_value in metrics:
-            rows.append([name, metric, old_value, new_value, _fmt_change(new_value, old_value)])
+        if entity.removed:
+            blocks.append(Note("Entity Removed", f"{entity.name}: entity no longer exists in the comparison snapshot."))
+        for m in entity.metrics:
+            rows.append([entity.name, m.metric, m.before, m.after, _fmt_delta(m.change)])
     if rows:
-        blocks.append(Table(["Entity", "Metric", f"Decision Sample ({baseline.date_label if baseline else 'unavailable'})",
-                             f"Comparison Sample ({comparison.date_label})", "Difference"], rows))
+        blocks.append(Table(["Entity", "Metric", f"Decision Sample ({item.baseline_date or 'unavailable'})",
+                             f"Comparison Sample ({item.comparison_date})", "Difference"], rows))
     return blocks
 
 
-def _build_decisions_report(store: Store) -> ReportDocument:
-    latest = store.latest()
-    if not latest:
-        raise ValueError("No snapshot found. Load a save with the bridge enabled and run tf3c refresh.")
-    decisions = store.list_decisions(limit=10000)
+def _decision_table(decisions: Sequence[dict[str, Any]], align: list[str] | None = None) -> Table:
+    return Table(["ID", "Game Date", "Title", "Status", "Outcome"],
+                 [[d["id"], d.get("game_date") or "-", d["title"], d["status"], d.get("outcome") or "-"] for d in decisions],
+                 align or [])
+
+
+def _build_decisions_report(data: facts.DecisionsFacts) -> ReportDocument:
     blocks: list[Any] = []
-    if not decisions:
+    if not data.decisions:
         blocks.append(Paragraph("No player decisions have been recorded in the journal."))
     else:
         blocks.append(Heading(2, "Recorded Decisions Journal"))
-        blocks.append(Table(["ID", "Game Date", "Title", "Status", "Outcome"],
-                            [[d["id"], d.get("game_date") or "-", d["title"], d["status"], d.get("outcome") or "-"]
-                             for d in decisions]))
-        for decision in decisions:
-            blocks.extend(_decision_details(store, decision, latest))
-    return ReportDocument("decisions", "Decisions Follow-Up Report", _base_header(latest, store.snapshot_count()), blocks)
+        blocks.append(_decision_table(data.decisions))
+        for item in data.comparisons:
+            blocks.extend(_decision_details(item))
+    return ReportDocument("decisions", "Decisions Follow-Up Report", _header(data.header), blocks)
 
 
-def _build_annual_report(store: Store, year: int | None = None) -> ReportDocument:
-    available = store.available_years()
-    if not available:
-        raise ValueError("no snapshot found")
-    if year is None:
-        latest = store.latest()
-        year = latest.date["year"] if latest and latest.date else available[-1]
-    if year not in available:
-        raise ValueError(f"No snapshots found for year {year}. Available years: {', '.join(str(y) for y in available)}")
+def _compared_row(c: facts.Compared, count: bool = False) -> list[Any]:
+    return [c.label, c.baseline, c.closing, c.change if count else _fmt_delta(c.change)]
 
-    year_snaps = store.snapshots_for_year(year)
-    current = store.latest()
-    if current and year == (current.date or {}).get("year", current.meta.get("year")):
-        year_snaps = [sample for sample in year_snaps if sample.game_time <= current.game_time]
-    start_snap = year_snaps[0]
-    end_snap = year_snaps[-1]
-    baseline_snap = store.latest_before(start_snap.game_time)
 
-    observed_months = sorted({s.date["month"] for s in year_snaps if s.date})
-    all_months = set(range(1, 13))
-    missing_months = sorted(all_months - set(observed_months))
-    has_baseline = baseline_snap is not None and baseline_snap.date is not None and baseline_snap.date["year"] == year - 1 and baseline_snap.date["month"] == 12
-    future_history = current is not None and store.snapshot_at_or_before(2**63 - 1).game_time > current.game_time
-    complete_monthly = len(missing_months) == 0 and has_baseline and not future_history
+def _names(items: Sequence[dict[str, Any]], kind: str) -> str:
+    return ", ".join(i.get("name") or f"{kind} #{i['id']}" for i in items) or "None"
 
-    status_label = "monthly coverage complete" if complete_monthly else "partial-year coverage"
-    in_progress = current is not None and (current.date or {}).get("year") == year and (end_snap.date or {}).get("month", 0) < 12
-    if in_progress:
-        status_label += f"; in progress through {end_snap.date_label}; figures to date"
-    if future_history:
-        status_label += "; retained future history indicates a timeline rewind"
-    all_dates = [s.date_label for s in year_snaps]
 
+def _build_annual_report(data: facts.AnnualFacts) -> ReportDocument:
+    year = data.year
+    status = "monthly coverage complete" if data.complete_monthly else "partial-year coverage"
+    if data.in_progress:
+        status += f"; in progress through {data.closing_date}; figures to date"
+    if data.future_history:
+        status += "; retained future history indicates a timeline rewind"
     header = [
-        ("Company / Save", end_snap.company.get("name") or "Primary Company"),
+        ("Company / Save", data.header.company),
         ("Reporting Game Year", str(year)),
-        ("Coverage Assessment", status_label),
-        ("Baseline Sample", baseline_snap.date_label if baseline_snap else "None (history starts mid-year)"),
-        ("Closing Sample", end_snap.date_label),
-        ("Observed Sample Dates", ", ".join(all_dates)),
-        ("Missing Calendar Months", ", ".join(str(m) for m in missing_months) if missing_months else "None"),
-        ("Snapshots Used", str(len(year_snaps) + int(baseline_snap is not None))),
-        ("Collection Errors", "; ".join(end_snap.errors) if end_snap.errors else "None reported"),
+        ("Coverage Assessment", status),
+        ("Baseline Sample", data.baseline_date or "None (history starts mid-year)"),
+        ("Closing Sample", data.closing_date),
+        ("Observed Sample Dates", ", ".join(data.observed_dates)),
+        ("Missing Calendar Months", ", ".join(str(m) for m in data.missing_months) if data.missing_months else "None"),
+        ("Snapshots Used", str(data.samples_used)),
+        ("Collection Errors", "; ".join(data.header.errors) if data.header.errors else "None reported"),
     ]
-
-    base = baseline_snap or start_snap
+    cash, loan, lines, vehicles = data.financial
+    profit_note = (f" ({data.closing_profit_unknown_lines} line(s) without a recorded profit are excluded)"
+                   if data.closing_profit_unknown_lines else "")
     blocks: list[Any] = [
-        Heading(2, f"Financial Summary ({status_label})"),
-        Paragraph("Closing numbers reflect single snapshot samples. Total line profit is the sum of rolling 12-month line profits at closing sample, not a calendar-year income sum."),
-        Table(
-            ["Metric", f"Baseline ({base.date_label})", f"Closing ({end_snap.date_label})", "Net Change"],
-            [
-                ["Cash Balance", base.company.get("balance"), end_snap.company.get("balance"),
-                 _fmt_change(end_snap.company.get("balance"), base.company.get("balance"))],
-                ["Outstanding Loan", base.company.get("loan"), end_snap.company.get("loan"),
-                 _fmt_change(end_snap.company.get("loan"), base.company.get("loan"))],
-                ["Lines Count", len(base.lines), len(end_snap.lines), len(end_snap.lines) - len(base.lines)],
-                ["Vehicles Count", len(base.vehicles), len(end_snap.vehicles), len(end_snap.vehicles) - len(base.vehicles)],
-                ["Closing Rolling Annual Line Profit", None, sum(l.get("profitYear") or 0 for l in end_snap.lines), None]
-            ],
-            ["left", "right", "right", "right"]
-        )
+        Heading(2, f"Financial Summary ({status})"),
+        Paragraph("Closing numbers reflect single snapshot samples. Total line profit is the sum of rolling 12-month line profits "
+                  "at closing sample, not a calendar-year income sum." + (f" Known subtotal only{profit_note}." if profit_note else "")),
+        Table(["Metric", f"Baseline ({data.baseline_label})", f"Closing ({data.closing_date})", "Net Change"],
+              [_compared_row(cash), _compared_row(loan), _compared_row(lines, True), _compared_row(vehicles, True),
+               ["Closing Rolling Annual Line Profit", None, data.closing_profit_known, None]],
+              ["left", "right", "right", "right"]),
     ]
-
-    lines_by_profit = sorted(end_snap.lines, key=lambda l: (l.get("profitYear") if l.get("profitYear") is not None else -10**15), reverse=True)
-    best_5 = lines_by_profit[:5]
-    worst_5 = lines_by_profit[-5:] if len(lines_by_profit) > 5 else []
+    ranked = data.ranked_lines
+    best_5 = ranked[:5]
+    worst_5 = ranked[-5:] if len(ranked) > 5 else []
     blocks.extend([
         Heading(2, "Top 5 Lines by Closing Annual Profit"),
-        Table(["Line", "Rolling Annual Profit"],
-              [[l.get("name") or f"Line #{l['id']}", l.get("profitYear")] for l in best_5], ["left", "right"]),
+        Table(["Line", "Rolling Annual Profit"], [[_line_label(l), l.get("profitYear")] for l in best_5], ["left", "right"]),
         Heading(2, "Bottom 5 Lines by Closing Annual Profit"),
-        Table(["Line", "Rolling Annual Profit"],
-              [[l.get("name") or f"Line #{l['id']}", l.get("profitYear")] for l in worst_5], ["left", "right"]),
-    ])
-
-    base_lines = {l["id"]: l for l in base.lines}
-    end_lines = {l["id"]: l for l in end_snap.lines}
-    added_lines = [end_lines[i] for i in (set(end_lines) - set(base_lines))]
-    removed_lines = [base_lines[i] for i in (set(base_lines) - set(end_lines))]
-
-    base_v = {v["id"]: v for v in base.vehicles}
-    end_v = {v["id"]: v for v in end_snap.vehicles}
-    added_v = [end_v[i] for i in (set(end_v) - set(base_v))]
-    removed_v = [base_v[i] for i in (set(base_v) - set(end_v))]
-
-    blocks.extend([
+        Table(["Line", "Rolling Annual Profit"], [[_line_label(l), l.get("profitYear")] for l in worst_5], ["left", "right"]),
         Heading(2, "Fleet and Network Adjustments"),
-        Table(
-            ["Category", "Entities Added", "Entities Removed"],
-            [
-                ["Lines", ", ".join(l.get("name") or f"Line #{l['id']}" for l in added_lines) or "None",
-                 ", ".join(l.get("name") or f"Line #{l['id']}" for l in removed_lines) or "None"],
-                ["Vehicles", ", ".join(v.get("name") or f"Vehicle #{v['id']}" for v in added_v) or "None",
-                 ", ".join(v.get("name") or f"Vehicle #{v['id']}" for v in removed_v) or "None"]
-            ],
-            ["left", "left", "left"]
-        )
-    ])
-
-    m_start = {m["carrier"]: m for m in analysis.modal_summary(base)}
-    m_end = {m["carrier"]: m for m in analysis.modal_summary(end_snap)}
-    all_carriers = sorted(set(m_start) | set(m_end))
-    modal_rows = []
-    for c in all_carriers:
-        s_row = m_start.get(c, {"lines": 0, "vehicles": 0, "profitYear": 0})
-        e_row = m_end.get(c, {"lines": 0, "vehicles": 0, "profitYear": 0})
-        modal_rows.append([
-            c, s_row["lines"], e_row["lines"], s_row["vehicles"], e_row["vehicles"],
-            s_row["profitYear"], e_row["profitYear"], _fmt_change(e_row["profitYear"], s_row["profitYear"])
-        ])
-    blocks.extend([
+        Table(["Category", "Entities Added", "Entities Removed"],
+              [["Lines", _names(data.lines_added, "Line"), _names(data.lines_removed, "Line")],
+               ["Vehicles", _names(data.vehicles_added, "Vehicle"), _names(data.vehicles_removed, "Vehicle")]],
+              ["left", "left", "left"]),
         Heading(2, "Modal Mix Adjustments"),
-        Table(
-            ["Mode", "Baseline Lines", "Closing Lines", "Baseline Vehicles", "Closing Vehicles",
-             "Baseline Annual Profit", "Closing Annual Profit", "Profit Change"],
-            modal_rows, ["left", "right", "right", "right", "right", "right", "right", "right"]
-        )
+        Table(["Mode", "Baseline Lines", "Closing Lines", "Baseline Vehicles", "Closing Vehicles",
+               "Baseline Annual Profit", "Closing Annual Profit", "Profit Change"],
+              [[m.carrier, m.baseline_lines, m.closing_lines, m.baseline_vehicles, m.closing_vehicles,
+                m.baseline_profit, m.closing_profit, _fmt_delta(m.profit_change)] for m in data.modal],
+              ["left", "right", "right", "right", "right", "right", "right", "right"]),
+        Heading(2, f"Year-over-Year Comparison with {data.previous_year}"),
     ])
-
-    prev_year = year - 1
-    if prev_year in available:
-        prev_snaps = store.snapshots_for_year(prev_year)
-        p_end = prev_snaps[-1]
-        blocks.extend([
-            Heading(2, f"Year-over-Year Comparison with {prev_year}"),
-            Table(
-                ["Metric", f"{prev_year} Closing", f"{year} Closing", "Difference"],
-                [
-                    ["Cash Balance", p_end.company.get("balance"), end_snap.company.get("balance"),
-                     _fmt_change(end_snap.company.get("balance"), p_end.company.get("balance"))],
-                    ["Outstanding Loan", p_end.company.get("loan"), end_snap.company.get("loan"),
-                     _fmt_change(end_snap.company.get("loan"), p_end.company.get("loan"))],
-                    ["Lines", len(p_end.lines), len(end_snap.lines), len(end_snap.lines) - len(p_end.lines)],
-                    ["Vehicles", len(p_end.vehicles), len(end_snap.vehicles), len(end_snap.vehicles) - len(p_end.vehicles)],
-                    ["Closing Rolling Line Profit", sum(l.get("profitYear") or 0 for l in p_end.lines),
-                     sum(l.get("profitYear") or 0 for l in end_snap.lines),
-                     _fmt_change(sum(l.get("profitYear") or 0 for l in end_snap.lines),
-                                 sum(l.get("profitYear") or 0 for l in p_end.lines))],
-                    ["Best Line",
-                     _entity_name(max(p_end.lines, key=lambda line: line.get("profitYear") if line.get("profitYear") is not None else -math.inf, default=None), "Line"),
-                     _entity_name(max(end_snap.lines, key=lambda line: line.get("profitYear") if line.get("profitYear") is not None else -math.inf, default=None), "Line"), None]
-                ],
-                ["left", "right", "right", "right"]
-            )
-        ])
+    if data.yoy is None:
+        blocks.append(Paragraph("no previous-year data"))
     else:
-        blocks.extend([
-            Heading(2, f"Year-over-Year Comparison with {prev_year}"),
-            Paragraph("no previous-year data")
-        ])
-
-    year_decisions = [d for d in store.list_decisions(limit=10000) if (d.get("game_date") or "").startswith(f"{year:04d}-")]
+        rows = [_compared_row(c, c.label in ("Lines", "Vehicles")) for c in data.yoy]
+        rows.append(["Best Line", data.yoy_best_line[0], data.yoy_best_line[1], None])
+        blocks.append(Table(["Metric", f"{data.previous_year} Closing", f"{year} Closing", "Difference"], rows,
+                            ["left", "right", "right", "right"]))
     blocks.append(Heading(2, f"Decisions Recorded in {year}"))
-    if year_decisions:
-        blocks.append(Table(
-            ["ID", "Game Date", "Title", "Status", "Outcome"],
-            [[d["id"], d["game_date"], d["title"], d["status"], d.get("outcome") or "-"] for d in year_decisions],
-            ["right", "left", "left", "left", "left"]
-        ))
-        for decision in year_decisions:
-            blocks.extend(_decision_details(store, decision, end_snap))
+    if data.decisions:
+        blocks.append(_decision_table([c.decision for c in data.decisions], ["right", "left", "left", "left", "left"]))
+        for item in data.decisions:
+            blocks.extend(_decision_details(item))
     else:
         blocks.append(Paragraph(f"no decisions were recorded in {year}"))
-
-    high_findings = [f for f in analysis.findings(end_snap) if f.severity == "high"]
     blocks.append(Heading(2, "High-Severity Closing Findings"))
-    if high_findings:
-        blocks.append(Table(
-            ["Code", "Category", "Title", "Detail"],
-            [[f.code, f.category, f.title, f.detail] for f in high_findings],
-            ["left", "left", "left", "left"]
-        ))
+    if data.high_findings:
+        blocks.append(Table(["Code", "Category", "Title", "Detail"],
+                            [[f["code"], f["category"], f["title"], f["detail"]] for f in data.high_findings],
+                            ["left", "left", "left", "left"]))
     else:
         blocks.append(Paragraph("No high-severity findings recorded at closing sample."))
-
-    hist_rows = [[s.date_label, s.company.get("balance"), s.company.get("loan")] for s in year_snaps]
-    blocks.extend([
-        Heading(2, "Sampled Financial Timeline"),
-        Table(["Date", "Balance", "Loan"], hist_rows, ["left", "right", "right"]),
-        Chart("line", f"{year} Balance and Loan History", [s.date_label for s in year_snaps],
-              [("Balance", [float(s.company.get("balance") or 0) for s in year_snaps]),
-               ("Loan", [float(s.company.get("loan") or 0) for s in year_snaps])])
-    ])
-
+    blocks.extend([Heading(2, "Sampled Financial Timeline"),
+                   Table(["Date", "Balance", "Loan"], [[p.date_label, p.balance, p.loan] for p in data.timeline],
+                         ["left", "right", "right"])])
+    chart = _finance_chart(f"{year} Balance and Loan History", data.timeline)
+    if chart:
+        blocks.append(chart)
     return ReportDocument("annual", f"Annual Company Report ({year})", header, blocks)
 
 
@@ -875,10 +654,21 @@ def _build_annual_report(store: Store, year: int | None = None) -> ReportDocumen
 # ---------------------------------------------------------------------------
 
 def render_report(store: Store, kind: str, year: int | None = None, html: bool = False,
-                  thresholds: analysis.Thresholds | None = None, lens: Any = None) -> str:
+                  thresholds: analysis.Thresholds | None = None, lens: Any = None, context=None) -> str:
     """Pure in-memory report generation without disk writing or service dependency."""
-    if thresholds is None and lens is not None:
-        thresholds = lens.thresholds
+    doc = compose_report(store, kind, year, thresholds=thresholds, lens=lens, context=context)
+    return render_html(doc) if html else render_markdown(doc)
+
+
+def compose_report(store: Store, kind: str, year: int | None = None,
+                   thresholds: analysis.Thresholds | None = None, lens: Any = None, context=None) -> ReportDocument:
+    """Compose a report document once; Markdown and HTML are separate pure renderings of it."""
+    from .report_policy import resolve_context, REGISTRY
+    if lens is not None and (thresholds is not None or context is not None):
+        raise ValueError("lens and explicit thresholds/context are mutually exclusive")
+    if context is not None and thresholds is not None:
+        raise ValueError("context and explicit thresholds are mutually exclusive")
+    context = lens.report_context if lens else context or resolve_context(thresholds=thresholds)
     if year is not None and (isinstance(year, bool) or not isinstance(year, int) or not 0 <= year <= 2**63 - 1):
         raise ValueError("year must be a nonnegative 64-bit integer.")
     if year is not None and kind != "annual":
@@ -886,43 +676,57 @@ def render_report(store: Store, kind: str, year: int | None = None, html: bool =
     if kind not in VALID_KINDS:
         raise ValueError(f"Unknown report kind '{kind}'. Valid kinds: {', '.join(VALID_KINDS)}")
 
+    endpoint = store.latest()
+    if endpoint is None and kind != "methodology":
+        raise ValueError("No snapshot found. Load a save with the bridge enabled and run tf3c refresh.")
+    if endpoint is not None:
+        from .analysis_views import EvaluationContext, EvidenceReader
+        operation = (EvaluationContext.from_lens(lens, None, store.previous_of(endpoint)) if lens is not None else
+                     EvaluationContext(endpoint, context, store.time_context(endpoint), None, store.previous_of(endpoint)))
+        reader = EvidenceReader(store, operation)
+    methodology = lens.methodology if lens else None
     if kind == "company":
-        doc = _build_company_report(store)
+        doc = _build_company_report(facts.company_facts(reader, operation))
     elif kind == "lines":
-        doc = _build_lines_report(store)
+        doc = _build_lines_report(facts.lines_facts(reader, operation, methodology))
     elif kind == "fleet":
-        doc = _build_fleet_report(store)
+        doc = _build_fleet_report(facts.fleet_facts(reader, operation))
     elif kind == "cargo":
-        doc = _build_cargo_report(store)
+        doc = _build_cargo_report(facts.cargo_facts(reader, operation))
     elif kind == "decisions":
-        doc = _build_decisions_report(store)
+        doc = _build_decisions_report(facts.decisions_facts(reader, operation))
     elif kind == "annual":
-        doc = _build_annual_report(store, year)
+        doc = _build_annual_report(facts.annual_facts(reader, operation, year, methodology))
     elif kind == "methodology":
         from . import report_methodology
 
-        doc = report_methodology.build(store, lens)
+        if lens is None:
+            raise ValueError("The methodology report presents an evaluated methodology: pass the prepared lens.")
+        doc = report_methodology.build(lens)
     else:
-        # Local imports keep extension builders free to reuse the document model.
-        from . import (
-            report_history, report_vehicle_roi, report_lines_history,
-            report_industries, report_towns, report_expansion, report_bottlenecks,
-        )
+        # Local imports keep presentation builders free to reuse the document model. Each builder
+        # renders the typed view that its family evaluated at the latest stored endpoint.
+        from importlib import import_module
+        from .analysis_views import evaluate_views
 
-        builders = {
-            "history": report_history.build,
-            "vehicle-roi": report_vehicle_roi.build,
-            "lines-history": report_lines_history.build,
-            "industries": report_industries.build,
-            "towns": report_towns.build,
-            "expansion": report_expansion.build,
-            "bottlenecks": report_bottlenecks.build,
-        }
-        if kind in ("vehicle-roi", "lines-history", "industries"):
-            doc = builders[kind](store, thresholds)
-        else:
-            doc = builders[kind](store)
+        views = evaluate_views(store, operation, (kind,))
+        module = import_module(f"{__package__}.report_{kind.replace('-', '_')}")
+        doc = module.build(getattr(views, kind.replace("-", "_")), context=operation)
 
+    if endpoint is not None:
+        basis = operation.clock.time_basis
+        doc.header.extend([("Time Basis", f"{basis['version']}; 365.25 calendar days / GAME-YEAR"),
+                           ("Calendar Anchor Hash", basis["anchorHash"])])
+        doc.blocks.append(Note("Calendar evidence", " ".join(basis["warnings"]) or "Bounded calendar evidence; interpolation is an estimate."))
+    doc.header.append(("Report Policy Registry", "1"))
+    doc.blocks.append(Heading(2, "Report policy"))
+    families = list(REGISTRY) if kind == "methodology" else [kind] if kind in REGISTRY else []
+    rows = [[family + "." + key, getattr(context.policies[family], key), spec.unit,
+             context.origins[family][key], spec.comparison]
+            for family in families for key, spec in REGISTRY[family].items()]
+    rows += [["engine." + key, value, "engine criterion", context.threshold_origins[key], "effective shared threshold"]
+             for key, value in context.provenance()["engineThresholds"].items()]
+    doc.blocks.append(Table(["Criterion", "Value", "Unit", "Origin", "Comparison"], rows))
     if lens is not None and kind != "methodology":
         doc.header.extend(lens.header())
-    return render_html(doc) if html else render_markdown(doc)
+    return doc

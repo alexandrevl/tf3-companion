@@ -22,41 +22,50 @@ The system SHALL provide the packaged `default` methodology and SHALL read user 
 - **THEN** it is listed as invalid with its error, and all valid files remain usable
 
 ### Requirement: Import, export and validation commands
-The CLI SHALL provide `tf3c methodology list`, `show <id>`, `validate <file>`, `import <file>`, `export <id>` and `use`/`unuse`. `validate` SHALL report errors, unsupported rules and the snapshot data each rule needs, without importing. `import` SHALL validate first, copy the file into the user folder under a name derived from `id` and `version`, and refuse to overwrite an existing `id@version` with different content unless explicitly forced. `export` SHALL write the stored file unchanged to a path chosen by the player.
+The CLI SHALL provide `tf3c methodology list`, `show <id>`, `validate <file>`, `import <file>`, `export <id>` and `use`/`unuse`. Validation SHALL be read-only and report structural validity, activation compatibility and required data. Import SHALL require strict activation validation before copying under the id/version name. Existing different-content overwrite protection SHALL remain; force SHALL NOT bypass validation. Export SHALL preserve stored bytes.
 
 #### Scenario: Import a shared file
-- **WHEN** the player runs import on a valid downloaded file
-- **THEN** it is copied into the user folder and `list` shows it
+- **WHEN** the player imports a structurally valid, release-compatible shared file
+- **THEN** it is copied into the user folder and `list` shows it without changing the current binding
 
 #### Scenario: Import refuses an invalid file
-- **WHEN** import is run on a file with an unknown structural key
-- **THEN** nothing is copied and the error names the key
+- **WHEN** import is run on a file with an unknown structural key or damaged JSON
+- **THEN** nothing is copied or replaced and structured diagnostics identify the error
+
+#### Scenario: Import refuses incompatible policy even when forced
+- **WHEN** a file refers to an unknown field or an unsupported collector capability and import is requested with force
+- **THEN** import fails before changing any existing library file, binding, configuration or report
 
 #### Scenario: Import would overwrite
-- **WHEN** a different file with the same `id@version` is already in the folder
+- **WHEN** a different compatible file with the same `id@version` is already in the folder
 - **THEN** import fails unless forced, and says both content hashes
+- **AND** a packaged identity with different bytes cannot be overwritten even with force
 
 #### Scenario: Export round trip
-- **WHEN** a methodology is exported and imported on another machine
+- **WHEN** a methodology is exported and imported on another compatible installation
 - **THEN** the content hash on both machines is identical
 
 ### Requirement: Per-save binding
-A save SHALL be able to have a default methodology, set by `tf3c methodology use <id[@version]>` and cleared by `unuse`. The binding SHALL be stored with that save's metadata so that two saves can use different methodologies. A binding to `id` without version SHALL resolve to the highest valid version in the library; a binding with a version SHALL resolve exactly. If no save layout is available, the single companion store SHALL behave as one implicit save, and the system SHALL NOT claim save isolation in that case.
+A save SHALL be able to have a methodology override, set by `tf3c methodology use <id[@version]>` and cleared by `unuse`. The override SHALL remain in save metadata; an unbound save inherits the user default, then packaged `default`. Bare ids SHALL resolve to the highest valid numeric version; versioned references SHALL resolve exactly. Without a save layout the store SHALL act as one implicit save and SHALL NOT claim save isolation.
 
 #### Scenario: Two saves, two methodologies
 - **WHEN** save A is bound to `local-feeder-trunk` and save B to `oil-chain`
 - **THEN** analysing each save without any override uses that save's methodology and writes into that save's report folder
 
 #### Scenario: Unbound save
-- **WHEN** a save has no binding and no override is given
-- **THEN** `default` is used and the output says so
+- **WHEN** a save has no binding and no explicit request or user default is given
+- **THEN** packaged `default` is used and the output says so
 
 #### Scenario: Bound methodology missing
 - **WHEN** a save is bound to a methodology that is no longer in the library
-- **THEN** analysis fails with an error naming the binding and how to fix it, and does not silently fall back to `default`
+- **THEN** analysis fails with an error naming the binding and how to fix it, and does not silently fall back to `default` or the user default
+
+#### Scenario: Unuse means inheritance
+- **WHEN** the player runs `unuse --save A` while a valid user default exists
+- **THEN** A inherits the user default and other saves' overrides and the user preference remain unchanged
 
 ### Requirement: Resolution precedence and explicit override
-The methodology applied to a request SHALL be chosen in this order: an explicit request value (CLI `--methodology`, MCP `methodology` parameter), then the save's binding, then `default`. An explicit request SHALL NOT change the binding. The CLI override MAY be an `id[@version]` or a path to a file; MCP tools SHALL accept only `id[@version]` and SHALL NOT read arbitrary file paths. The effective methodology and where it came from (request, binding or default) SHALL be stated in the output.
+Selection SHALL follow explicit request > save override > user default > packaged `default`, without changing persisted selections. CLI requests MAY use a library reference or one-off path; MCP SHALL accept only library references. Outputs SHALL distinguish request, file, save-override, user-default and packaged-default origins from file source. Failure at the selected layer SHALL stop analysis, not trigger fallback; unselected lower layers SHALL NOT block it.
 
 #### Scenario: Override without rebinding
 - **WHEN** a bound save is analysed with an explicit different methodology
@@ -70,8 +79,17 @@ The methodology applied to a request SHALL be chosen in this order: an explicit 
 - **WHEN** the CLI is given a path to a valid methodology file not in the library
 - **THEN** it is applied for that request only, and the output records its id, version and content hash
 
+#### Scenario: Broken user default
+- **WHEN** an unbound save inherits a missing, invalid, conflicted or activation-gate-rejected user-default reference
+- **THEN** analysis fails naming the user-default layer, library root, reference and `set-default`/`clear-default` recovery, preserving previous reports
+
+#### Scenario: Higher priority bypasses a broken lower layer
+- **WHEN** a valid explicit request is provided despite malformed save/user preference metadata, or a valid save override exists despite a broken user default
+- **THEN** the higher-priority methodology is used and the broken lower layer is not used as analysis input
+- **AND** read-only inspection can report the lower-layer error separately
+
 ### Requirement: One-step analysis
-The CLI SHALL provide `tf3c analyse [--methodology …] [--save …]` and the MCP server SHALL provide an `analyse` tool with the same parameters. The operation SHALL resolve the methodology, evaluate roles, rules, aggregates, recommendations and ladders on the latest snapshot and the stored history, generate the methodology's standard reports, write them to the output folder and return a summary: methodology identity and source, counts per role and marker, the highest-severity findings, recommendations, the skipped/unsupported/not-evaluable lists, and the output folder.
+The CLI SHALL provide `tf3c analyse [--methodology …] [--save …]` and the MCP server SHALL provide an `analyse` tool with the same parameters. The operation SHALL retain checked ingestion followed by evaluation of roles, rules, aggregates, recommendations and ladders on the selected latest snapshot and stored history, generation of the methodology's standard reports, atomic publication to the existing output folder and a summary containing methodology identity/source, role and marker counts, highest-severity findings, recommendations, coverage lists and the output folder. The analytical stage SHALL use the same operation as standalone stored evaluation; presentation and publication SHALL be separate stages and SHALL NOT change its results.
 
 #### Scenario: Apply a downloaded methodology
 - **WHEN** the player places a methodology in the user folder and asks the analyst to apply it and analyse the company
@@ -82,11 +100,26 @@ The CLI SHALL provide `tf3c analyse [--methodology …] [--save …]` and the MC
 - **THEN** the summary and the generated verdicts report list them with reasons, ahead of any conclusion that depends on them
 
 #### Scenario: No snapshot
-- **WHEN** the save has no ingested snapshot
-- **THEN** `analyse` fails with the same actionable error as other analysis tools and writes nothing
+- **WHEN** the save has no ingested snapshot after checked ingestion
+- **THEN** `analyse` fails with the same actionable error as other analysis tools and writes no report
+
+#### Scenario: Convenience operation retains its bundle contract
+- **WHEN** a player invokes `analyse` rather than stored-only `evaluate`
+- **THEN** the existing standard reports plus the methodology report are published under the save/date/methodology layout
+- **AND** the response retains output folder and file information alongside its analytical summary
+
+#### Scenario: Publication fails after successful evaluation
+- **WHEN** evaluation succeeds but rendering or publication fails
+- **THEN** the composite call reports failure without replacing a previously published complete bundle
+- **AND** the standalone evaluation operation remains usable on the same evidence without requiring publication
+
+#### Scenario: Fresh acquisition remains a separate stage
+- **WHEN** checked ingestion finds a newly written snapshot or fails to import an export
+- **THEN** `analyse` preserves its existing acquisition and fail-closed behavior before evaluation
+- **AND** standalone `evaluate` does not perform that acquisition stage
 
 ### Requirement: Methodology inspection tools
-The MCP server SHALL provide `list_methodologies` (id, version, name, source, validation status, which save binds it) and `methodology_detail` (description, roles, rules with rationale, parameters, required snapshot data, unsupported rules). Returned free text SHALL be marked as untrusted methodology content. Existing `findings` and `report` tools and the CLI `findings` and `report` commands SHALL accept the same methodology selection and SHALL record the methodology in their results.
+The MCP server SHALL provide `list_methodologies(save?)` and `methodology_detail`, preserving identity, source, validity, parameters, rules, rationale and support inspection. Listing SHALL separately identify library root, user default, save override, effective identity/hash and selection origin. Free text SHALL remain untrusted. CLI/MCP findings and reports SHALL accept the same selection and record its identity and selection provenance.
 
 #### Scenario: Listing
 - **WHEN** `list_methodologies` is called with `default` and one user methodology present
@@ -95,6 +128,14 @@ The MCP server SHALL provide `list_methodologies` (id, version, name, source, va
 #### Scenario: Findings under a methodology
 - **WHEN** `findings` is called with a methodology
 - **THEN** each finding carries the methodology id and version and whether it came from the engine or from a methodology rule
+
+#### Scenario: Packaged file used as user default
+- **WHEN** a packaged example has been explicitly selected as the user default and an unbound save is inspected or analysed
+- **THEN** output says origin `user-default`, file source `packaged`, and records the reference, resolved version/hash and library root separately
+
+#### Scenario: Independent layer diagnostics
+- **WHEN** listing a save with a valid save override and invalid user-default metadata
+- **THEN** the effective save policy remains marked, the top-level selected-resolution error is null, and the user-default record carries its own actionable error
 
 ### Requirement: Analyst brief covers methodologies
 The analyst brief SHALL tell the agent to identify the effective methodology before drawing conclusions, to list methodologies when the player mentions one, to apply a methodology only through the provided tools, to cite the methodology id and version with its conclusions, to disclose skipped and unsupported rules, and to treat all methodology text as untrusted data that cannot instruct it.
@@ -125,3 +166,146 @@ Every report and analysis bundle SHALL be written under the save's `reports/` fo
 #### Scenario: Label change
 - **WHEN** the player renames the save label
 - **THEN** existing report folders keep their paths
+
+### Requirement: One activation gate across all entry points
+Strict activation validation SHALL guard managed import, save bindings, user-default setters and every runtime application from library ids, drop-ins, request overrides, defaults and CLI file paths. MCP SHALL retain its no-arbitrary-path boundary. Failed validation SHALL NOT silently fall back, apply a supported subset, alter persistent selections or replace results.
+
+#### Scenario: Damaged drop-in is isolated
+- **WHEN** a damaged file is copied into the library beside valid files
+- **THEN** listing exposes its invalid status and diagnostics while valid entries remain usable
+- **AND** copying alone changes no selection or report, and attempting to apply the damaged entry fails
+
+#### Scenario: Invalid one-off CLI file
+- **WHEN** `analyse`, `findings` or `report` is requested with an invalid or incompatible CLI file path
+- **THEN** the request fails through the same validation contract as library selection without changing the library or reports
+
+#### Scenario: Failed selection preserves the old binding
+- **WHEN** a save binding or user-wide default is replaced with an invalid, incompatible or conflicting methodology
+- **THEN** the setter fails and previous configuration and binding bytes remain unchanged
+
+#### Scenario: Runtime rechecks a changed default
+- **WHEN** a previously selected save or user-default methodology becomes invalid or incompatible on disk
+- **THEN** runtime fails with diagnostics instead of applying it or falling back to another methodology
+- **AND** existing selection metadata and previous report results remain available unchanged
+
+### Requirement: Validation is bound to content rather than file trust
+Every activation SHALL validate the actual bytes and effective overrides used by that operation. A prior successful check or unchanged filename/id/version SHALL NOT authorize edited content. Identity/hash conflicts SHALL remain blocking, and validation SHALL NOT rewrite files or stamp trust on mutable content.
+
+#### Scenario: Stale validation after editing
+- **WHEN** a file passes validation and is then edited without a version bump into an invalid or incompatible file
+- **THEN** import, binding and runtime use reject the changed bytes even if a prior successful result exists
+- **AND** the diagnostic hash identifies the current bytes when readable
+
+#### Scenario: Valid compatible path
+- **WHEN** a compatible file is validated, imported, selected and applied without intervening edits
+- **THEN** it succeeds and outputs record the exact validated hash and effective parameters
+- **AND** stored evidence and the game simulation remain unchanged
+
+### Requirement: Read-only methodology debugging surfaces
+The CLI validation command SHALL support local files and effective parameter checks without activation. MCP SHALL expose `validate_methodology` for library references including invalid candidates and directly supplied draft JSON text, never arbitrary paths. Both SHALL return the same structured diagnostics without creating library/configuration/database/report files, ingesting snapshots or requesting game/network/plugin actions.
+
+#### Scenario: Debug without importing
+- **WHEN** an author validates a broken local file on the CLI or draft JSON text through MCP with no snapshot present
+- **THEN** the response reports structural validity, activation eligibility and diagnostics without activation or persistent writes
+
+#### Scenario: Debug an invalid library entry through MCP
+- **WHEN** MCP validation targets an invalid candidate by library reference
+- **THEN** it returns candidate diagnostics without requiring successful activation resolution
+- **AND** ambiguity or conflicting candidates are reported with their source files and hashes
+
+#### Scenario: MCP rejects file-path validation
+- **WHEN** a file path is supplied as the MCP methodology reference
+- **THEN** the request fails with guidance to use a library reference or explicit draft text instead
+
+### Requirement: Transactional preservation of selections and outputs
+Validation and effective-policy preparation SHALL finish before replacing selection metadata or publishing outputs. A failed validation SHALL leave existing library targets, bindings, defaults, report files, manifests and latest-report pointers unchanged. Successful replacement SHALL publish complete staged content rather than delete the previous valid state first.
+
+#### Scenario: Failed report regeneration preserves results
+- **WHEN** a same-date methodology report bundle exists and regeneration fails validation after a file edit or invalid override
+- **THEN** the prior bundle, manifest and latest-report pointer remain byte-for-byte unchanged
+- **AND** no new partial report folder is published
+
+#### Scenario: Successful replacement preserves output contract
+- **WHEN** a compatible methodology produces a complete replacement bundle
+- **THEN** the complete new bundle is published under the existing output-layout contract with matching provenance
+- **AND** unrelated methodology/date report folders remain unchanged
+
+### Requirement: Independent user default
+The system SHALL support one user default per resolved companion library root, independent of active save and stored separately from save metadata. `TF3C_DATA_DIR` SHALL select an independent library and user default. Choosing or clearing a user default SHALL NOT rewrite save overrides, evidence or reports. No preference SHALL mean packaged `default` for otherwise unbound requests.
+
+#### Scenario: Global switch affects only inheriting save B
+- **WHEN** save A explicitly overrides with `oil-chain@1.0.0`, save B inherits `local-feeder-trunk@1.0.0` as user default, and the player changes the user default to `patient-network@2.0.0`
+- **THEN** A still applies `oil-chain@1.0.0` with origin `save-override` and its metadata is unchanged
+- **AND** B now applies `patient-network@2.0.0` with origin `user-default` without writing B metadata
+
+#### Scenario: Clear back to packaged default
+- **WHEN** the player clears the user default after the preceding switch
+- **THEN** B applies packaged `default` with origin `packaged-default` and A keeps its explicit override
+
+#### Scenario: Save selection does not relocate preference
+- **WHEN** the same library root is inspected with save A and save B, or the current active save changes
+- **THEN** both scopes report the same user-default metadata location and reference
+
+#### Scenario: Separate data-root environments
+- **WHEN** a user default is set with `TF3C_DATA_DIR` pointing to root X and the companion is then run with root Y
+- **THEN** Y reads only Y's library and user-default configuration and does not inherit X's preference
+
+### Requirement: Deliberate default and inheritance workflows
+The CLI SHALL provide `methodology set-default REF` and `clear-default` without save selection, while `use`/`unuse` SHALL remain save override operations. MCP SHALL provide `set_methodology_default(methodology)` and `set_save_methodology(methodology, save?)`; null SHALL mean clear/inherit respectively. Setters SHALL use the shared activation gate before atomic writes and SHALL preserve previous selection/results on failure.
+
+#### Scenario: Configure without game installation
+- **WHEN** the player selects a valid library default using CLI or MCP with no game installation, active save or snapshot
+- **THEN** the preference is saved without constructing a snapshot database or discovering userdata and no mod action occurs
+
+#### Scenario: Failed activation preserves selection
+- **WHEN** a setter receives a missing, invalid, conflicted or activation-gate-rejected reference while a previous selection exists
+- **THEN** it returns actionable validation/resolution diagnostics and leaves all preference/save metadata and generated results unchanged
+
+#### Scenario: MCP returns save to inheritance
+- **WHEN** the player deliberately requests `set_save_methodology` with `methodology: null` for A
+- **THEN** only A's override is removed and the response identifies its inherited user default or packaged default
+
+#### Scenario: Explicit reset recovers malformed preference
+- **WHEN** the user-default configuration is malformed and the player explicitly runs `clear-default` or calls `set_methodology_default` with null
+- **THEN** the dedicated user preference is reset to no default, the response discloses the previous read error, and save metadata is not changed
+
+### Requirement: Nonactivating discovery and reference policy
+Importing or dropping a methodology into the library SHALL NOT select it or rewrite bindings. Bare-id selections SHALL float to the highest structurally valid numeric version; exact `id@version` selections SHALL pin the version, not bytes. A conflict or activation-gate rejection of the chosen candidate SHALL fail rather than downgrade. Every application SHALL use the shared gate on current content and record its hash.
+
+#### Scenario: Import alone does not activate
+- **WHEN** the player imports a new methodology under a different id while no explicit selection exists
+- **THEN** listing shows it as available and the effective methodology remains packaged `default`
+
+#### Scenario: Floating and pinned references
+- **WHEN** the user default is bare `patient-network` and versions 1.9.0 and 1.10.0 are valid and eligible
+- **THEN** it resolves to 1.10.0 numerically
+- **AND** selecting `patient-network@1.9.0` resolves exactly 1.9.0 after later versions arrive
+
+#### Scenario: New version affects only an already floating selection
+- **WHEN** an eligible higher version is imported for the id already selected as a floating user default
+- **THEN** the next inherited application resolves the higher version without rewriting the reference
+- **AND** explicit save version pins remain unchanged
+
+#### Scenario: Invalid higher candidate cannot downgrade after gate rejection
+- **WHEN** the highest structurally valid candidate fails the shared support gate but an older eligible version exists
+- **THEN** application fails with that candidate's diagnostics rather than selecting the older version
+
+### Requirement: Legacy overrides and read-only inspection
+Existing `methodology` values in implicit `methodology.json` and per-save `save.json` SHALL remain save overrides, never user defaults. Reads SHALL NOT migrate/write files or create directories/databases. Save mutations SHALL preserve unrelated metadata. Malformed explicit override values SHALL fail when selected; absent/null legacy values SHALL mean inheritance. Collection and ingestion SHALL NOT depend on successful methodology resolution.
+
+#### Scenario: Legacy implicit binding remains local
+- **WHEN** `<data>/methodology.json` contains `{"methodology":"oil-chain"}` and no user-default file exists
+- **THEN** the implicit store uses that save override while another unbound save uses packaged `default`
+- **AND** inspection creates no user-default file and changes no existing metadata
+
+#### Scenario: Existing save metadata preserved
+- **WHEN** a save with a label, snapshot metadata and methodology override is inspected and its override is later cleared
+- **THEN** inspection writes nothing and clearing removes only the methodology key
+
+#### Scenario: Empty library root inspection
+- **WHEN** CLI or MCP lists methodologies at a nonexistent library root without a selected save
+- **THEN** packaged entries and packaged-default origin are returned without creating that root or a database
+
+#### Scenario: Broken analysis preference does not block evidence collection
+- **WHEN** a user default or save override is broken and the player ingests or refreshes snapshots
+- **THEN** collection follows its normal snapshot prerequisites without requiring methodology activation or changing the broken selection

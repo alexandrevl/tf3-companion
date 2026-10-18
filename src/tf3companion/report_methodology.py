@@ -10,10 +10,9 @@ from __future__ import annotations
 from typing import Any
 
 from .methodology.engine import ChartResult, RuleResult, TableResult, Verdicts
-from .methodology.lens import Lens, build_lens
+from .methodology.lens import Lens
 from .methodology.templates import clean_text
 from .reports import Chart, Heading, Note, Paragraph, ReportDocument, Table, _base_header
-from .store import Store
 
 EVIDENCE_ROWS = 25
 GROUP_ROWS = 60
@@ -159,14 +158,17 @@ def _chart_blocks(c: ChartResult) -> list[Any]:
     title = clean_text(c.label or c.id, 200)
     if c.status != "ok":
         return [Heading(3, title), Paragraph(f"{c.status.capitalize()}: {c.reason}")]
-    series = [(name, [0.0 if p is None else p for p in points]) for name, points in c.series]
+    # Only categories whose plotted values are all known are drawn; unknown values are never plotted as zero.
+    known = [i for i in range(len(c.categories)) if all(points[i] is not None for _, points in c.series)]
+    categories = [c.categories[i] for i in known]
+    series = [(name, [points[i] for i in known]) for name, points in c.series]
     if c.type == "pie":
-        slices = [(cat, [series[0][1][i]]) for i, cat in enumerate(c.categories)] if series else []
-        chart = Chart("pie", title, c.categories, slices)
+        slices = [(cat, [series[0][1][i]]) for i, cat in enumerate(categories)] if series else []
+        chart = Chart("pie", title, categories, slices)
     elif c.type == "bar":
-        chart = Chart("bar", title, c.categories, series[:1])
+        chart = Chart("bar", title, categories, series[:1])
     else:
-        chart = Chart("line", title, c.categories, series)
+        chart = Chart("line", title, categories, series)
     if c.type == "history_line":
         columns = ["Snapshot", *[name for name, _ in c.series]]
         rows = [[cat, *[points[i] for _, points in c.series]] for i, cat in enumerate(c.categories)]
@@ -174,17 +176,15 @@ def _chart_blocks(c: ChartResult) -> list[Any]:
         columns = ["Group", c.series[0][0] if c.series else "Value"]
         rows = [[cat, c.series[0][1][i]] for i, cat in enumerate(c.categories)] if c.series else []
     return [Heading(3, title), chart, Table(columns, rows),
-            Note("Chart data", "The table lists the same numbers as the chart; missing values show as - here and are plotted as 0.")]
+            Note("Chart data", "The table lists the same numbers as the chart; missing values show as - here and are left out of the chart.")]
 
 
-def build(store: Store, lens: Lens | None = None) -> ReportDocument:
-    snap = lens.snapshot if lens is not None else store.latest()
-    if snap is None:
-        raise ValueError("No snapshot found. Load a save with the bridge enabled and run tf3c refresh.")
-    if lens is None:
-        lens = build_lens(store, snap)
+def build(lens: Lens) -> ReportDocument:
+    """Present the prerequisite evaluation's verdicts; rules are never evaluated again here."""
+    snap = lens.snapshot
     m, v = lens.methodology, lens.verdicts
-    header = [("Methodology", f"{m.identity} ({m.short_hash}, {lens.origin})"), *_base_header(snap, 1)[:1],
+    header = [("Methodology", f"{m.identity} ({m.short_hash}, {lens.origin})"), ("Selection", str(dict(m.selection))),
+              *_base_header(snap, 1)[:1],
               ("Snapshot Game Date", snap.date_label),
               ("Methodology Parameters", ", ".join(f"{k}={val}" for k, val in sorted(v.parameters.items())) or "none"),
               ("Parameter Overrides", ", ".join(f"{k}={val}" for k, val in sorted(v.overrides.items())) or "none"),

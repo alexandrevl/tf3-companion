@@ -129,6 +129,8 @@ class Verdicts:
     disabled_findings: list[dict[str, Any]] = field(default_factory=list)
     classification: Classification | None = field(default=None, repr=False, compare=False)
     role_index: dict[str, dict[Any, str]] = field(default_factory=dict, repr=False, compare=False)
+    selection: dict[str, Any] = field(default_factory=dict)
+    time_basis: dict[str, Any] = field(default_factory=dict)
 
     @property
     def skipped(self) -> list[dict[str, Any]]:
@@ -165,6 +167,7 @@ class Verdicts:
         return {
             "methodology": self.methodology, "origin": self.origin, "parameters": self.parameters,
             "parameterOverrides": self.overrides, "snapshot": self.snapshot,
+            "selection": self.selection, "timeBasis": self.time_basis,
             "roles": {k: asdict(v) for k, v in self.roles.items()},
             "rules": [r.to_dict() for r in self.rules],
             "recommendations": [asdict(a) for a in self.recommendations],
@@ -209,20 +212,6 @@ class GroupScope:
 
 # ---------------------------------------------------------------------------
 # parameters
-
-def effective_parameters(m: Methodology, overrides: dict[str, Any] | None) -> dict[str, Any]:
-    params = m.parameters
-    for name, value in (overrides or {}).items():
-        if name not in params:
-            raise ValueError(f"Unknown parameter '{name}' for {m.identity}. Parameters: {', '.join(sorted(params)) or '(none)'}.")
-        current = params[name]
-        if isinstance(current, bool) != isinstance(value, bool) or \
-                isinstance(current, str) != isinstance(value, str) or \
-                (not isinstance(current, (bool, str)) and not isinstance(value, (int, float))):
-            raise ValueError(f"Parameter '{name}' of {m.identity} must be a {type(current).__name__}.")
-        params[name] = value
-    return params
-
 
 def thresholds_for(m: Methodology | None) -> analysis.Thresholds:
     """Engine thresholds: defaults plus the methodology's `engine.thresholds`."""
@@ -518,7 +507,8 @@ class _Run:
         snaps = history[-MAX_HISTORY_POINTS:] or [self.snap]
         per_snapshot: list[dict[Any, float | None]] = []
         for snap in snaps:
-            facts = fieldmod.Facts(snap, self.facts.name_patterns)
+            clock = self.facts.clock.bounded(snap.game_time) if self.facts.clock else None
+            facts = fieldmod.Facts(snap, self.facts.name_patterns, clock=clock)
             run = _Run(self.m, snap, self.params, self.cls, facts)
             if chart.get("group_by") == "role" or "role" in chart:
                 run.assign_roles()
@@ -620,17 +610,27 @@ def _role_index(run: _Run) -> dict[str, dict[Any, str]]:
 
 def evaluate(m: Methodology, snap: Snapshot, *, overrides: dict[str, Any] | None = None,
              probe_snapshots: list[Snapshot] | None = None, history: list[Snapshot] | None = None,
-             origin: str = "default") -> Verdicts:
-    params = effective_parameters(m, overrides)
+             origin: str = "packaged-default", clock: Any = None) -> Verdicts:
+    from .prepare import prepare
+    m = prepare(m, overrides)
+    return _evaluate_prepared(m, snap, overrides=overrides, probe_snapshots=probe_snapshots,
+                              history=history, origin=origin, clock=clock)
+
+
+def _evaluate_prepared(m: Methodology, snap: Snapshot, *, overrides=None, probe_snapshots=None,
+                       history=None, origin="packaged-default", clock=None) -> Verdicts:
+    """Private handoff from the operation's gate; never reads a mutable source file."""
+    params = m.parameters
     patterns = tuple((p["id"], p["pattern"]) for p in ((m.data.get("name_patterns") or {}).get("line") or []))
     classification = classify(m, snapshot_probe(probe_snapshots or [snap]))
-    run = _Run(m, snap, params, classification, fieldmod.Facts(snap, patterns))
+    run = _Run(m, snap, params, classification, fieldmod.Facts(snap, patterns, clock=clock))
     run.assign_roles()
     rules = [run.run_rule(rule) for rule in m.data.get("rules") or []]
     by_id = {r.id: r for r in rules}
     reports = m.data.get("reports") or {}
     return Verdicts(
-        methodology=m.provenance(), origin=origin, parameters=params, overrides=dict(overrides or {}),
+        methodology=m.provenance(), origin=origin, parameters=params, overrides=dict(m.effective_overrides),
+        selection=dict(m.selection), time_basis=clock.time_basis if clock else {},
         snapshot={"date": snap.date_label, "gameTime": snap.game_time},
         roles=run.roles, rules=rules,
         recommendations=[run.run_recommendation(r, by_id) for r in m.data.get("recommendations") or []],

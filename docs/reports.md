@@ -16,9 +16,12 @@ uv run tf3c report annual --year 1983 --open
 uv run tf3c report methodology
 uv run tf3c report lines --methodology default
 uv run tf3c analyse
+uv run tf3c evaluate --json
 ```
 
-Reports are written under `<data>/reports/<game-date>__<methodology-id>@<version>/`, where `<data>` is the platform companion data directory (or `TF3C_DATA_DIR`), the game date is the snapshot's `YYYY-MM-DD` (or `t<gameTime>` when it has no calendar date) and the methodology is the effective one (`--methodology`, else the save's binding, else `default`). Each folder holds the reports for that lens (`<kind>.md`, `annual-<year>.md`, optional `.html`) and a `manifest.json` with the methodology identity and hash, effective parameters, snapshot game time, files and the skipped, unsupported and not-evaluable lists. `reports/latest.md` is a copy of the most recently generated single report. Different methodologies or game dates make different sibling folders; rerunning on the same inputs overwrites one folder atomically. The earlier flat `reports/<kind>.md` files are no longer written. Inspect the directory to list generated files:
+Reports are written under `<data>/reports/<game-date>__<methodology-id>@<version>/`, where `<data>` is the selected companion/save data root, the date is the snapshot's `YYYY-MM-DD` (or `t<gameTime>`) and selection is explicit request > save override > user default > packaged default. Each lens folder holds `<kind>.md`, `annual-<year>.md`, optional `.html` and a `manifest.json` recording identity/hash, selection, effective parameters/engine thresholds/report policies, calendar time basis, snapshot tick, files and coverage gaps. `reports/latest.md` copies the most recent single report. Different methodology identities or dates coexist; rerunning replaces the corresponding output without retaining every execution. Failed validation leaves previous output intact. Earlier flat `reports/<kind>.md` files are no longer written. Inspect generated files:
+
+A report is composed once into an in-memory document, then rendered (Markdown and, with `--html`, HTML from the same composition) and published atomically; the analytical result behind it comes from `tf3c evaluate`, which needs no report folder. Evaluation keeps working when the report destination is unwritable, and a failed publication leaves the previous bundle in place.
 
 - macOS: `ls -la "$HOME/Library/Application Support/tf3-companion/reports"`
 - Windows PowerShell: `Get-ChildItem "$env:LOCALAPPDATA\tf3-companion\reports"`
@@ -73,6 +76,83 @@ Transport Fever 3's in-game `profitYear` is a **rolling game-year window**, not 
 - **`transportedYear` remains unverified:** Transported volume numbers are marked provisional until game accounting definitions are confirmed.
 
 Always review report numbers alongside the observation dates and collection warnings printed in the header.
+
+## Analysis views: the numbers behind a report
+
+Every analytic number, ranking and diagnostic of a report is computed before the document is laid out. Seven specialized
+families are public **analysis views**, requested by name and returned under `analysisViews` by `tf3c evaluate --view NAME`
+(repeatable) and MCP `evaluate(views=[...])`:
+
+| View | Typed result | What it holds |
+|---|---|---|
+| `bottlenecks` | `BottlenecksView` | observations with eligible-sample denominators, streaks, persistent/intermittent/new/resolved status, severity, stock rises (slope in units per sample, extrapolation conditional), sampled occupancy, station and depot groups, health trend, collector coverage |
+| `expansion` | `ExpansionView` | greedy ranked candidates with raw flows, distance method, allocated volume, score parts and penalties, alternatives, exclusions and dead ends, proven cargo economics, estimated town anchors, starved consumers, vehicle-fit evidence |
+| `lines-history` | `LinesHistoryView` | line series, early/recent medians, MAD, every threshold term, maturity, class and reason, sampled occupancy, vehicle-change events, created/removed lines, manual follow-ups |
+| `history` | `HistoryView` | company periods, growth and year-over-year, year-ends, turnover, milestones and extremes, earnings-offset segments, purchase cohorts |
+| `industries` | `IndustriesView` | complete/unknown flows, cohort aggregates, lifecycle events, service outliers, chains, stock progression, closure exposure, name-inferred links, manual review |
+| `vehicle-roi` | `VehicleRoiView` | vehicle observations, carrier/model/cargo/age groups and ranks, same-line comparisons, trends, mismatch and size-fit screens, weak groups and swap hypotheses |
+| `towns` | `TownsView` | capacity/usage/demand rows and ranks, growth and stall screens, coverage, headroom, hotspots, passenger pairs, key observations |
+
+The base reports (company, lines, fleet, cargo, annual, decisions) use internal typed projections of the same kind
+(`facts.py`); they are not extra public view names. Report builders only choose sections, wording, formatting, escaping,
+chart styling and display caps (with accurate omitted counts); they never decide whether a diagnostic is true or a candidate
+eligible, so Markdown, HTML and the structured result agree on every number, rank and event date.
+
+`evaluate` (stored evidence, no documents), `analyse` (ingest, evaluate, compose, publish) and `report` (compose and publish
+one kind) differ only in what they acquire and write. `evaluate --view` never ingests, refreshes, renders or writes, and
+without `--view` no extended history is read.
+
+All of this runs from an installed package. Evaluation and report composition read the configured companion store, the packaged
+methodologies and your imported methodology files; nothing reads a source checkout's `data/` folder, and no personal save path,
+line-name convention or town code is required (a methodology can classify by factual fields alone). Reports generated earlier
+by retired author-local scripts stay where they are as historical files; they are not regenerated or relabelled.
+
+**Criteria.** Methodology-owned judgments (`report_policies` and shared engine thresholds) are applied under the evaluation's
+effective values and origins; changing a methodology changes classes, ranks and scores, never measured values such as medians,
+MAD, distances or counters. Statistical minima (for example five line-history points, three vehicles or samples for ROI
+groups, three samples for persistence) and algorithm limits (expansion `TOP_N=10`, town `PAIR_POOL=10`) stay engine-owned. Heuristics
+that are not part of the registry (town quantile and headroom screens, history gap and earnings-offset heuristics, ROI
+weak-group loss share and capacity-per-cost ordering) are disclosed under each view's `criteria` as fixed engine screens, not
+configurable policy and not physical facts.
+
+**Bounded reads.** Every query is bounded in SQL at or before the selected endpoint; stored rows after it (a retained rewound
+branch) never reach a result, and a historical closing endpoint has its own bounded evaluation. Compact histories stream in
+batches of 256 rows over the whole eligible prefix; full snapshots are hydrated only under each view's sampling bound
+(`coverage.hydrationLimit`: bottlenecks 240, expansion 21, lines-history 12 plus the endpoint, vehicle-roi 33, history, industries
+and towns only the endpoint). `coverage` also lists the eligible, read and used sample counts, the sampled references and the
+collector-error families. Missing values are `null` with a reason, never zero; known subtotals state how many members were unknown.
+
+## Calendar time, ages and policy disclosure
+
+All age and elapsed-duration consumers share `game-calendar-v1`. One `GAME-YEAR` is 365.25 elapsed in-game Gregorian days,
+including real leap dates; it is not the collector's nominal `meta.yearDuration` query window or wall-clock time.
+Exact dated anchors are used directly. An interior timestamp can be interpolated only within an enclosing observed span
+of at least seven calendar days; interpolation is labelled an estimate. No nominal fallback or extrapolation is used.
+
+Examples:
+- Two anchors exactly 366 calendar days apart give `366 / 365.25` GAME-YEAR, not exactly one.
+- A purchase older than the first observed calendar anchor has unknown age, not age zero.
+- A single dated observation can establish zero age for a purchase at exactly that observation tick, but cannot date older purchases.
+- Missing/ambiguous intervals cannot be annualized; known zero intervals are distinct and also cannot be divisors.
+
+Line age is the oldest currently assigned vehicle's age, not line creation time. First-observed service history is labelled
+separately. The company comparison selects an observed baseline at/before the calendar target 365.25 days earlier and discloses
+the actual date/span. Decision follow-up distinguishes `elapsedGameYears` from a nominal collector-query-window diagnostic;
+neither establishes completed calendar accounting, profit-window completeness or causal impact.
+Model lifespan and raw `daysInDepot`/`daysAtTerminal` retain their independent unverified unit caveats.
+
+JSON rows expose `ageYears`, `ageTime` and `timeBasis`; summaries/manifests and XLSX disclose the same clock version, normalization,
+anchor hash and isolation warnings. Markdown and HTML use the same document model. Observable rewinds or contradictory dates
+refuse cross-snapshot conversion; monotone legacy stores are still `legacy-unverified`, not proven isolated saves.
+Existing evidence and user methodology files are never migrated, and old report files are not regenerated automatically.
+Historical files without time provenance have an unknown time basis.
+
+Finite methodology `report_policies` can alter verdict/ranking criteria in industries, line-history, bottlenecks and expansion.
+Shared stock/load/maturity/fleet thresholds also reach the corresponding report helpers, including vehicle-ROI fit.
+Reports disclose applicable effective values, units and default-versus-methodology origins; manifests carry the full registry.
+Sample sufficiency minima, missing-value handling, bounded history and game mechanics remain engine-owned.
+Finding-code overrides apply to matching findings, not every report screening row. See [methodologies](methodologies.md).
+
 
 ## Formats and offline privacy
 

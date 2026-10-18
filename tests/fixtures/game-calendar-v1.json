@@ -1,0 +1,17 @@
+{
+  "version": "game-calendar-v1",
+  "daysPerYear": 365.25,
+  "nominalYearDuration": 91312,
+  "samples": [
+    [0, "1980-01-01"],
+    [28000, "1980-01-29"],
+    [42000, "1980-02-12"],
+    [70000, "1980-02-26"]
+  ],
+  "purchaseTick": 14000,
+  "evaluationTick": 28000,
+  "expectedElapsedDays": 14,
+  "expectedMethod": "calendar-interpolation",
+  "unsupportedPurchaseTick": -1,
+  "unsupportedReason": "outside-observed-calendar"
+}

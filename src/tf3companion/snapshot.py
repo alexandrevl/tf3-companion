@@ -11,6 +11,7 @@ from typing import Any
 from . import luadata
 
 SUPPORTED_SCHEMA = 1
+READABLE_SCHEMA = 3  # Stored additive schema-1/2/3 evidence; collector support remains separate.
 SNAPSHOT_FILE = re.compile(r"^tf3c_snap_(\d+)\.lua$")
 
 
@@ -36,9 +37,9 @@ class Snapshot:
         schema = meta.get("schemaVersion")
         if type(schema) is not int or schema < 1:
             raise ValueError("snapshot schemaVersion must be a positive integer")
-        if schema > SUPPORTED_SCHEMA:
-            raise ValueError(f"snapshot schema {schema} is newer than supported schema "
-                             f"{SUPPORTED_SCHEMA}; update TF3 Companion.")
+        if schema > READABLE_SCHEMA:
+            raise ValueError(f"snapshot schema {schema} is newer than readable schema "
+                             f"{READABLE_SCHEMA}; update TF3 Companion.")
         for key in ("gameTime", "yearDuration", "requestId", "year"):
             value = meta.get(key)
             if (key == "gameTime" or value is not None) and (
@@ -112,10 +113,9 @@ class Snapshot:
         year = self.meta.get("year")
         return str(year) if year else f"t={self.game_time}"
 
-    def age_years(self, game_time: int | None) -> float | None:
-        if game_time is None or not self.year_duration:
-            return None
-        return (self.game_time - game_time) / self.year_duration
+    def age_years(self, game_time: int | None, *, clock=None) -> float | None:
+        """Calendar GAME-YEAR age; a standalone snapshot has no implicit clock."""
+        return clock.elapsed_between_ticks(game_time, self.game_time).value if clock else None
 
     # ---- sections --------------------------------------------------------------
     @property

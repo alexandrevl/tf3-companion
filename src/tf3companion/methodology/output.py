@@ -79,15 +79,10 @@ def write_bundle(folder: Path, files: dict[str, str], manifest: dict[str, Any]) 
 
 
 def add_files(folder: Path, files: dict[str, str], manifest: dict[str, Any]) -> Path:
-    """Write individual files (single-kind reports) into a lens folder and merge them into its manifest."""
-    folder.mkdir(parents=True, exist_ok=True)
-    for name, content in files.items():
-        atomic_write(folder / name, content)
-    path = folder / MANIFEST
-    try:
-        current = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
-    except (OSError, ValueError):
-        current = {}
-    names = sorted({*current.get("files", []), *files, MANIFEST})
-    atomic_write(path, manifest_text({**current, **manifest, "files": names}))
-    return folder
+    """Stage the complete existing folder plus new files before publishing a replacement."""
+    merged: dict[str, str] = {}
+    if folder.is_dir():
+        merged = {p.name: p.read_text(encoding="utf-8") for p in folder.iterdir()
+                  if p.is_file() and p.name != MANIFEST}
+    merged.update(files)
+    return write_bundle(folder, merged, manifest)

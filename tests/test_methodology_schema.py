@@ -118,3 +118,60 @@ def test_cross_reference_mistakes_are_caught_only_by_the_validator(name):
     data = mutated(VALIDATOR_ONLY[name])
     assert schema_accepts(data)
     assert not validator_accepts(data)
+
+
+# report_policies: structural and range rules must agree between schema and runtime validator.
+# Cross-field rules (weight total, distance ordering) are runtime-only by design.
+def _with_policies(policies):
+    data = copy.deepcopy(VALID["default"])
+    data["report_policies"] = policies
+    return data
+
+
+def _policy_cases():
+    from tf3companion.report_policy import REGISTRY
+    valid, invalid = [], []
+    for family, entries in REGISTRY.items():
+        valid.append((f"{family} empty", {family: {}}))
+        for key, spec in entries.items():
+            cross_field = key.startswith("weight_") or key.startswith("distance_") and key.endswith("_km")
+            good = [spec.default] if cross_field else [spec.default, spec.maximum]
+            if not cross_field:
+                good.append(spec.minimum if not spec.exclusive_minimum else spec.default / 2)
+            for value in good:
+                value = int(value) if spec.integer else value
+                valid.append((f"{family}.{key}={value}", {family: {key: value}}))
+            bad = [spec.maximum + 1, "1", True, None, [1], {"v": 1}]
+            bad.append(spec.minimum if spec.exclusive_minimum else spec.minimum - 1)
+            if spec.integer:
+                bad.append(spec.default + 0.5)
+            for value in bad:
+                invalid.append((f"{family}.{key}={value!r}", {family: {key: value}}))
+            invalid.append((f"{family}.{key} sibling unknown", {family: {key: spec.default, "ghost": 1}}))
+    invalid += [("unknown family", {"ghost": {}}), ("family not object", {"bottlenecks": 3}),
+                ("policies not object", [])]
+    return valid, invalid
+
+
+_VALID_POLICIES, _INVALID_POLICIES = _policy_cases()
+
+
+@pytest.mark.parametrize("name,policies", _VALID_POLICIES, ids=[n for n, _ in _VALID_POLICIES])
+def test_report_policies_valid_values_accepted_by_both(name, policies):
+    data = _with_policies(policies)
+    assert schema_accepts(data) and validator_accepts(data)
+
+
+@pytest.mark.parametrize("name,policies", _INVALID_POLICIES, ids=[n for n, _ in _INVALID_POLICIES])
+def test_report_policies_structural_and_range_errors_rejected_by_both(name, policies):
+    data = _with_policies(policies)
+    assert not schema_accepts(data), "the schema should reject this"
+    assert not validator_accepts(data), "the validator should reject this"
+
+
+def test_report_policies_cross_field_rules_are_runtime_only():
+    for policies in ({"expansion": {"weight_volume": 29}},
+                     {"expansion": {"distance_short_km": 3}}):
+        data = _with_policies(policies)
+        assert schema_accepts(data)
+        assert not validator_accepts(data)

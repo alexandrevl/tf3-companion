@@ -67,8 +67,8 @@ class SaveScope:
 
     def binding(self) -> str | None:
         value = self._read().get("methodology")
-        if value is not None and not isinstance(value, str):
-            raise ValueError(f"{self.metadata}: 'methodology' must be a string.")
+        if value is not None and (not isinstance(value, str) or not value.strip()):
+            raise ValueError(f"{self.metadata}: 'methodology' must be a nonempty library reference.")
         return value
 
     def set_binding(self, ref: str | None) -> None:
@@ -88,3 +88,47 @@ class SaveScope:
         except BaseException:
             Path(tmp).unlink(missing_ok=True)
             raise
+
+
+@dataclass(frozen=True)
+class UserPreference:
+    """Dedicated preference owned by the library root, never a save scope."""
+
+    root: Path
+
+    @property
+    def metadata(self) -> Path:
+        return self.root / "user-methodology.json"
+
+    def reference(self) -> str | None:
+        if not self.metadata.exists():
+            return None
+        try:
+            data = json.loads(self.metadata.read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or set(data) - {"schema", "methodology"}:
+                raise ValueError("expected a preference object with only schema and methodology")
+            if data.get("schema") != "tf3c-user-methodology/1":
+                raise ValueError("unsupported preference schema")
+            if "methodology" not in data:
+                return None
+            from .library import parse_ref
+            value = data["methodology"]
+            parse_ref(value)
+            return value
+        except (OSError, ValueError, TypeError) as exc:
+            raise ValueError(f"Cannot read user default {self.metadata}: {exc}. "
+                             "Use `tf3c methodology set-default REF` or `tf3c methodology clear-default`.") from exc
+
+    def set_reference(self, ref: str | None) -> dict[str, Any]:
+        previous, error = None, None
+        try:
+            previous = self.reference()
+        except ValueError as exc:
+            error = str(exc)
+        if ref is not None or self.metadata.exists():
+            from .library import _atomic_bytes
+            data = {"schema": "tf3c-user-methodology/1"}
+            if ref is not None:
+                data["methodology"] = ref
+            _atomic_bytes(self.metadata, (json.dumps(data, indent=2) + "\n").encode())
+        return {"previousReference": previous, "previousError": error}

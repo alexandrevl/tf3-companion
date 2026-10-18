@@ -36,7 +36,7 @@ class Thresholds:
     overloaded_load: float = 0.9          # line occupancy at snapshot time
     underused_load: float = 0.3
     underused_min_vehicles: int = 2
-    mature_years: float = 1.0             # profit window is one year; younger lines are partial
+    mature_years: float = 1.0             # GAME-YEAR policy, not proof of financial-window completeness
     idle_depot_days: int = 30
     unshipped_ratio: float = 0.5          # shipped / produced below this = cargo left behind
     profit_drop_ratio: float = 0.3        # line profit fell by more than 30% since previous snapshot
@@ -60,6 +60,7 @@ class Finding:
     methodology: str | None = None        # id@version of the methodology applied
     methodology_hash: str | None = None   # sha256:<12 hex> of the methodology file
     source: str = "engine"                # engine | methodology
+    methodology_selection: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -85,15 +86,22 @@ def line_carrier(snap: Snapshot, line: dict[str, Any]) -> str | None:
     return carriers.most_common(1)[0][0] if carriers else None
 
 
-def line_age_years(snap: Snapshot, line: dict[str, Any]) -> float | None:
-    """Age of the oldest vehicle on the line: a lower bound for how long the line has been running."""
+def line_age_time(snap: Snapshot, line: dict[str, Any], *, clock=None):
+    from .game_time import TimeMeasure
     times = [v["purchaseTime"] for v in snap.line_vehicles(line) if v.get("purchaseTime") is not None]
-    return snap.age_years(min(times)) if times else None
+    if not times:
+        return TimeMeasure(None, reason="missing-timestamp")
+    return clock.elapsed_between_ticks(min(times), snap.game_time) if clock else TimeMeasure(None, reason="missing-calendar-context")
 
 
-def line_row(snap: Snapshot, line: dict[str, Any]) -> dict[str, Any]:
+def line_age_years(snap: Snapshot, line: dict[str, Any], *, clock=None) -> float | None:
+    """Oldest currently assigned vehicle age, not line creation or first observation."""
+    return line_age_time(snap, line, clock=clock).value
+
+
+def line_row(snap: Snapshot, line: dict[str, Any], *, clock=None) -> dict[str, Any]:
     load = line_load(line)
-    age = line_age_years(snap, line)
+    age_time = line_age_time(snap, line, clock=clock)
     return {
         "id": line["id"],
         "name": line.get("name"),
@@ -105,12 +113,15 @@ def line_row(snap: Snapshot, line: dict[str, Any]) -> dict[str, Any]:
         "rate": line.get("rate"),
         "load": round(load, 3) if load is not None else None,
         "issues": len(line.get("issues") or []),
-        "ageYears": round(age, 2) if age is not None else None,
+        "ageYears": age_time.value,
+        "ageTime": age_time.to_dict(),
+        "timeBasis": clock.time_basis if clock else None,
     }
 
 
-def vehicle_row(snap: Snapshot, vehicle: dict[str, Any]) -> dict[str, Any]:
-    age = snap.age_years(vehicle.get("purchaseTime"))
+def vehicle_row(snap: Snapshot, vehicle: dict[str, Any], *, clock=None) -> dict[str, Any]:
+    from .game_time import TimeMeasure
+    age_time = clock.elapsed_between_ticks(vehicle.get("purchaseTime"), snap.game_time) if clock else TimeMeasure(None, reason="missing-calendar-context")
     line = snap.lines_by_id.get(vehicle.get("line"))
     models = [snap.models.get(m, {}).get("name") or snap.models.get(m, {}).get("res") for m in vehicle.get("models") or []]
     return {
@@ -121,7 +132,9 @@ def vehicle_row(snap: Snapshot, vehicle: dict[str, Any]) -> dict[str, Any]:
         "line": vehicle.get("line"),
         "lineName": line.get("name") if line else None,
         "models": sorted({m for m in models if m}),
-        "ageYears": round(age, 2) if age is not None else None,
+        "ageYears": age_time.value,
+        "ageTime": age_time.to_dict(),
+        "timeBasis": clock.time_basis if clock else None,
         "profitYear": vehicle.get("profitYear"),
         "value": vehicle.get("value"),
         "maintenanceState": vehicle.get("maintenanceState"),
@@ -211,10 +224,10 @@ def _entity(kind: str, item: dict[str, Any]) -> dict[str, Any]:
     return {"type": kind, "id": item.get("id"), "name": item.get("name")}
 
 
-def _line_findings(snap: Snapshot, prev: Snapshot | None, t: Thresholds) -> list[Finding]:
+def _line_findings(snap: Snapshot, prev: Snapshot | None, t: Thresholds, *, clock=None) -> list[Finding]:
     out: list[Finding] = []
     for line in snap.lines:
-        row = line_row(snap, line)
+        row = line_row(snap, line, clock=clock)
         name = row["name"] or f"line {row['id']}"
         mature = row["ageYears"] is not None and row["ageYears"] >= t.mature_years
 
@@ -230,7 +243,7 @@ def _line_findings(snap: Snapshot, prev: Snapshot | None, t: Thresholds) -> list
 
         profit = row["profitYear"]
         if profit is not None and profit < 0 and row["vehicles"] > 0:
-            partial = "" if mature else " (line younger than 1 year: the number is partial)"
+            partial = "" if mature else (f" (calendar age below maturity policy {t.mature_years:g} GAME-YEAR)" if row["ageYears"] is not None else " (calendar maturity unknown; conservative low-severity policy)")
             out.append(Finding(
                 "line_losing_money", "high" if mature else "low", "lines", f"{name}: loss over the last year",
                 f"Annual result {profit:,}{partial}. Current load: {_pct(row['load'])}.",
@@ -283,11 +296,11 @@ def _line_findings(snap: Snapshot, prev: Snapshot | None, t: Thresholds) -> list
     return out
 
 
-def _vehicle_findings(snap: Snapshot, t: Thresholds) -> list[Finding]:
+def _vehicle_findings(snap: Snapshot, t: Thresholds, *, clock=None) -> list[Finding]:
     out: list[Finding] = []
     idle: list[dict[str, Any]] = []
     for v in snap.vehicles:
-        row = vehicle_row(snap, v)
+        row = vehicle_row(snap, v, clock=clock)
         name = row["name"] or f"vehicle {row['id']}"
         if v.get("noPath"):
             out.append(Finding(
@@ -360,7 +373,7 @@ def _data_findings(snap: Snapshot) -> list[Finding]:
 
 def findings(
     snap: Snapshot, prev: Snapshot | None = None, t: Thresholds | None = None,
-    history: list[Snapshot] | None = None, methodology: Any = None, verdicts: Any = None,
+    history: list[Snapshot] | None = None, methodology: Any = None, verdicts: Any = None, *, clock=None,
 ) -> list[Finding]:
     """Engine findings, then the methodology's role-scoped overrides and rule findings.
 
@@ -371,8 +384,8 @@ def findings(
         from .methodology import thresholds_for
         t = thresholds_for(methodology)
     out = (
-        _line_findings(snap, prev, t)
-        + _vehicle_findings(snap, t)
+        _line_findings(snap, prev, t, clock=clock)
+        + _vehicle_findings(snap, t, clock=clock)
         + _industry_findings(snap, t)
         + _stock_findings(snap, t)
         + _data_findings(snap)
@@ -400,11 +413,13 @@ def findings(
         from .methodology import engine
 
         if verdicts is None:
-            verdicts = engine.evaluate(methodology, snap)
+            verdicts = engine.evaluate(methodology, snap, history=history, clock=clock)
         out = engine.apply_finding_overrides(methodology, verdicts, out)
         for item in out:
             item.methodology, item.methodology_hash = methodology.identity, methodology.short_hash
         out += engine.rule_findings(methodology, verdicts)
+        for item in out:
+            item.methodology_selection = dict(methodology.selection)
     return sorted(out, key=lambda f: (SEVERITY_ORDER[f.severity], f.category, f.title))
 
 

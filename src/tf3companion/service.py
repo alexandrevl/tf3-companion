@@ -6,6 +6,7 @@ import dataclasses
 import math
 from collections import deque
 from contextlib import contextmanager
+from typing import Iterator
 import tempfile
 import os
 import sys
@@ -16,7 +17,8 @@ from pathlib import Path
 from typing import Any
 
 from . import analysis, luadata
-from .paths import Paths, load_paths
+from .paths import Paths, data_directory, load_paths
+from .evaluation import Evaluation, evaluate_selected, with_views
 from .export import export_workbook
 from .methodology.lens import PROBE_SNAPSHOTS, Lens, build_lens
 from .methodology.resolve import Resolver, describe
@@ -35,18 +37,32 @@ class NoSnapshotError(RuntimeError):
 
 
 class Companion:
-    def __init__(self, paths: Paths | None = None, save: str | None = None) -> None:
-        base = paths or load_paths()
+    def __init__(self, paths: Paths | None = None, save: str | None = None, *, read_only: bool = False) -> None:
+        base = paths or (_stored_paths(None) if read_only else load_paths())
         self.resolver = Resolver(base.data, save)
         self.scope = self.resolver.scope
         self.paths = dataclasses.replace(base, data=self.scope.root) if self.scope.isolated else base
-        self.store = Store(self.paths.database)
+        self.store = Store(self.paths.database, read_only=read_only)
+
+    @classmethod
+    def open_stored(cls, data: Path | None = None, save: str | None = None) -> "Companion":
+        """A stored-evidence-only Companion: no Steam discovery, no directory or database creation, no ingestion.
+
+        An absent store raises `LookupError`; an existing but unsupported schema raises `ValueError`
+        without being migrated; a supported empty store opens and raises `NoSnapshotError` on use.
+        """
+        return cls(_stored_paths(data), save, read_only=True)
 
     def close(self) -> None:
         self.store.close()
 
+    def _require_ingestion(self) -> None:
+        if self.store.read_only:
+            raise ValueError("This Companion reads stored evidence only; acquire evidence with `tf3c ingest` or `tf3c refresh`.")
+
     # ---- data flow ---------------------------------------------------------------
     def ingest(self) -> dict[str, Any]:
+        self._require_ingestion()
         result = self.store.ingest_folders([self.paths.snapshot_folder])
         return {
             "ingested": result.ingested,
@@ -57,6 +73,7 @@ class Companion:
 
     def refresh(self, timeout_s: float = 30.0, poll_s: float = 1.0) -> dict[str, Any]:
         """Atomically request one snapshot, without overlapping other refresh writers."""
+        self._require_ingestion()
         if not math.isfinite(timeout_s) or not 0 < timeout_s <= 3600:
             raise ValueError("timeout must be finite and between 0 and 3600 seconds.")
         if not math.isfinite(poll_s) or poll_s <= 0:
@@ -98,6 +115,22 @@ class Companion:
             raise NoSnapshotError()
         return snap
 
+    @contextmanager
+    def _selection(self, *, ingest: bool) -> Iterator[tuple[Snapshot, Snapshot | None]]:
+        """Select the latest snapshot and its predecessor once, inside one consistent read view.
+
+        Checked ingestion (when requested) happens first and is never part of the view. Everything read
+        by the operation while the view is open sees the selected state, even if another process
+        stores newer evidence meanwhile; the next operation selects again.
+        """
+        if ingest:
+            self._checked_ingest()
+        with self.store.read_view():
+            snap = self.store.latest()
+            if snap is None:
+                raise NoSnapshotError()
+            yield snap, self.store.previous_of(snap)
+
     def _with_prev(self) -> tuple[Snapshot, Snapshot | None]:
         snap = self.current()
         return snap, self.store.previous_of(snap)
@@ -136,16 +169,18 @@ class Companion:
 
     def overview(self) -> dict[str, Any]:
         snap, prev = self._with_prev()
-        return analysis.company_overview(snap, prev)
+        return {**analysis.company_overview(snap, prev), "timeBasis": self.store.time_context(snap).time_basis}
 
     def lines(self, sort_by: str = "profitYear", limit: int = 50) -> list[dict[str, Any]]:
         _positive_limit(limit)
         snap = self.current()
-        rows = [analysis.line_row(snap, line) for line in snap.lines]
+        clock = self.store.time_context(snap)
+        rows = [analysis.line_row(snap, line, clock=clock) for line in snap.lines]
         return _sorted(rows, sort_by)[:limit]
 
     def line_detail(self, ref: int | str) -> dict[str, Any]:
         snap = self.current()
+        clock = self.store.time_context(snap)
         line = snap.find_line(ref)
         if line is None:
             candidates = [l.get("name") for l in snap.lines if str(ref).casefold() in (l.get("name") or "").casefold()]
@@ -155,11 +190,11 @@ class Companion:
             for stop in line.get("stops") or []
         ]
         return {
-            **analysis.line_row(snap, line),
+            **analysis.line_row(snap, line, clock=clock),
             "stops": stops,
             "capacity": [{**c, "cargo": snap.cargo(c.get("cargo"))} for c in line.get("capacity") or []],
             "issues": [{**i, "cargo": snap.cargo(i.get("cargo"))} for i in line.get("issues") or []],
-            "vehicleList": [analysis.vehicle_row(snap, v) for v in snap.line_vehicles(line)],
+            "vehicleList": [analysis.vehicle_row(snap, v, clock=clock) for v in snap.line_vehicles(line)],
             "history": self.store.line_history(line["id"]),
         }
 
@@ -172,7 +207,8 @@ class Companion:
             if target is None:
                 raise LookupError(f"Line '{line}' not found.")
             items = snap.line_vehicles(target)
-        rows = [analysis.vehicle_row(snap, v) for v in items]
+        clock = self.store.time_context(snap)
+        rows = [analysis.vehicle_row(snap, v, clock=clock) for v in items]
         if filter == "losing":
             rows = [r for r in rows if (r["profitYear"] or 0) < 0]
         elif filter == "problems":
@@ -286,18 +322,21 @@ class Companion:
 
     def report(self, kind: str, year: int | None = None, html: bool = False, methodology: str | None = None,
                allow_path: bool = False, param_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Render a snapshot-backed report into the methodology's lens folder, atomically."""
+        """Compose a snapshot-backed report once, then render and publish it into the lens folder, atomically."""
         from .methodology import output
-        from .reports import render_report
+        from .reports import compose_report
+        from .reports import render_html, render_markdown
 
-        snap = self.current()
-        lens = self.lens(methodology, snap, allow_path=allow_path, overrides=param_overrides)
-        markdown = render_report(self.store, kind, year=year, lens=lens)
+        with self._selection(ingest=True) as (snap, prev):
+            evaluation = self._evaluation(methodology, snap, prev, allow_path=allow_path, overrides=param_overrides)
+            lens = evaluation.lens
+            document = compose_report(self.store, kind, year=year, lens=lens)
+        markdown = render_markdown(document)
         stem = f"annual-{year if year is not None else snap.meta.get('year', snap.meta.get('date', {}).get('year'))}" if kind == "annual" else kind
         files_out = {f"{stem}.md": markdown}
         result: dict[str, Any] = {"markdown": markdown, "date": snap.date_label, "methodology": lens.provenance()}
         if html:
-            files_out[f"{stem}.html"] = render_report(self.store, kind, year=year, html=True, lens=lens)
+            files_out[f"{stem}.html"] = render_html(document)
         folder = output.add_files(output.lens_folder(self.scope, snap, lens.methodology), files_out,
                                   self._manifest(lens))
         output.atomic_write(self.scope.reports / output.LATEST, markdown)
@@ -324,7 +363,9 @@ class Companion:
     def _manifest(self, lens: Lens) -> dict[str, Any]:
         v = lens.verdicts
         return {
-            "methodology": lens.provenance(), "snapshot": v.snapshot, "save": self.scope.describe(),
+            "methodology": lens.provenance(), "selection": dict(lens.methodology.selection),
+            "snapshot": v.snapshot, "save": self.scope.describe(),
+            "timeBasis": lens.clock.time_basis, **lens.report_context.provenance(),
             "skipped": v.skipped, "unsupported": v.unsupported, "notEvaluable": v.not_evaluable,
             "counts": v.counts(), "disabledFindings": v.disabled_findings,
         }
@@ -334,34 +375,57 @@ class Companion:
 
     def methodology_detail(self, ref: str, allow_path: bool = False) -> dict[str, Any]:
         """Description, roles, rules, parameters and data needs; methodology free text sits under `untrusted`."""
-        from .methodology.support import snapshot_probe, static_probe
+        from .methodology.library import looks_like_path, LibraryError, PLACE_HINT
+        if looks_like_path(ref):
+            if not allow_path:
+                raise LibraryError(PLACE_HINT)
+            m, origin = self.resolver.library.load_path(ref), "file"
+        else:
+            m, origin = self.resolver.library.resolve(ref), "request"
+        return describe(m, origin, self.scope)
 
-        m, origin = self.resolver.resolve(ref, allow_path=allow_path)
-        self.ingest()  # the probe looks at the stored snapshots, so import any new ones first
-        probe = snapshot_probe(self.store.recent_snapshots(PROBE_SNAPSHOTS)) if self.store.latest() else static_probe
-        return describe(m, origin, self.scope, probe)
+    def _evaluation(self, request: str | None, snap: Snapshot, previous: Snapshot | None, *,
+                    allow_path: bool = False, overrides: dict[str, Any] | None = None) -> Evaluation:
+        lens = self.lens(request, snap, allow_path=allow_path, overrides=overrides)
+        return evaluate_selected(lens, previous, self.scope)
+
+    def evaluate(self, methodology: str | None = None, allow_path: bool = False,
+                 param_overrides: dict[str, Any] | None = None, views: tuple[str, ...] | list[str] = ()) -> dict[str, Any]:
+        """Complete analytical result of a methodology over the stored latest snapshot.
+
+        Stored evidence only: it never ingests, requests or writes anything, and the result holds no
+        report or output-folder information. `views` names finite analysis views (see
+        `analysis_views.VIEW_NAMES`) to add under `analysisViews`; unknown names are rejected before
+        anything is read, and none is computed by default. Acquire new evidence with `ingest` or
+        `refresh` first.
+        """
+        from .analysis_views import select_views
+        names = select_views(views)
+        with self._selection(ingest=False) as (snap, prev):
+            evaluation = self._evaluation(methodology, snap, prev, allow_path=allow_path, overrides=param_overrides)
+            return with_views(evaluation, self.store, names).to_dict()
 
     def analyse(self, methodology: str | None = None, allow_path: bool = False,
                 param_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Evaluate the methodology on the latest snapshot, write its report bundle and summarise."""
+        """Check-ingest, evaluate the methodology, write its report bundle and summarise the evaluation."""
         from .methodology import output
         from .reports import render_report
 
-        snap, prev = self._with_prev()  # NoSnapshotError before anything is written
-        lens = self.lens(methodology, snap, allow_path=allow_path, overrides=param_overrides)
-        m, v = lens.methodology, lens.verdicts
-        found = analysis.findings(snap, prev, methodology=m, verdicts=v)
-        kinds = list((m.data.get("reports") or {}).get("kinds") or DEFAULT_KINDS)
-        kinds = [k for k in dict.fromkeys(kinds) if k != "methodology"]
-        reports_out: dict[str, str] = {}
-        for kind in kinds:
-            try:
-                reports_out[f"{kind}.md"] = render_report(self.store, kind, lens=lens)
-            except ValueError as exc:
-                raise ValueError(f"Report '{kind}' of {m.identity} could not be generated: {exc}") from exc
-        reports_out["methodology.md"] = render_report(self.store, "methodology", lens=lens)
+        with self._selection(ingest=True) as (snap, prev):  # NoSnapshotError before anything is written
+            evaluation = self._evaluation(methodology, snap, prev, allow_path=allow_path, overrides=param_overrides)
+            lens = evaluation.lens
+            m = lens.methodology
+            kinds = list((m.data.get("reports") or {}).get("kinds") or DEFAULT_KINDS)
+            kinds = [k for k in dict.fromkeys(kinds) if k != "methodology"]
+            reports_out: dict[str, str] = {}
+            for kind in kinds:
+                try:
+                    reports_out[f"{kind}.md"] = render_report(self.store, kind, lens=lens)
+                except ValueError as exc:
+                    raise ValueError(f"Report '{kind}' of {m.identity} could not be generated: {exc}") from exc
+            reports_out["methodology.md"] = render_report(self.store, "methodology", lens=lens)
         folder = output.write_bundle(output.lens_folder(self.scope, snap, m), reports_out, self._manifest(lens))
-        return summarise(lens, found, folder, sorted([*reports_out, output.MANIFEST]), self.scope)
+        return summarise(evaluation.to_dict(), folder, sorted([*reports_out, output.MANIFEST]))
 
     def findings(self, category: str | None = None, severity: str | None = None, methodology: str | None = None,
                  allow_path: bool = False) -> list[dict[str, Any]]:
@@ -369,9 +433,8 @@ class Companion:
             raise ValueError("category must be finance, lines, vehicles, industries or data.")
         if severity is not None and severity not in ("high", "medium", "low"):
             raise ValueError("severity must be high, medium or low.")
-        snap, prev = self._with_prev()
-        lens = self.lens(methodology, snap, allow_path=allow_path)
-        items = analysis.findings(snap, prev, methodology=lens.methodology, verdicts=lens.verdicts)
+        with self._selection(ingest=True) as (snap, prev):
+            items = self._evaluation(methodology, snap, prev, allow_path=allow_path).findings
         if category:
             items = [f for f in items if f.category == category]
         if severity:
@@ -422,6 +485,12 @@ class Companion:
             selected = (line.rstrip("\r\n") for line in handle
                         if not bridge_only or LOG_PREFIX in line)
             return list(deque(selected, maxlen=lines))
+
+
+def _stored_paths(data: Path | None) -> Paths:
+    """Locations for stored-only work; the unused game folder is never discovered or touched."""
+    root = Path(data) if data is not None else data_directory()
+    return Paths(userdata=root, data=root)
 
 
 def _positive_limit(value: int, name: str = "limit") -> None:

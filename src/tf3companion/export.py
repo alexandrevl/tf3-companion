@@ -243,29 +243,33 @@ def _apply_font(wb: Workbook) -> None:
 def export_workbook(store: Store, snap: Snapshot, prev: Snapshot | None, folder: Path) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     wb = Workbook()
+    clock = store.time_context(snap)
 
     ws = wb.active
     ws.title = "Summary"
     _summary(ws, snap, analysis.company_overview(snap, prev))
+    for key, value in clock.time_basis.items():
+        ws.append(["Time Basis: " + key, str(value)])
+    ws.append(["Age unit", "GAME-YEAR = 365.25 calendar days; bracketed interpolation is an estimate"])
 
     charts = wb.create_sheet("Charts")
     _charts_sheet(charts, wb.create_sheet("Chart Data"), snap)
 
-    lines = sorted((analysis.line_row(snap, l) for l in snap.lines), key=lambda r: r["profitYear"] or 0, reverse=True)
+    lines = sorted((analysis.line_row(snap, l, clock=clock) for l in snap.lines), key=lambda r: r["profitYear"] or 0, reverse=True)
     ws = wb.create_sheet("Lines")
     _table(ws, [
         ("Line", "name"), ("Id", "id"), ("Mode", "carrier"), ("Stops", "stops"), ("Vehicles", "vehicles"),
         ("Profit/year", "profitYear"), ("Transported/year", "transportedYear"), ("Rate", "rate"),
-        ("Current load", "load"), ("Issues", "issues"), ("Age (years)", "ageYears"),
+        ("Current load", "load"), ("Issues", "issues"), ("Age (GAME-YEAR)", "ageYears"), ("Age evidence", "ageTime"),
     ], lines)
 
     ws = wb.create_sheet("Vehicles")
     _table(ws, [
         ("Vehicle", "name"), ("Id", "id"), ("Mode", "carrier"), ("State", "state"), ("Line", "lineName"),
-        ("Models", "models"), ("Age (years)", "ageYears"), ("Profit/year", "profitYear"), ("Value", "value"),
+        ("Models", "models"), ("Age (GAME-YEAR)", "ageYears"), ("Age evidence", "ageTime"), ("Profit/year", "profitYear"), ("Value", "value"),
         ("Maintenance (0-1)", "maintenanceState"), ("No path", "noPath"), ("Stopped by player", "userStopped"),
         ("Days in depot", "daysInDepot"),
-    ], sorted((analysis.vehicle_row(snap, v) for v in snap.vehicles), key=lambda r: r["profitYear"] or 0))
+    ], sorted((analysis.vehicle_row(snap, v, clock=clock) for v in snap.vehicles), key=lambda r: r["profitYear"] or 0))
 
     industry_rows = []
     for ind in snap.industries:
@@ -310,7 +314,7 @@ def export_workbook(store: Store, snap: Snapshot, prev: Snapshot | None, folder:
     ws = wb.create_sheet("Findings")
     _table(ws, [
         ("Code", "code"), ("Severity", "severity"), ("Category", "category"), ("Title", "title"), ("Detail", "detail"), ("Suggestion", "suggestion"),
-    ], [f.to_dict() for f in analysis.findings(snap, prev, history=store.snapshots_for_year(snap.date['year']) if snap.date and hasattr(store, 'snapshots_for_year') else None)])
+    ], [f.to_dict() for f in analysis.findings(snap, prev, history=store.recent_snapshots(24, snap.game_time), clock=clock)])
     history = store.company_history(limit=1000)
     ws = wb.create_sheet("History")
     _table(ws, [

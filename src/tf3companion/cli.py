@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("ref")
     p = sub.add_parser("findings", help="problems and recommendations")
     p.add_argument("--json", action="store_true")
-    p.add_argument("--methodology", metavar="ID|FILE", help="id[@version] or a file path; default: save binding, then `default`")
+    p.add_argument("--methodology", metavar="ID|FILE", help="one-off id[@version] or path; otherwise save override > user default > packaged default")
     p = sub.add_parser("opportunities", help="unshipped cargo opportunities")
     p.add_argument("--limit", type=int, default=20)
     p = sub.add_parser("notes", help="read or append dated player notes")
@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--year", type=int)
     p.add_argument("--html", action="store_true")
     p.add_argument("--open", action="store_true")
-    p.add_argument("--methodology", metavar="ID|FILE", help="id[@version] or a file path; default: save binding, then `default`")
+    p.add_argument("--methodology", metavar="ID|FILE", help="one-off id[@version] or path; otherwise save override > user default > packaged default")
     sub.add_parser("mcp", help="start the MCP server over stdio")
     from .methodology.cli import add_parsers
 
@@ -99,6 +99,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "methodology":
             from .methodology.cli import run_methodology
             return run_methodology(args)
+        if args.command == "evaluate":
+            from .methodology.cli import parse_params, print_evaluation
+
+            companion = Companion.open_stored(save=args.save)
+            result = companion.evaluate(args.methodology, allow_path=True, param_overrides=parse_params(args.param),
+                                        views=args.view or ())
+            _print(result) if args.json else print_evaluation(result)
+            return 0
         companion = Companion(save=args.save) if args.command == "analyse" else Companion()
         match args.command:
             case "status":

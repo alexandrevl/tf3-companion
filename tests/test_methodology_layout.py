@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from conftest import YEAR, write_snapshot
-from methodology_helpers import Net, companion_with, troubled_company
+from methodology_helpers import Net, companion_with, troubled_company, methodology
 from tf3companion.cli import main
 from tf3companion.methodology import output
 from tf3companion.methodology.library import Library
@@ -83,7 +83,7 @@ def test_default_lens_generates_the_standard_set_plus_verdicts(paths):
         summary = companion.analyse()
     finally:
         companion.close()
-    assert summary["methodology"]["origin"] == "default"
+    assert summary["methodology"]["origin"] == "packaged-default"
     assert set(summary["files"]) == {"company.md", "lines.md", "fleet.md", "cargo.md", "methodology.md", "manifest.json"}
 
 
@@ -170,17 +170,24 @@ def test_no_snapshot_fails_and_writes_nothing(paths):
 
 
 def test_skipped_rules_are_visible_in_summary_report_and_manifest(paths):
-    Library(paths.data).import_file(LADDER)
-    companion = companion_with(paths, troubled_company())
+    draft = methodology(rules=[{
+        "id": "maintenance", "entity": "vehicle",
+        "outcomes": [{"when": {"field": "vehicle.maintenance_state", "op": "lt", "value": 0.7}, "marker": "problem"}],
+    }])
+    draft_file = paths.userdata / "maintenance.json"
+    draft_file.write_bytes(draft.raw)
+    Library(paths.data).import_file(draft_file)
+    observed = troubled_company()
+    for vehicle in observed["vehicles"]:
+        vehicle.pop("maintenanceState", None)
+    companion = companion_with(paths, observed)
     try:
-        summary = companion.analyse("mode-ladder")
+        summary = companion.analyse("test")
     finally:
         companion.close()
-    assert [(i["kind"], i["id"]) for i in summary["skipped"]] == [("ladder", "mode-by-distance")]
-    assert "missing data: station positions" in summary["skipped"][0]["reason"]
+    assert [(i["kind"], i["id"]) for i in summary["skipped"]] == [("rule", "maintenance")]
     folder = Path(summary["outputFolder"])
-    assert "mode-by-distance" in (folder / "methodology.md").read_text()
-    assert json.loads((folder / "manifest.json").read_text())["skipped"][0]["id"] == "mode-by-distance"
+    assert json.loads((folder / "manifest.json").read_text())["skipped"][0]["id"] == "maintenance"
 
 
 def test_single_report_is_written_into_the_lens_folder_with_latest_copy(paths):
@@ -217,10 +224,12 @@ def test_cli_analyse_end_to_end(tmp_path, monkeypatch, capsys):
     assert main(["methodology", "use", EXAMPLE]) == 0
     capsys.readouterr()
     assert main(["analyse"]) == 0
-    out = capsys.readouterr().out
-    assert "Methodology: local-feeder-intercity-trunk@1.0.0" in out and "from binding" in out
-    assert "Output folder:" in out and "Roles (line):" in out
+    capsys.readouterr()
+    first_manifest = data / "reports" / "1980-01-01__local-feeder-intercity-trunk@1.0.0" / "manifest.json"
+    before = first_manifest.read_bytes()
+    assert json.loads(before)["selection"]["origin"] == "save-override"
     assert main(["analyse", "--methodology", "default", "--param", "x=1"]) == 1  # default has no parameters
+    assert first_manifest.read_bytes() == before
     assert main(["analyse", "--methodology", "default"]) == 0
     assert folders(data) == ["1980-01-01__default@1.0.0", "1980-01-01__local-feeder-intercity-trunk@1.0.0"]
     capsys.readouterr()
@@ -228,3 +237,36 @@ def test_cli_analyse_end_to_end(tmp_path, monkeypatch, capsys):
     items = json.loads(capsys.readouterr().out)
     assert {i["methodology"] for i in items} == {"default@1.0.0"} and {i["source"] for i in items} == {"engine"}
     assert main(["analyse", "--methodology", str(tmp_path / "missing.json")]) == 1
+
+
+def test_selection_provenance_reaches_summary_manifest_header_and_findings(paths):
+    companion = companion_with(paths, troubled_company())
+    try:
+        summary = companion.analyse(EXAMPLE)
+        found = companion.findings(methodology=EXAMPLE)
+    finally:
+        companion.close()
+    expected = summary["methodology"]["selection"]
+    assert expected["origin"] == "request" and expected["reference"] == EXAMPLE
+    assert expected["libraryRoot"] == str(paths.data)
+    folder = Path(summary["outputFolder"])
+    assert json.loads((folder / "manifest.json").read_text())["selection"] == expected
+    header = (folder / "methodology.md").read_text()
+    assert "**Selection:**" in header and "request" in header.split("**Selection:**")[1].splitlines()[0]
+    assert found and all(f["methodology_selection"] == expected for f in found)
+
+
+def test_analyse_summary_is_a_presentation_of_the_same_evaluation(paths):
+    companion = companion_with(paths, troubled_company())
+    try:
+        summary = companion.analyse(EXAMPLE)
+        evaluation = companion.evaluate(EXAMPLE)
+    finally:
+        companion.close()
+    assert summary["methodology"] == evaluation["methodology"] and summary["snapshot"] == evaluation["snapshot"]
+    assert summary["findings"]["bySeverity"] == {
+        severity: sum(f["severity"] == severity for f in evaluation["findings"])
+        for severity in {f["severity"] for f in evaluation["findings"]}}
+    assert summary["recommendations"] == evaluation["recommendations"][:15]
+    assert "outputFolder" not in evaluation and "files" not in evaluation
+    assert not any(p.name == "evaluation.json" for p in Path(summary["outputFolder"]).iterdir())

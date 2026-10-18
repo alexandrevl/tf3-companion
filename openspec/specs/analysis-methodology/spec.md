@@ -7,12 +7,12 @@ Defines the analysis methodology: a declarative, shareable file that expresses a
 ## Requirements
 
 ### Requirement: Three-layer separation
-The system SHALL keep game mechanics (shared facts), methodology (player policy) and evidence (per-save snapshots) separate. A methodology SHALL be able to change classification, markers, severities, tolerances, recommendations and report selection, and SHALL NOT be able to change stored evidence, game-mechanics knowledge or the data caveats the analyst must disclose.
+The system SHALL keep game mechanics (shared facts), methodology (player policy) and evidence (per-save snapshots) separate. A methodology SHALL be able to change classification, markers, severities, tolerances, recommendations, report selection and registered report judgments/rankings, and SHALL NOT be able to change stored evidence, measured facts, game-mechanics knowledge, engine-owned evidence safeguards or the data caveats the analyst must disclose.
 
 #### Scenario: Same evidence, two lenses
 - **WHEN** the same snapshots are analysed with two different methodologies
 - **THEN** the measured values (profit, load, stock fill, ages) are identical in both outputs
-- **AND** only roles, markers, rule messages, recommendations and report selection differ
+- **AND** only roles, markers, rule messages, recommendations, report selection and policy-dependent report judgments/rankings differ
 
 #### Scenario: Methodology cannot weaken caveats
 - **WHEN** a methodology declares a threshold or text that contradicts a documented caveat (for example claiming instantaneous load is an average)
@@ -34,7 +34,7 @@ A methodology SHALL be one self-contained UTF-8 JSON file with a declared schema
 - **THEN** loading fails with an error stating the declared and supported versions and that no rule was evaluated
 
 ### Requirement: Strict structure, tolerant field references
-Unknown structural keys, wrong value types, undefined parameters, undefined roles or markers, duplicate identifiers inside the file, invalid regular expressions and size-limit violations SHALL make the whole file invalid with an error that names the location. A condition that references a field name unknown to this companion SHALL NOT invalidate the file; the rule SHALL be reported as unsupported with the field name and, when close, a suggested correct name.
+Unknown structural keys, wrong value types, undefined parameters, undefined roles or markers, duplicate identifiers inside the file, invalid regular expressions and size-limit violations SHALL make the whole file invalid with an error that names the location. Unknown field references SHALL remain structurally inspectable and SHALL be reported as unsupported with a suggested correction when available, but SHALL block strict activation validation.
 
 #### Scenario: Typo in a structural key
 - **WHEN** a rule contains the key `outcome` instead of `outcomes`
@@ -42,11 +42,12 @@ Unknown structural keys, wrong value types, undefined parameters, undefined role
 
 #### Scenario: Field from a newer companion
 - **WHEN** a rule references a field name this companion does not define
-- **THEN** the file loads, that rule is listed as unsupported with the field name, and every other rule is evaluated
+- **THEN** non-activating inspection lists that rule as unsupported with its field name
+- **AND** applying the methodology fails without evaluating a supported subset
 
 #### Scenario: Strict validation on request
-- **WHEN** validation is requested in strict mode and any rule is unsupported
-- **THEN** validation reports failure and lists every unsupported rule
+- **WHEN** validation is requested in strict mode and any rule or other declared item is unsupported by this release
+- **THEN** validation reports failure and lists every discovered incompatible item
 
 ### Requirement: Unavailable data is unsupported, never zero
 A rule that depends on a field defined by the companion but absent from the save's snapshots (for example stop geometry before the collector provides positions) SHALL be skipped and reported with the missing snapshot field. An entity whose own value for a referenced field is missing SHALL be reported as not evaluable for that rule. Missing values SHALL NOT be coerced to zero, an empty string or false, and a condition over a missing value SHALL NOT be treated as satisfied.
@@ -157,7 +158,7 @@ A methodology SHALL be able to override the engine's named thresholds (for examp
 - **THEN** the file is rejected naming the code
 
 ### Requirement: Report and chart selection
-A methodology SHALL be able to name its standard report set from the existing report kinds, and to request charts and role-grouped tables from a closed catalog of chart types and metrics. It SHALL NOT be able to define new report kinds or free-form output. Every report SHALL include a methodology section naming the methodology, its version, the effective parameters and the skipped, unsupported and not-evaluable counts.
+A methodology SHALL be able to name its standard report set from the existing report kinds, and to request charts and role-grouped tables from a closed catalog of chart types and metrics. It SHALL NOT be able to define new report kinds or free-form output. Every report SHALL include a methodology section naming the methodology, its version, the effective parameters and the skipped, unsupported and not-evaluable counts. Reports SHALL additionally disclose effective report policy registry revision, applicable criteria with units and origins, and effective engine thresholds used for their judgments; the methodology report SHALL disclose the complete resolved report policy catalog.
 
 #### Scenario: Standard set
 - **WHEN** a methodology declares company, lines and cargo as its report set and analysis is requested
@@ -166,6 +167,11 @@ A methodology SHALL be able to name its standard report set from the existing re
 #### Scenario: Unknown report kind
 - **WHEN** a methodology names a report kind that does not exist
 - **THEN** the file is rejected listing the valid kinds
+
+#### Scenario: Report policy disclosure
+- **WHEN** a methodology overrides the lines-history noise multiplier but leaves its relative threshold at the engine default
+- **THEN** the report names both effective values with units and distinguishes methodology and default origins
+- **AND** the values agree with the analysis manifest and methodology show output
 
 ### Requirement: Methodology text is untrusted data
 Every free-text field of a methodology (name, descriptions, rationales, templates, labels, author text) SHALL be treated as untrusted data. It SHALL be size-limited, stripped of control characters and rendered as escaped plain text in every output format, including offline HTML. Methodology text SHALL NOT cause any tool call, file operation, disclosure or change to the analyst's data-caveat policy, and the analyst brief SHALL say so. Tools that return methodology text SHALL mark it as untrusted.
@@ -204,13 +210,71 @@ The system SHALL ship a methodology with id `default` that declares no roles, no
 - **WHEN** a fixture save is analysed with `default`
 - **THEN** the codes, severities, titles, details, suggestions and evidence of the findings equal those of the engine without a methodology
 
-### Requirement: Author's methodology expressible without loss
-The schema SHALL be able to express the author's current rules: the name-pattern classifier with mode and scope captures and the town-from-stops attribution; local, intercity/regional and freight roles; the intercity loss tolerance with graded watch and problem outcomes; the freight maturing versus problem split by age; the town feeder-cost ratio over first-town local result and distinct-town intercity result; the high-load notice; the aircraft-per-terminal screening, a screening number (never capacity, arrivals or a queue) with a watch marker from 3.0 and a problem marker from 3.5 aircraft per terminal, reported as unavailable rather than zero when terminals are not collected; and the maintenance-state markers. A packaged English example SHALL contain this port.
+### Requirement: Generic declarative policies and optional examples
+The schema SHALL support optional factual and name-pattern classification, roles, graded tolerances, missing-data outcomes, aggregate ratios, notices and maintenance-state markers without making any author's naming convention or playstyle an engine assumption. Packaged examples SHALL be self-contained English methodology files, selectable rather than implicitly mandatory, with documented fixture outcomes independent of retired local generator sources. The existing `local-feeder-intercity-trunk` example identity SHALL remain selectable. The neutral default and explicit/user/save selection semantics SHALL remain unchanged.
 
-#### Scenario: Port parity on a fixture
-- **WHEN** the packaged example is applied to a fixture with one line per role and boundary values for every tolerance
-- **THEN** every line, town and station group receives the same marker as the documented rule gives
+The retained feeder/intercity example SHALL document its own policy boundaries: intercity loss and town feeder-cost ratio alerts use strict greater-than comparisons, instantaneous high-load notices use greater-or-equal, and maintenance alerts use strictly-below comparisons. Its existing aircraft-per-terminal policy SHALL remain watch from 3.0 and problem from 3.5, with both markers explicitly described as policy screening, not measured capacity, arrivals or congestion. Retirement SHALL preserve the packaged example bytes, identity, version, parameters and outcomes, including `air_per_terminal_problem`. The historical local generator's watch-only policy SHALL NOT be migrated into the engine or treated as a parity blocker. Existing user-imported methodologies and historical output SHALL NOT be rewritten. Missing terminal data SHALL remain unavailable, never zero. Screening alone SHALL NOT justify adding infrastructure or cutting a fleet.
 
-#### Scenario: Boundary values
-- **WHEN** an intercity line loses exactly 100,000, a local-to-intercity ratio is exactly 0.25, and instantaneous load is exactly 0.90
-- **THEN** the outcomes follow the documented comparison direction for each tolerance (strictly greater for the loss and ratio alerts, greater-or-equal for load)
+#### Scenario: No personal conventions required
+- **WHEN** a valid methodology declares no name patterns and classifies entities through supported factual fields
+- **THEN** it evaluates arbitrary line and town names without requiring personal mode, town or scope codes
+
+#### Scenario: Example policy boundary fixtures
+- **WHEN** the retained example evaluates synthetic entities at intercity loss 100,000, town cost ratio 0.25, instantaneous load 0.90 and maintenance-state boundaries
+- **THEN** the markers follow the example's self-contained documented comparison directions
+- **AND** expected results do not depend on executing or inspecting the removed generator
+
+#### Scenario: Existing aircraft screening policy remains selectable
+- **WHEN** the retained example evaluates screening ratios of 3.0 and 3.5 aircraft per used terminal
+- **THEN** the existing example produces watch at 3.0 and problem at 3.5 with manual-check guidance, neither marker claiming measured congestion
+- **AND** an absent denominator produces unavailable coverage rather than a fabricated zero ratio
+
+#### Scenario: Historical policy remains historical
+- **WHEN** a player retains an imported methodology or previously generated report
+- **THEN** retirement does not edit its policy or reinterpret its stored provenance
+
+### Requirement: Release compatibility is distinct from evidence availability
+Activation validation SHALL reject unknown fields, unsupported schema/features and fields the installed collector cannot emit. It SHALL NOT require a snapshot or every live measurement. Missing values for individual entities or temporarily absent snapshot fields for supported capabilities SHALL retain skipped/not-evaluable semantics and SHALL NOT invalidate the methodology.
+
+#### Scenario: Collector capability unavailable
+- **WHEN** a methodology requires station positions and the installed release cannot collect them
+- **THEN** strict activation fails with an unsupported-capability diagnostic naming the item, field and required snapshot path
+- **AND** non-activating validation remains available to debug it
+
+#### Scenario: Older snapshot lacks a supported field
+- **WHEN** the installed release supports a referenced field but stored snapshots temporarily lack its source data
+- **THEN** activation validation succeeds and runtime output reports the affected rule as skipped
+- **AND** no missing value is replaced with zero
+
+#### Scenario: One entity lacks a value
+- **WHEN** a compatible rule meets a line whose age is unknown
+- **THEN** the methodology remains applicable and that line is reported as not evaluable as required by the evaluator
+
+#### Scenario: Validate without a save
+- **WHEN** a compatible methodology is validated or selected before any snapshot exists
+- **THEN** validation and selection can succeed without loading the game
+- **AND** later analysis without a snapshot retains its normal no-snapshot error and writes no report
+
+### Requirement: Effective parameter validation
+Every application SHALL validate the effective methodology after parameter overrides, before evaluation or output publication. Overrides SHALL name declared parameters and satisfy their type, finite-number and declared domain constraints, including constraints imposed by their uses. Invalid overrides SHALL NOT mutate the original file or persistent selection.
+
+#### Scenario: Invalid override
+- **WHEN** an override names an unknown parameter, supplies the wrong type, supplies a non-finite number, or violates a declared bound or consumer constraint
+- **THEN** application fails with an override-category diagnostic locating the override and affected rule or policy when applicable
+- **AND** previous bindings and generated results remain unchanged
+
+#### Scenario: Valid override is reproducible
+- **WHEN** a compatible methodology is applied with a valid override
+- **THEN** output records the file hash, effective parameter values and request overrides without modifying the methodology file
+
+### Requirement: Actionable machine-readable validation diagnostics
+Validation SHALL return structured diagnostics with category, stable code, severity, exact JSON Pointer path, item kind/id and rule id when attributable, a human message and an actionable hint when known. It SHALL aggregate independent errors safely discoverable in one pass; syntax failures SHALL include line/column when available. Unlocatable root failures SHALL use the empty JSON Pointer and null item/rule ids.
+
+#### Scenario: Debug several mistakes
+- **WHEN** a parseable draft contains independent wrong keys, broken references and unsupported fields
+- **THEN** validation reports all safely discoverable issues with distinct paths, categories and attributable rule ids rather than only the first error
+- **AND** no reported success certifies strategic merit or makes methodology text trusted
+
+#### Scenario: Broken JSON
+- **WHEN** a methodology contains damaged JSON
+- **THEN** diagnostics identify the file, syntax category, root path and available line/column without attempting evaluation

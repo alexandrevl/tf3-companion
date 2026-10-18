@@ -1,0 +1,10 @@
+{
+  "schema": "tf3c-methodology/1",
+  "id": "report-policy-priorities",
+  "version": "1.0.0",
+  "name": "Distance and sampled load priorities",
+  "description": "Distance-first ranking and stricter sampled-load screen over unchanged observations.",
+  "engine": {"thresholds": {"overloaded_load": 0.8}},
+  "report_policies": {"expansion": {"weight_volume": 10, "weight_distance": 40}},
+  "reports": {"kinds": ["industries", "lines-history", "bottlenecks", "expansion", "vehicle-roi"]}
+}

@@ -138,7 +138,8 @@ def test_environment_overrides_create_database_outside_package(tmp_path, monkeyp
 
 def test_newer_schema_fails_without_blocking_supported_snapshot(paths):
     newer = base_snapshot(game_time=11 * YEAR)
-    newer["meta"]["schemaVersion"] = SUPPORTED_SCHEMA + 1
+    from tf3companion.snapshot import READABLE_SCHEMA
+    newer["meta"]["schemaVersion"] = READABLE_SCHEMA + 1
     failed = write_snapshot(paths.snapshot_folder, newer)
     write_snapshot(paths.snapshot_folder, base_snapshot())
     companion = Companion(paths)

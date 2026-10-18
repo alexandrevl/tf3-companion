@@ -200,8 +200,9 @@ def test_cli_import_export_list_use_unuse_and_fields(cli_env, capsys, tmp_path):
     assert run_cli(capsys, "methodology", "use", "sample")[0] == 0
     code, out, _ = run_cli(capsys, "methodology", "list", "--json")
     listing = json.loads(out)
-    assert listing["effective"] == "sample@1.0.0" and listing["origin"] == "binding" and listing["binding"] == "sample"
-    assert [e["boundToSave"] for e in listing["methodologies"] if e["identity"] == "sample@1.0.0"] == [True]
+    assert listing["effective"] == "sample@1.0.0" and listing["origin"] == "save-override"
+    assert listing["saveOverride"]["reference"] == "sample"
+    assert [e["selectedAsSaveOverride"] for e in listing["methodologies"] if e["identity"] == "sample@1.0.0"] == [True]
     assert (cli_env / "methodology.json").read_text().strip().startswith("{")
     assert run_cli(capsys, "methodology", "unuse")[0] == 0
     assert json.loads(run_cli(capsys, "methodology", "list", "--json")[1])["effective"] == "default@1.0.0"
@@ -234,9 +235,9 @@ def test_two_scopes_keep_different_bindings(tmp_path):
     a.use("sample")
     b.use("oil-chain@1.0.0")
     assert a.resolve()[0].id == "sample" and b.resolve()[0].id == "oil-chain"
-    assert a.resolve() [1] == "binding"
+    assert a.resolve()[1] == "save-override"
     assert a.scope.isolated and a.scope.metadata == data / "saves" / "save-a" / "save.json"
-    assert Resolver(data).resolve()[1] == "default"  # the implicit save is untouched
+    assert Resolver(data).resolve()[1] == "packaged-default"  # the implicit save is untouched
     assert json.loads((data / "saves" / "save-b" / "save.json").read_text()) == {"methodology": "oil-chain@1.0.0"}
 
 
@@ -265,7 +266,7 @@ def test_precedence_request_over_binding_over_default(tmp_path):
     drop(tmp_path, "s.tf3c-methodology.json", doc("sample"))
     drop(tmp_path, "t.tf3c-methodology.json", doc("other"))
     resolver = Resolver(tmp_path)
-    assert resolver.resolve() [1] == "default"
+    assert resolver.resolve()[1] == "packaged-default"
     resolver.use("sample")
     assert resolver.resolve()[0].id == "sample"
     m, origin = resolver.resolve("other")
@@ -278,10 +279,11 @@ def test_broken_binding_is_an_error_not_a_silent_default(tmp_path):
     resolver = Resolver(tmp_path)
     resolver.use("sample")
     path.unlink()
-    with pytest.raises(LibraryError) as info:
+    with pytest.raises(LibraryError):
         resolver.resolve()
-    assert "bound to methodology 'sample'" in str(info.value) and "unuse" in str(info.value)
-    assert resolver.listing()["effective"] is None and "bound to methodology" in resolver.listing()["error"]
+    assert resolver.scope.binding() == "sample"
+    listing = resolver.listing()
+    assert listing["effective"] is None and listing["saveOverride"]["reference"] == "sample"
 
 
 def test_path_is_allowed_once_on_the_cli_and_rejected_for_mcp(tmp_path):
@@ -300,3 +302,49 @@ def test_validate_file_without_a_snapshot_lists_needed_data():
     result = validate_file(str(EXAMPLE), strict=True)
     needs = {n for row in result["rules"] for n in row["needs"]}
     assert result["valid"] and "lines[].profitYear" in needs and "lines[].stops[].terminal" in needs
+
+
+def test_cli_validate_effective_params_reports_override_diagnostics_and_exit_codes(cli_env, capsys, tmp_path):
+    draft = tmp_path / "params.json"
+    draft.write_text(json.dumps(doc(parameters={"limit": {"value": 3}, "pattern": {"value": "^T"}},
+                                    markers={"m": {"label": "M"}}, rules=[{"id": "named", "entity": "line", "outcomes": [
+        {"when": {"field": "line.name", "op": "matches", "value": {"param": "pattern"}}, "marker": "m"}]}])))
+    code, out, _ = run_cli(capsys, "methodology", "validate", str(draft), "--strict", "--param", "limit=5")
+    result = json.loads(out)
+    assert code == 0 and result["valid"] and result["parameterOverrides"] == {"limit": 5}
+    for bad in ("unknown=1", "limit=\"text\"", "limit=true"):
+        code, out, _ = run_cli(capsys, "methodology", "validate", str(draft), "--param", bad)
+        result = json.loads(out)  # plain mode keeps structural validity but exposes ineligibility
+        assert code == 0 and result["valid"] and result["structurallyValid"] and not result["activationEligible"]
+        [issue] = result["diagnostics"]
+        assert issue["category"] == "override" and issue["path"].startswith("/overrides/")
+        code, out, _ = run_cli(capsys, "methodology", "validate", str(draft), "--strict", "--param", bad)
+        assert code == 1 and not json.loads(out)["valid"]
+    code, out, _ = run_cli(capsys, "methodology", "validate", str(draft), "--strict", "--param", "pattern=(a+)+$")
+    [issue] = json.loads(out)["diagnostics"]
+    assert code == 1 and issue["code"] == "invalid-effective-policy" and issue["ruleId"] == "named"
+    assert issue["relatedPaths"] == ["/rules/0/outcomes/0/when/value/param"]
+    assert run_cli(capsys, "methodology", "validate", str(draft))[0] == 0  # same draft without the override
+    assert not cli_env.exists()
+
+
+def test_cli_validate_multi_error_draft_returns_every_independent_diagnostic(cli_env, capsys, tmp_path):
+    draft = tmp_path / "many.json"
+    draft.write_text(json.dumps(doc(markers={"m": {"label": "M"}}, parameters={"p": {"value": []}}, surprise=1,
+                                    rules=[{"id": "r", "entity": "line", "outcomes": [
+                                        {"when": {"field": "line.profit_year", "op": "lt", "value": "x"}, "marker": "nope"}]}])))
+    code, out, _ = run_cli(capsys, "methodology", "validate", str(draft))
+    result = json.loads(out)
+    paths = {d["path"] for d in result["diagnostics"]}
+    assert code == 1 and not result["valid"] and not result["structurallyValid"]
+    assert {"/surprise", "/parameters/p/value"} <= paths and len(result["diagnostics"]) >= 3
+    assert all({"category", "code", "severity", "path", "message"} <= d.keys() for d in result["diagnostics"])
+    assert len(result["errors"]) == len(result["diagnostics"])
+    broken = tmp_path / "broken.json"
+    broken.write_text('{"schema":\n nope}')
+    code, out, _ = run_cli(capsys, "methodology", "validate", str(broken), "--strict")
+    syntax = json.loads(out)["diagnostics"][0]
+    assert code == 1 and syntax["category"] == "syntax" and syntax["line"] == 2
+    code, out, _ = run_cli(capsys, "methodology", "validate", str(tmp_path / "missing.json"))
+    assert code == 1 and json.loads(out)["diagnostics"][0]["category"] == "io"
+    assert not cli_env.exists()

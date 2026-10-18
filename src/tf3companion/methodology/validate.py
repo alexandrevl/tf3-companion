@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import dataclasses
 import difflib
+import math
 import re
 from typing import Any, Iterable
 
@@ -19,7 +20,7 @@ from .model import (
 from .safe_regex import capture_names, check_pattern
 
 TOP_KEYS = {"$schema", "schema", "id", "version", "name", "description", "author", "parameters", "markers",
-            "name_patterns", "definitions", "roles", "engine", "rules", "recommendations", "ladders", "reports"}
+            "name_patterns", "definitions", "roles", "engine", "rules", "recommendations", "ladders", "reports", "report_policies"}
 REQUIRED_TOP = ("schema", "id", "version", "name", "description")
 FIELD_RE = re.compile(r"^[a-z]+(\.[a-z_][a-z0-9_]*)+$")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)(?:\|([a-z]+))?\}")
@@ -72,7 +73,20 @@ class _State:
         key = (path, message)
         if key not in self.seen:
             self.seen.add(key)
-            self.issues.append(Issue(path, message))
+            parts = path.split("/")
+            kind = parts[1] if len(parts) > 2 else None
+            item_id = None
+            try:
+                item = self.data[kind][int(parts[2])]
+                item_id = item.get("id") if isinstance(item, dict) else None
+            except (KeyError, IndexError, TypeError, ValueError):
+                pass
+            category = "reference" if "undefined" in message else "structure"
+            code = "undefined-reference" if category == "reference" else (
+                "unknown-key" if message.startswith("unknown key") else "invalid-structure")
+            self.issues.append(Issue(path, message, category=category, code=code,
+                                     itemKind=kind, itemId=item_id,
+                                     ruleId=item_id if kind == "rules" else None))
 
 
 def validate(data: Any) -> list[Issue]:
@@ -81,6 +95,9 @@ def validate(data: Any) -> list[Issue]:
         st.error("", "a methodology must be a JSON object")
         return st.issues
     _top(st, data)
+    from ..report_policy import validate_report_policies
+    for path, message in validate_report_policies(data.get("report_policies", {})):
+        st.error(path, message)
     return st.issues
 
 
@@ -88,11 +105,11 @@ def validate(data: Any) -> list[Issue]:
 # helpers
 
 def _p(path: str, *parts: Any) -> str:
-    return path + "".join(f"/{p}" for p in parts)
+    return path + "".join("/" + str(p).replace("~", "~0").replace("/", "~1") for p in parts)
 
 
 def _is_num(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and (not isinstance(value, float) or math.isfinite(value))
 
 
 def _keys(st: _State, obj: Any, path: str, what: str, allowed: Iterable[str], required: Iterable[str] = ()) -> bool:

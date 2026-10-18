@@ -1,0 +1,9 @@
+{
+  "schema": "tf3c-methodology/1",
+  "id": "report-policy-neutral",
+  "version": "1.0.0",
+  "name": "Neutral report policies",
+  "description": "Neutral policy comparison over identical local evidence.",
+  "report_policies": {},
+  "reports": {"kinds": ["industries", "lines-history", "bottlenecks", "expansion", "vehicle-roi"]}
+}

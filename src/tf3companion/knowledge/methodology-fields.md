@@ -21,15 +21,16 @@ rules using them are skipped until the collector provides it.
 named group captured by the first matching `name_patterns` entry; it is missing when no pattern matches. Every entity
 has a `<entity>.role` field holding the role this methodology assigned, or `unclassified`.
 
-Measurement caveats apply to every methodology: `line.load` is an instantaneous reading, `profitYear` is a rolling game
-year (partial for young lines) and never calendar income, `line.age_years` is the oldest vehicle's age (a lower bound), and
-ages divide by `meta.yearDuration`, which can differ from the calendar year.
+Measurement caveats apply to every methodology: `line.load` is instantaneous and `profitYear` is a rolling query-window
+observation, never calendar income. Ages use `game-calendar-v1`: 365.25 elapsed Gregorian calendar days per GAME-YEAR,
+with exact dated anchors or bounded interpolation spanning at least seven days. Unsupported purchases are unknown,
+never nominal-duration estimates. Line age is the oldest currently assigned vehicle proxy, not creation or first observation.
 
 ## line
 
 | Field | Type | Source (snapshot path) | Meaning and caveat |
 |---|---|---|---|
-| `line.age_years` | number | `vehicles[].purchaseTime`, `meta.yearDuration` | Age of the oldest vehicle on the line, in game years. **Caveat:** Lower bound for the line's age (no creation date is collected); divided by meta.yearDuration, which may differ from the calendar year. |
+| `line.age_years` | number | `vehicles[].purchaseTime`, `meta.date`, `(dated history and scope)` | Oldest currently assigned vehicle age proxy, in calendar GAME-YEAR. **Caveat:** Not line creation or first-observed age. Exact anchors or bounded interpolation only; 365.25 calendar days per GAME-YEAR; unsupported purchases are unknown. |
 | `line.cargo_ids` | list[number] | `lines[].capacity[]` | Cargo ids with positive capacity on the line. **Caveat:** capacity[].cargo minus one. |
 | `line.cargo_keys` | list[string] | `lines[].capacity[]`, `cargos[].res` | Language-neutral cargo keys (segment of the cargo resource path, for example `grain`). |
 | `line.cargo_names` | list[string] | `lines[].capacity[]` | Cargo names with positive capacity, as the game shows them. **Caveat:** Names follow the game language; use line.cargo_keys for language-neutral matching. |
@@ -56,7 +57,7 @@ ages divide by `meta.yearDuration`, which can differ from the calendar year.
 
 | Field | Type | Source (snapshot path) | Meaning and caveat |
 |---|---|---|---|
-| `vehicle.age_years` | number | `vehicles[].purchaseTime`, `meta.yearDuration` | Vehicle age in game years. **Caveat:** Divided by meta.yearDuration, which may differ from the calendar year. |
+| `vehicle.age_years` | number | `vehicles[].purchaseTime`, `meta.date`, `(dated history and scope)` | Vehicle age in calendar GAME-YEAR. **Caveat:** Exact anchors or bounded interpolation only; unsupported old purchases are unknown; no nominal fallback. |
 | `vehicle.carrier` | string | `vehicles[].carrier` | Transport mode of the vehicle. |
 | `vehicle.days_in_depot` | number | `vehicles[].daysInDepot` | Days the vehicle has been in a depot. |
 | `vehicle.id` | number | `vehicles[].id` | Entity id of the vehicle. |

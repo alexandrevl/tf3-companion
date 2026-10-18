@@ -2,6 +2,7 @@ from tf3companion import analysis
 from tf3companion.snapshot import Snapshot
 
 from conftest import YEAR, base_snapshot
+from methodology_helpers import fixture_clock
 
 
 def add_line(data, line_id, *, profit, vehicles_age_years=3.0, load=(50, 100), vehicles=1, **extra):
@@ -28,7 +29,7 @@ def test_losing_line_severity_depends_on_line_maturity():
     data = base_snapshot()
     add_line(data, 1, profit=-200_000, vehicles_age_years=2)
     add_line(data, 2, profit=-50_000, vehicles_age_years=0.4)
-    items = analysis.findings(Snapshot(data))
+    items = analysis.findings(Snapshot(data), clock=fixture_clock(data))
     losing = [f for f in items if f.code == "line_losing_money"]
     assert [(f.entity["id"], f.severity, f.category) for f in losing] == [
         (1, "high", "lines"), (2, "low", "lines")]
@@ -86,7 +87,7 @@ def test_vehicle_findings():
         {"id": 4, "name": "Surplus", "state": "EN_ROUTE", "line": 100, "profitYear": -20_000,
          "purchaseTime": data["meta"]["gameTime"] - 2 * YEAR},
     ]
-    items = analysis.findings(Snapshot(data))
+    items = analysis.findings(Snapshot(data), clock=fixture_clock(data))
     no_path = next(f for f in items if f.code == "vehicle_no_path")
     assert no_path.entity["id"] == 1 and no_path.severity == "high"
     depot = next(f for f in items if f.code == "fleet_idle_in_depot")
@@ -185,7 +186,7 @@ def test_high_severity_findings_precede_collection_warnings():
     data["vehicles"].append({"id": 1, "name": "Lost", "noPath": True})
     data["industries"] = [{"id": 50, "name": "Mine", "closureTimeStamp": 1}]
     data["errors"] = ["collection failed"]
-    items = analysis.findings(Snapshot(data))
+    items = analysis.findings(Snapshot(data), clock=fixture_clock(data))
     assert [(f.severity, f.category, f.entity["id"] if f.entity else None) for f in items] == [
         ("high", "industries", 50),
         ("high", "lines", 1),

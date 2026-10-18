@@ -12,72 +12,108 @@ from .model import Methodology
 from .scope import SaveScope
 from .support import Classification, classify, items_of, static_probe
 
-ORIGIN_REQUEST, ORIGIN_FILE, ORIGIN_BINDING, ORIGIN_DEFAULT = "request", "file", "binding", "default"
+ORIGIN_REQUEST, ORIGIN_FILE = "request", "file"
 
 
 class Resolver:
-    """Library plus save scope: everything that does not need the snapshot store."""
+    """Read-only construction; selection is lazy and preparation is operation scoped."""
 
     def __init__(self, data: Path, save: str | None = None) -> None:
+        from .scope import UserPreference
         self.data = Path(data)
         self.library = Library(self.data)
-        self.scope = SaveScope.for_save(self.data, save) if save else SaveScope.fallback(self.data)
+        self.preference = UserPreference(self.data)
+        self._save = save
 
-    def resolve(self, request: str | None = None, *, allow_path: bool = False) -> tuple[Methodology, str]:
-        """Return (methodology, origin). Raises LibraryError/MethodologyError, never falls back silently."""
+    @property
+    def scope(self) -> SaveScope:
+        return SaveScope.for_save(self.data, self._save) if self._save else SaveScope.fallback(self.data)
+
+    def _selected(self, m: Methodology, origin: str, reference: str | None, metadata: Path | None,
+                  overrides: dict[str, Any] | None = None) -> tuple[Methodology, str]:
+        from dataclasses import replace
+        from .prepare import prepare
+        m = replace(m, selection={"origin": origin, "reference": reference, "libraryRoot": str(self.data),
+                                  "metadataFile": str(metadata) if metadata else None})
+        return prepare(m, overrides), origin
+
+    def resolve(self, request: str | None = None, *, allow_path: bool = False,
+                overrides: dict[str, Any] | None = None) -> tuple[Methodology, str]:
         if request is not None:
             if looks_like_path(request):
                 if not allow_path:
                     raise LibraryError(f"{request!r} looks like a file path. {PLACE_HINT}")
-                return self.library.load_path(request), ORIGIN_FILE
-            return self.library.resolve(request), ORIGIN_REQUEST
-        binding = self.scope.binding()
-        if binding:
+                return self._selected(self.library.load_path(request), "file", request, None, overrides)
+            return self._selected(self.library.resolve(request), "request", request, None, overrides)
+        for origin, getter, metadata, remedy in (
+            ("save-override", self.scope.binding, self.scope.metadata, "use REF or unuse"),
+            ("user-default", self.preference.reference, self.preference.metadata, "set-default REF or clear-default"),
+        ):
+            ref = None
             try:
-                return self.library.resolve(binding), ORIGIN_BINDING
+                ref = getter()
+                if ref is not None:
+                    return self._selected(self.library.resolve(ref), origin, ref, metadata, overrides)
             except ValueError as exc:
-                raise LibraryError(
-                    f"This save is bound to methodology '{binding}', which cannot be used: {exc} "
-                    "Restore the file in the library, bind another with `tf3c methodology use <id>`, "
-                    "or clear the binding with `tf3c methodology unuse`. Analysis does not fall back to `default`.") from exc
-        return load_default(), ORIGIN_DEFAULT
+                raise LibraryError(f"Cannot apply {origin} {ref!r} in library root {self.data}: {exc}. "
+                                   f"Repair with `tf3c methodology {remedy}`; no fallback was applied.") from exc
+        return self._selected(load_default(), "packaged-default", None, None, overrides)
 
     def use(self, ref: str) -> dict[str, Any]:
-        m = self.library.resolve(ref)  # must exist and be valid before it can be bound
+        m, _ = self._selected(self.library.resolve(ref), "save-override", ref, self.scope.metadata)
         self.scope.set_binding(ref)
-        return {"bound": ref, "resolved": m.identity, "hash": m.short_hash, "save": self.scope.describe()}
+        return {"target": "save-override", "reference": ref, "resolved": m.identity, "hash": m.short_hash,
+                "libraryRoot": str(self.data), "save": self.scope.describe()}
 
     def unuse(self) -> dict[str, Any]:
         previous = self.scope.binding()
         self.scope.set_binding(None)
-        return {"unbound": previous, "save": self.scope.describe()}
+        return {"target": "save-override", "previousReference": previous, "reference": None,
+                "libraryRoot": str(self.data), "save": self.scope.describe(), "inherits": True}
+
+    def set_default(self, ref: str) -> dict[str, Any]:
+        m, _ = self._selected(self.library.resolve(ref), "user-default", ref, self.preference.metadata)
+        previous = self.preference.set_reference(ref)
+        return {**previous, "target": "user-default", "reference": ref, "resolved": m.identity,
+                "hash": m.short_hash, "libraryRoot": str(self.data), "metadataFile": str(self.preference.metadata)}
+
+    def clear_default(self) -> dict[str, Any]:
+        return {**self.preference.set_reference(None), "target": "user-default", "reference": None,
+                "resolved": None, "hash": None, "libraryRoot": str(self.data),
+                "metadataFile": str(self.preference.metadata)}
+
+    def _layer(self, getter: Any, metadata: Path) -> dict[str, Any]:
+        row = {"reference": None, "resolved": None, "hash": None, "error": None, "metadataFile": str(metadata)}
+        try:
+            row["reference"] = getter()
+            if row["reference"] is not None:
+                from .prepare import prepare
+                m = prepare(self.library.resolve(row["reference"]))
+                row.update(resolved=m.identity, hash=m.short_hash)
+        except ValueError as exc:
+            row["error"] = str(exc)
+        return row
 
     def listing(self) -> dict[str, Any]:
-        """Library entries marked with the save binding and the effective methodology (read-only)."""
-        binding, error = None, None
-        try:
-            binding = self.scope.binding()
-        except ValueError as exc:
-            error = str(exc)
+        user = self._layer(self.preference.reference, self.preference.metadata)
+        save = self._layer(self.scope.binding, self.scope.metadata)
+        effective_id, origin, error = None, None, None
         try:
             effective, origin = self.resolve()
-            effective_id: str | None = effective.identity
+            effective_id = effective.identity
         except ValueError as exc:
-            effective_id, origin, error = None, None, error or str(exc)
+            error = str(exc)
         entries = []
         for entry in self.library.entries():
             row = entry.to_dict()
-            row["boundToSave"] = bool(binding) and _matches(entry, binding)
-            row["effective"] = entry.identity is not None and entry.identity == effective_id
+            row.update(selectedAsUserDefault=entry.identity is not None and entry.identity == user["resolved"],
+                       selectedAsSaveOverride=entry.identity is not None and entry.identity == save["resolved"],
+                       effective=entry.identity is not None and entry.identity == effective_id)
             entries.append(row)
-        return {"effective": effective_id, "origin": origin, "binding": binding, "save": self.scope.describe(),
+        return {"effective": effective_id, "origin": origin, "libraryRoot": str(self.data),
+                "userDefault": user, "saveOverride": save, "save": self.scope.describe(),
                 "error": error, "methodologies": entries,
-                "untrustedKeys": ["methodologies[].name", "methodologies[].error"]}
-
-
-def _matches(entry: Entry, binding: str) -> bool:
-    ident, _, version = binding.partition("@")
-    return entry.id == ident and (not version or entry.version == version)
+                "untrustedKeys": ["methodologies[].name", "methodologies[].error", "methodologies[].diagnostics"]}
 
 
 # ---------------------------------------------------------------------------
@@ -94,19 +130,19 @@ def support_rows(m: Methodology, classification: Classification) -> list[dict[st
     return rows
 
 
-def validate_file(path: str, strict: bool = False) -> dict[str, Any]:
-    """Validate without importing: errors, unsupported rules and the snapshot data each rule needs."""
-    from .model import MethodologyError
-
+def validate_file(path: str, strict: bool = False, parameters: dict[str, Any] | None = None) -> dict[str, Any]:
+    from .prepare import inspect
+    from .loader import read_file
+    from .model import MethodologyError, Issue
     try:
-        m = load_file(Path(path))
-    except MethodologyError as exc:
-        return {"valid": False, "file": str(path), "errors": [str(i) for i in exc.issues], "unsupported": [], "rules": []}
-    rows = support_rows(m, classify(m, static_probe))
-    bad = [r for r in rows if r["status"] != "ok"]
-    ok = not (strict and bad)
-    return {"valid": ok, "file": str(path), "identity": m.identity, "hash": m.short_hash, "errors": [],
-            "unsupported": bad, "strict": strict, "rules": rows}
+        _, report = inspect(read_file(Path(path).expanduser()), path=str(path), overrides=parameters)
+    except (MethodologyError, OSError) as exc:
+        issues = exc.issues if isinstance(exc, MethodologyError) else [Issue("", str(exc), category="io", code="read-error")]
+        report = {"structurallyValid": False, "activationEligible": False,
+                  "diagnostics": [i.to_dict() for i in issues], "errors": [str(i) for i in issues],
+                  "unsupported": [], "rules": []}
+    return {**report, "valid": report["activationEligible"] if strict else report["structurallyValid"],
+            "file": str(path), "strict": strict}
 
 
 def field_catalog() -> list[dict[str, Any]]:
@@ -122,8 +158,10 @@ def describe(m: Methodology, origin: str, scope: SaveScope, probe: Any = static_
     """Machine-readable description of a methodology; its free text is grouped under `untrusted`."""
     rows = support_rows(m, classify(m, probe))
     data = m.data
+    from ..report_policy import resolve_context
     return {
         **m.provenance(), "origin": origin, "save": scope.describe(),
+        "selection": dict(m.selection), **resolve_context(m).provenance(),
         "parameters": m.parameters, "support": rows,
         "unsupported": [r for r in rows if r["status"] == "unsupported"],
         "skipped": [r for r in rows if r["status"] == "skipped"],

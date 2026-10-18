@@ -22,7 +22,7 @@ git clone <repo-url>
 cd tf3-companion
 uv sync --locked
 
-# Run test suite
+# Run test suite (includes the installed-wheel acceptance test)
 uv run pytest
 
 # Verify CLI commands
@@ -32,6 +32,8 @@ uv run tf3c knowledge
 ```
 
 Use `TF3C_DATA_DIR` and `TF3C_USERDATA_DIR` during testing to isolate tests from your actual game data.
+
+`tests/test_installed_analysis.py` builds the wheel into a temporary directory, installs it offline into a clean temporary environment and runs the installed service, `tf3c evaluate`, the MCP `evaluate` tool, all seven analysis views, report composition/publication and `tf3c analyse` from outside the checkout with synthetic evidence. It needs `uv` and uv's local cache to already hold the build backend and dependency wheels (run `uv sync --locked` once with network access); when they are missing it fails naming that prerequisite and never reaches a package index.
 
 ---
 
@@ -44,9 +46,13 @@ src/tf3companion/
   snapshot.py      # Typed snapshot domain models
   store.py         # SQLite schema, ingestion receipts, decision store
   analysis.py      # Rule engine: findings, opportunities, insights
+  evaluation.py    # Structured, read-only evaluation result over stored evidence
+  analysis_views/  # Seven optional structured analyses of stored history
+  methodology/     # Declarative policies, library, validation, packaged examples
   export.py        # XLSX workbook generation
-  reports.py       # Markdown and self-contained offline HTML reports
-  service.py       # Core application service (Companion)
+  reports.py       # Report composition; Markdown and self-contained offline HTML rendering
+  report_*.py      # Thin per-family report builders over structured analyses
+  service.py       # Core application service (Companion): evaluate, analyse, report
   cli.py           # Command line interface (tf3c)
   mcp_server.py    # MCP stdio server: tools, prompts, resources
   knowledge/       # Shipped markdown knowledge base topics
@@ -54,8 +60,10 @@ mod/
   tf3_companion_bridge/  # Read-only Lua bridge mod
 docs/              # Markdown guides and reference
 openspec/          # Specification changes and architectural tasks
-tests/             # Unit and integration test suites
+tests/             # Unit and integration test suites, including the installed-wheel acceptance test
 ```
+
+The responsibility split (evidence, analysis, presentation, interfaces) is described in [docs/architecture.md](docs/architecture.md): a new calculation lives in the analysis layer and returns structured data, reports present it, and the CLI and MCP server add no logic. Acceptance tests are behavioural and independent of the retired author-local analysis scripts; never reintroduce a private generator or a dependency on a checkout's `data/` folder.
 
 Branding (colours, typography, logo, voice, generated art) follows [docs/brand/identity.md](docs/brand/identity.md); colours and typefaces come only from `assets/brand/tokens.json`.
 
@@ -69,6 +77,20 @@ We manage changes through structured specifications under `openspec/changes/<cha
 2. Keep edits focused on the designated change scope.
 3. Update task acceptance criteria only after genuine verification.
 4. Add behavioral regression tests. Do not assert on volatile text wording, doc phrasing, or mocked tool lists.
+
+### Work tracking and delivery
+
+`TODO.md` is the project board, not a second implementation checklist. Its lanes are **In progress**, **Next**, **Blocked**, **Backlog** and **Done**. Order in **Next** is execution priority; do not silently replace that order with an easier task.
+
+1. **Start:** read the board and relevant OpenSpec artifacts. Select one workstream, put its card in **In progress**, and state its scope. One session owns the worktree; delegated agents get disjoint file ownership and return to that integration owner.
+2. **Plan:** behavioral changes use an OpenSpec proposal/design/specs/tasks. A board card links to that change; do not copy all task checkboxes into the board. Small documentation and housekeeping fixes can stay as cards.
+3. **Implement:** follow the selected scope. Add newly discovered work as separate cards. Update implementation task checks only after their actual acceptance has passed.
+4. **Verify:** exercise the changed behavior and run `uv run pytest` for Python work. For OpenSpec, validate the change strictly. Lua syntax and synthetic tests never close real-game/platform gates. Keep exact verification evidence and its limitations.
+5. **Finish:** update existing docs/changelog, sync/archive fully verified changes, move the board card to **Done**, and commit the completed coherent work when authorized. Unfinished manual gates stay in **Blocked** with the required evidence, even when the source portion is committed.
+6. **Handoff:** leave the next action and any interruption in the board. Do not leave advertised half-built interfaces, mark work done because an agent stopped, or start another feature to avoid finishing the current one.
+
+Use the current source and fresh commands to reconcile the board. Historical task counts and old test totals are records, not proof of the current state. Do not call an item fixed based only on a checked box or a plausible implementation. Publishing, pushing, installing the bridge and interacting with live player data remain separate explicit decisions.
+
 
 ---
 

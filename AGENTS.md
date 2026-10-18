@@ -39,4 +39,14 @@ Review changed paths and content for language compliance before delivery, includ
 - The final task of every change names the exact command or in-game check that verifies it.
 - Check task boxes only after genuine verification.
 
+## Work tracking and session ownership
+
+- Read `TODO.md` before starting work. It is the single ordered project board; OpenSpec task files own implementation acceptance details.
+- Keep one active workstream per worktree. One session owns integration and commits; parallel agents must have disjoint file ownership and must not run competing verification or archive operations.
+- Before changing code, move the selected card to **In progress** and link its OpenSpec change. Newly discovered work goes on the board, not into an unrelated implementation.
+- Completion requires exercised acceptance, updated documentation and a truthful board entry. Move verified work to **Done** with its evidence; incomplete live-game or platform gates stay blocked.
+- Commit completed, verified work in coherent units when authorized. Do not let multiple completed changes accumulate uncommitted. Commit is not permission to push, publish or install.
+- At handoff, record unfinished work, the next action and blockers in `TODO.md`. Ending a session never makes its open tasks complete.
+- Follow the detailed lifecycle in [CONTRIBUTING.md](CONTRIBUTING.md#work-tracking-and-delivery).
+
 Player-facing analyst instructions are packaged in `src/tf3companion/agent_instructions.md`; they are not the contributor role.

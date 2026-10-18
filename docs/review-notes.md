@@ -2,6 +2,20 @@
 
 This document records the evidence, assumptions, and open release gates established during the architectural review and source implementation of TF3 Companion.
 
+## Consolidation review: 2026-10-18
+
+- `uv run pytest`: **943 passed**, including installed-wheel synthetic analysis outside the checkout.
+- `openspec validate --all --strict`: **21 passed, 0 failed** in the consolidation run; the subsequently archived data-integrity change synced four import-safety requirements.
+- Methodology activation/defaults/report policy, calendar time, structured evaluation/views, generator retirement and engine knowledge are implemented and archived. OpenSpec acceptance does not replace live-game or platform evidence.
+- A read-only code review found per-view hydration counters sharing operation-wide cache totals. Combined-view requests can therefore report misleading coverage; the fix is prioritized in [TODO.md](../TODO.md), not silently counted as complete.
+- The older non-evaluate MCP tools still share a thread-affine SQLite connection. The stored-only evaluate tool has a per-call connection; that does not fix the older tools. Keep the reported thread error open.
+- Line-detail cargo decoding/filtering, compatibility identifier reconciliation and ID-reuse robustness remain open. Source bridge payload revision, bundled metadata revision and readable schema range must not be conflated.
+- The previous research session completed the tagged engine/API knowledge import and left only collector/robustness exploration. Its files and archived evidence are preserved; no unfinished collector implementation was discarded.
+- `luac` is absent on this machine; this review does not claim a Lua syntax run. No live-game, Windows/Linux, clean-machine, hosted CI, push or publication check was performed.
+- A personal save-directory default in an uncommitted archived calendar-smoke command was redacted before versioning; its environment override is now required explicitly. No player evidence is included.
+
+The following original observations and integration results are historical baseline records, not current tool/topic counts or a current compatibility matrix.
+
 ## Evidence-backed review observations
 
 1. **Local-first, read-only boundary preserved:**
@@ -25,7 +39,7 @@ This document records the evidence, assumptions, and open release gates establis
    - Vehicle load readings are treated strictly as instantaneous snapshot observations, never as averaged line utilization.
 
 
-## Local integration evidence
+## Historical local integration evidence
 
 All review runs used synthetic player folders. The real mod installation, player database and private notes were not changed.
 
@@ -44,7 +58,7 @@ All review runs used synthetic player folders. The real mod installation, player
 | Browser | Generated annual HTML rendered in Chromium; zero scripts, zero external resource requests and no desktop horizontal overflow |
 | OpenSpec | Nine changes passed `openspec validate --all --strict` |
 
-Current compatibility identifiers: companion `0.1.0`, bridge revision `2`, snapshot schema `1`. This is source verification on macOS, not a public release or proof of real Windows/game compatibility.
+Identifiers recorded at that historical baseline: companion `0.1.0`, bridge revision `2`, snapshot schema `1`. They are not a current reconciled compatibility claim. This was source verification on macOS, not a public release or proof of real Windows/game compatibility.
 
 ---
 

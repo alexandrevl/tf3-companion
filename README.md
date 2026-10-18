@@ -84,14 +84,39 @@ A methodology is one shareable JSON file that classifies your lines, sets tolera
 ```sh
 uv run tf3c methodology list
 uv run tf3c methodology validate src/tf3companion/methodology/examples/local-feeder-intercity-trunk.tf3c-methodology.json --strict
-uv run tf3c methodology use local-feeder-intercity-trunk
+uv run tf3c methodology set-default local-feeder-intercity-trunk
 uv run tf3c analyse
 uv run tf3c analyse --methodology default
 ```
 
 `analyse` writes its reports to `reports/<game-date>__<methodology-id>@<version>/` under the companion data directory.
+To get the complete structured conclusion without ingesting or writing anything, evaluate the stored evidence:
 
-Reports and their coverage limits are described in [reports](docs/reports.md). To connect an agent, use an **absolute checkout path**:
+```sh
+uv run tf3c evaluate
+uv run tf3c evaluate --methodology default --json
+uv run tf3c evaluate --methodology ./my.tf3c-methodology.json --param tolerated_loss=80000 --json
+```
+
+Add `--view NAME` (repeatable: `bottlenecks`, `expansion`, `lines-history`, `history`, `industries`, `vehicle-roi`, `towns`) to include the structured analysis behind those reports.
+
+`evaluate` never discovers Steam, imports newer exports or creates files; run `tf3c ingest` or `tf3c refresh` first when you
+want newer evidence. The MCP `evaluate` tool returns the same result.
+
+Evaluation, report composition and publication work from the installed package alone: they need no source checkout and no
+checkout `data/` folder. Their inputs are the packaged methodologies, your own methodology files imported into the library, and
+your companion store (`TF3C_DATA_DIR`, `TF3C_USERDATA_DIR`). `analyse` is the convenience command that also ingests, evaluates,
+composes and publishes; `evaluate` stays read-only. The earlier author-local analysis scripts are retired and are not part of
+the supported workflow.
+
+Selection precedence is one-off request > save override > user default > packaged default. Use `methodology use REF`
+for a save-specific override, `unuse` to inherit again, and `clear-default` to reset the user preference.
+The preference belongs to the selected data/library root; changing `TF3C_DATA_DIR` selects a separate preference.
+Importing alone never activates a file. Import, selection and analysis reject incompatible policy without replacing
+previous configuration or results; validation is available without the game or snapshots.
+See the guide for structured author diagnostics, report policy criteria and calendar-based ages with explicit unknown values.
+
+Reports and their coverage limits are described in [reports](docs/reports.md); how evidence, analysis, presentation and interfaces are divided is in [architecture](docs/architecture.md). To connect an agent, use an **absolute checkout path**:
 
 ```sh
 uv run --project /absolute/path/to/tf3-companion tf3c mcp
@@ -127,4 +152,4 @@ No screenshots, logos, badges or published package links are presented as availa
 - [Install with an AI assistant](docs/agent-assisted-installation.md) · [Setup guide](src/tf3companion/setup_guide.md)
 - [Install the mod](docs/install-mod.md) · [Connect an agent](docs/agents.md)
 - [Reports](docs/reports.md) · [Privacy and storage](docs/privacy.md) · [Troubleshooting](docs/troubleshooting.md)
-- [Contribute](CONTRIBUTING.md) · [Contributor/agent guide](AGENTS.md)
+- [Contribute](CONTRIBUTING.md) · [Contributor/agent guide](AGENTS.md) · [Brand identity](docs/brand/identity.md)

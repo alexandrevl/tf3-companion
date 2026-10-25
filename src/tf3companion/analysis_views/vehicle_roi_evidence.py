@@ -32,13 +32,13 @@ class VehicleRoiEvidence:
     endpoint: Snapshot
     clock: GameCalendarClock
     catalog: Snapshot | None
-    eligible: int                      # stored samples at or before the endpoint
-    read: int                          # compact index rows streamed
+    eligible: int  # stored samples at or before the endpoint
+    read: int  # compact index rows streamed
     first_sample: SampleRef
     last_sample: SampleRef
-    trend: tuple[TrendSnapshot, ...]   # chosen historical samples, oldest first
+    trend: tuple[TrendSnapshot, ...]  # chosen historical samples, oldest first
     load_snapshots: tuple[Snapshot, ...]  # newest LOAD_HISTORY snapshots at/before the endpoint, oldest first
-    hydrated: int                      # full snapshots loaded besides the endpoint
+    hydrated: int  # full snapshots loaded besides the endpoint
 
 
 def _date_of(meta: dict[str, Any]) -> tuple[int, int, int]:
@@ -48,6 +48,7 @@ def _date_of(meta: dict[str, Any]) -> tuple[int, int, int]:
 
 def select_trend_ticks(entries: list[tuple[int, tuple[int, int, int]]]) -> list[int]:
     """Last sample per month; coarsened to quarters then years while more than TREND_COLUMNS remain."""
+
     def pick(bucket) -> list[int]:
         last: dict[Any, int] = {}
         for tick, date in entries:
@@ -78,5 +79,15 @@ def load(reader: EvidenceReader, context: EvaluationContext) -> VehicleRoiEviden
     catalog = reader.catalog()
     first = SampleRef(entries[0][0], labels[entries[0][0]]) if entries else reader.ref(endpoint)
     last = SampleRef(entries[-1][0], labels[entries[-1][0]]) if entries else reader.ref(endpoint)
-    return VehicleRoiEvidence(endpoint, context.clock, catalog, reader.count_samples(), len(entries), first, last,
-                              tuple(trend), loads, reader.hydrated)
+    return VehicleRoiEvidence(
+        endpoint,
+        context.clock,
+        catalog,
+        reader.count_samples(),
+        len(entries),
+        first,
+        last,
+        tuple(trend),
+        loads,
+        reader.hydrated,
+    )

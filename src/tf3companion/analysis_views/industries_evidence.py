@@ -32,16 +32,23 @@ class SampleRows:
 
 @dataclass(frozen=True)
 class IndustriesEvidence:
-    endpoint: Snapshot                 # the selected endpoint, fully hydrated
-    samples: tuple[SampleRows, ...]    # every eligible sample, oldest first, ending at the endpoint
-    eligible: int                      # stored samples at or before the endpoint
-    hydrated: int                      # full snapshots loaded besides the endpoint
+    endpoint: Snapshot  # the selected endpoint, fully hydrated
+    samples: tuple[SampleRows, ...]  # every eligible sample, oldest first, ending at the endpoint
+    eligible: int  # stored samples at or before the endpoint
+    hydrated: int  # full snapshots loaded besides the endpoint
 
 
 def _rows(tick: int, label: str, parts: dict[str, Any]) -> SampleRows:
     meta = parts.get("meta")
-    return SampleRows(tick, label, meta.get("date") if isinstance(meta, dict) else None, parts.get("industries"),
-                      parts.get("stocks"), parts.get("problems"), parts.get("errors"))
+    return SampleRows(
+        tick,
+        label,
+        meta.get("date") if isinstance(meta, dict) else None,
+        parts.get("industries"),
+        parts.get("stocks"),
+        parts.get("problems"),
+        parts.get("errors"),
+    )
 
 
 def load(reader: EvidenceReader, context: EvaluationContext) -> IndustriesEvidence:

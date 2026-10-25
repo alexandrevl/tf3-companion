@@ -36,15 +36,40 @@ from .model import (
 )
 from .safe_regex import capture_names, check_pattern
 
-TOP_KEYS = {"$schema", "schema", "id", "version", "name", "description", "author", "parameters", "markers",
-            "name_patterns", "definitions", "roles", "engine", "rules", "recommendations", "ladders", "reports", "report_policies"}
+TOP_KEYS = {
+    "$schema",
+    "schema",
+    "id",
+    "version",
+    "name",
+    "description",
+    "author",
+    "parameters",
+    "markers",
+    "name_patterns",
+    "definitions",
+    "roles",
+    "engine",
+    "rules",
+    "recommendations",
+    "ladders",
+    "reports",
+    "report_policies",
+}
 REQUIRED_TOP = ("schema", "id", "version", "name", "description")
 FIELD_RE = re.compile(r"^[a-z]+(\.[a-z_][a-z0-9_]*)+$")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_.]*)(?:\|([a-z]+))?\}")
 MAX_EXPANDED_NODES = 20_000
 MAX_OUTCOMES = 20
-MAX_COLLECTION = {"parameters": 100, "markers": 50, "definitions": 100, "recommendations": 200,
-                  "ladders": 50, "tables": 50, "charts": 50}
+MAX_COLLECTION = {
+    "parameters": 100,
+    "markers": 50,
+    "definitions": 100,
+    "recommendations": 200,
+    "ladders": 50,
+    "tables": 50,
+    "charts": 50,
+}
 LEAF_KEYS = {"field", "measure", "op", "value"}
 CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 
@@ -99,11 +124,22 @@ class _State:
             except (KeyError, IndexError, TypeError, ValueError):
                 pass
             category = "reference" if "undefined" in message else "structure"
-            code = "undefined-reference" if category == "reference" else (
-                "unknown-key" if message.startswith("unknown key") else "invalid-structure")
-            self.issues.append(Issue(path, message, category=category, code=code,
-                                     itemKind=kind, itemId=item_id,
-                                     ruleId=item_id if kind == "rules" else None))
+            code = (
+                "undefined-reference"
+                if category == "reference"
+                else ("unknown-key" if message.startswith("unknown key") else "invalid-structure")
+            )
+            self.issues.append(
+                Issue(
+                    path,
+                    message,
+                    category=category,
+                    code=code,
+                    itemKind=kind,
+                    itemId=item_id,
+                    ruleId=item_id if kind == "rules" else None,
+                )
+            )
 
 
 def validate(data: Any) -> list[Issue]:
@@ -113,6 +149,7 @@ def validate(data: Any) -> list[Issue]:
         return st.issues
     _top(st, data)
     from ..report_policy import validate_report_policies
+
     for path, message in validate_report_policies(data.get("report_policies", {})):
         st.error(path, message)
     return st.issues
@@ -121,12 +158,17 @@ def validate(data: Any) -> list[Issue]:
 # ---------------------------------------------------------------------------
 # helpers
 
+
 def _p(path: str, *parts: Any) -> str:
     return path + "".join("/" + str(p).replace("~", "~0").replace("/", "~1") for p in parts)
 
 
 def _is_num(value: Any) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and (not isinstance(value, float) or math.isfinite(value))
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and (not isinstance(value, float) or math.isfinite(value))
+    )
 
 
 def _keys(st: _State, obj: Any, path: str, what: str, allowed: Iterable[str], required: Iterable[str] = ()) -> bool:
@@ -137,8 +179,11 @@ def _keys(st: _State, obj: Any, path: str, what: str, allowed: Iterable[str], re
     for key in obj:
         if key not in allowed:
             hint = difflib.get_close_matches(key, sorted(allowed), n=1)
-            st.error(_p(path, key), f"unknown key '{key}' in {what}" + (f"; did you mean '{hint[0]}'?" if hint else
-                                                                       f"; allowed keys: {', '.join(sorted(allowed))}"))
+            st.error(
+                _p(path, key),
+                f"unknown key '{key}' in {what}"
+                + (f"; did you mean '{hint[0]}'?" if hint else f"; allowed keys: {', '.join(sorted(allowed))}"),
+            )
     for key in required:
         if key not in obj:
             st.error(path, f"{what} is missing required key '{key}'")
@@ -178,6 +223,7 @@ def _collection(st: _State, value: Any, path: str, what: str, limit: int, kind: 
 # ---------------------------------------------------------------------------
 # top level
 
+
 def _top(st: _State, data: dict[str, Any]) -> None:
     _keys(st, data, "", "the methodology", TOP_KEYS, REQUIRED_TOP)
     if "schema" in data and data["schema"] != SCHEMA_ID:
@@ -185,7 +231,10 @@ def _top(st: _State, data: dict[str, Any]) -> None:
     ident = data.get("id")
     if not isinstance(ident, str) or not ID_RE.match(ident) or len(ident) > MAX_ID:
         if "id" in data:
-            st.error("/id", f"id {ident!r} must be lowercase letters, digits and single hyphens (at most {MAX_ID} characters)")
+            st.error(
+                "/id",
+                f"id {ident!r} must be lowercase letters, digits and single hyphens (at most {MAX_ID} characters)",
+            )
     version = data.get("version")
     if "version" in data and (not isinstance(version, str) or not VERSION_RE.match(version)):
         st.error("/version", f"version {version!r} must be a three-part number such as 1.0.0")
@@ -298,7 +347,9 @@ def _roles(st: _State, value: Any) -> None:
         ids: set[str] = set()
         for i, role in enumerate(roles):
             rpath = _p(path, i)
-            if not _keys(st, role, rpath, "role", ("id", "label", "description", "rationale", "select"), ("id", "select")):
+            if not _keys(
+                st, role, rpath, "role", ("id", "label", "description", "rationale", "select"), ("id", "select")
+            ):
                 continue
             if _ident(st, role.get("id"), _p(rpath, "id"), "role id"):
                 if role["id"] in ids:
@@ -328,8 +379,11 @@ def _engine(st: _State, value: Any) -> None:
             path = _p("/engine/thresholds", name)
             if name not in fields:
                 hint = difflib.get_close_matches(name, sorted(fields), n=1)
-                st.error(path, f"unknown threshold '{name}'" + (f"; did you mean '{hint[0]}'?" if hint else
-                                                               f"; known thresholds: {', '.join(sorted(fields))}"))
+                st.error(
+                    path,
+                    f"unknown threshold '{name}'"
+                    + (f"; did you mean '{hint[0]}'?" if hint else f"; known thresholds: {', '.join(sorted(fields))}"),
+                )
             elif not _is_num(v) or v < 0:
                 st.error(path, "threshold must be a non-negative number")
             elif fields[name].type in (int, "int") and (isinstance(v, float) and not v.is_integer()):
@@ -338,13 +392,20 @@ def _engine(st: _State, value: Any) -> None:
     if findings is not None and _collection(st, findings, "/engine/findings", "engine.findings", 200, list):
         for i, item in enumerate(findings):
             path = _p("/engine/findings", i)
-            if not _keys(st, item, path, "finding override", ("code", "role", "action", "severity"), ("code", "action")):
+            if not _keys(
+                st, item, path, "finding override", ("code", "role", "action", "severity"), ("code", "action")
+            ):
                 continue
             code = item.get("code")
             if code not in FINDING_CODES:
                 hint = difflib.get_close_matches(str(code), sorted(FINDING_CODES), n=1)
-                st.error(_p(path, "code"), f"unknown finding code {code!r}" + (f"; did you mean '{hint[0]}'?" if hint else
-                                                                              f"; known codes: {', '.join(sorted(FINDING_CODES))}"))
+                st.error(
+                    _p(path, "code"),
+                    f"unknown finding code {code!r}"
+                    + (
+                        f"; did you mean '{hint[0]}'?" if hint else f"; known codes: {', '.join(sorted(FINDING_CODES))}"
+                    ),
+                )
             action = item.get("action")
             if action not in ("off", "set_severity"):
                 st.error(_p(path, "action"), "action must be 'off' or 'set_severity'")
@@ -363,6 +424,7 @@ def _engine(st: _State, value: Any) -> None:
 # ---------------------------------------------------------------------------
 # conditions
 
+
 def _literal_ok(type_: str, op: str, value: Any) -> str | None:
     if op in ("in", "not_in", "contains_any"):
         if not isinstance(value, list) or not value:
@@ -375,9 +437,17 @@ def _literal_ok(type_: str, op: str, value: Any) -> str | None:
     base = {fieldmod.LIST_NUMBER: fieldmod.NUMBER, fieldmod.LIST_STRING: fieldmod.STRING}.get(type_, type_)
     for item in items:
         if base == fieldmod.NUMBER and not _is_num(item):
-            return "value must be a number" if op not in ("in", "not_in", "contains_any") else "list entries must be numbers"
+            return (
+                "value must be a number"
+                if op not in ("in", "not_in", "contains_any")
+                else "list entries must be numbers"
+            )
         if base == fieldmod.STRING and not isinstance(item, str):
-            return "value must be a string" if op not in ("in", "not_in", "contains_any") else "list entries must be strings"
+            return (
+                "value must be a string"
+                if op not in ("in", "not_in", "contains_any")
+                else "list entries must be strings"
+            )
         if base == fieldmod.BOOL and not isinstance(item, bool):
             return "value must be true or false"
     if op == "matches":
@@ -402,8 +472,13 @@ def _field_ref(st: _State, name: Any, path: str, ctx: _Ctx, what: str = "field")
         st.error(path, f"name capture '{capture[1]}' is not declared by any name pattern")
         return False
     spec = fieldmod.lookup(name)
-    if spec is not None and ctx.in_role_selector and name.endswith(".role") and name.split(".")[0] == ctx.entity \
-            and name.count(".") == 1:
+    if (
+        spec is not None
+        and ctx.in_role_selector
+        and name.endswith(".role")
+        and name.split(".")[0] == ctx.entity
+        and name.count(".") == 1
+    ):
         st.error(path, "a role selector cannot read its own entity's role")
         return False
     return spec
@@ -450,8 +525,14 @@ def _cond(st: _State, node: Any, path: str, ctx: _Ctx, depth: int, stack: tuple[
         if not ctx.allow_any_member:
             st.error(path, "'any_member' is allowed only in an aggregate rule's 'having'")
             return
-        _cond(st, node["any_member"], _p(path, "any_member"),
-              dataclasses.replace(ctx, measures=None, allow_any_member=False, allow_field=True), depth + 1, stack)
+        _cond(
+            st,
+            node["any_member"],
+            _p(path, "any_member"),
+            dataclasses.replace(ctx, measures=None, allow_any_member=False, allow_field=True),
+            depth + 1,
+            stack,
+        )
     else:
         _leaf(st, node, path, ctx)
 
@@ -482,8 +563,11 @@ def _leaf(st: _State, node: dict[str, Any], path: str, ctx: _Ctx) -> None:
             return
     else:
         if not ctx.allow_field:
-            st.error(_p(path, "field"), "aggregate outcomes and 'having' read measures; use a measure 'where' or "
-                                         "'any_member' to test member fields")
+            st.error(
+                _p(path, "field"),
+                "aggregate outcomes and 'having' read measures; use a measure 'where' or "
+                "'any_member' to test member fields",
+            )
             return
         spec = _field_ref(st, node["field"], _p(path, "field"), ctx)
         if spec is False:
@@ -503,7 +587,7 @@ def _leaf(st: _State, node: dict[str, Any], path: str, ctx: _Ctx) -> None:
     value = node["value"]
     if isinstance(value, dict):
         if set(value) != {"param"}:
-            st.error(_p(path, "value"), "an object value must be {\"param\": <name>}")
+            st.error(_p(path, "value"), 'an object value must be {"param": <name>}')
             return
         pname = value["param"]
         if pname not in st.params:
@@ -532,12 +616,22 @@ def _leaf(st: _State, node: dict[str, Any], path: str, ctx: _Ctx) -> None:
 # ---------------------------------------------------------------------------
 # templates
 
+
 def template_placeholders(text: str) -> list[tuple[str, str | None]]:
     return [(m.group(1), m.group(2)) for m in PLACEHOLDER_RE.finditer(text.replace("{{", "").replace("}}", ""))]
 
 
-def _template(st: _State, text: Any, path: str, entity: str | None, *, group: bool = False,
-              measures: Iterable[str] = (), band: bool = False, what: str = "template") -> None:
+def _template(
+    st: _State,
+    text: Any,
+    path: str,
+    entity: str | None,
+    *,
+    group: bool = False,
+    measures: Iterable[str] = (),
+    band: bool = False,
+    what: str = "template",
+) -> None:
     if not isinstance(text, str):
         st.error(path, f"{what} must be a string")
         return
@@ -547,7 +641,10 @@ def _template(st: _State, text: Any, path: str, entity: str | None, *, group: bo
     cleaned = text.replace("{{", "").replace("}}", "")
     leftover = PLACEHOLDER_RE.sub("", cleaned)
     if "{" in leftover or "}" in leftover:
-        st.error(path, f"{what} has a malformed placeholder; use {{field}} or {{field|fmt}} ({{{{ and }}}} for literal braces)")
+        st.error(
+            path,
+            f"{what} has a malformed placeholder; use {{field}} or {{field|fmt}} ({{{{ and }}}} for literal braces)",
+        )
     measures = tuple(measures)
     for name, fmt in template_placeholders(text):
         if fmt is not None and fmt not in FORMATS:
@@ -574,8 +671,17 @@ def _template(st: _State, text: Any, path: str, entity: str | None, *, group: bo
 # ---------------------------------------------------------------------------
 # rules
 
-def _outcomes(st: _State, items: Any, path: str, ctx: _Ctx, entity: str | None, *, group: bool = False,
-              measures: Iterable[str] = ()) -> None:
+
+def _outcomes(
+    st: _State,
+    items: Any,
+    path: str,
+    ctx: _Ctx,
+    entity: str | None,
+    *,
+    group: bool = False,
+    measures: Iterable[str] = (),
+) -> None:
     if not isinstance(items, list) or not items:
         st.error(path, "outcomes must be a non-empty list")
         return
@@ -589,7 +695,9 @@ def _outcomes(st: _State, items: Any, path: str, ctx: _Ctx, entity: str | None, 
         _cond(st, outcome.get("when"), _p(opath, "when"), ctx, 1, ())
         _marker_ref(st, outcome.get("marker"), _p(opath, "marker"))
         if "message" in outcome:
-            _template(st, outcome["message"], _p(opath, "message"), entity, group=group, measures=measures, what="message")
+            _template(
+                st, outcome["message"], _p(opath, "message"), entity, group=group, measures=measures, what="message"
+            )
 
 
 def _marker_ref(st: _State, name: Any, path: str) -> None:
@@ -597,14 +705,17 @@ def _marker_ref(st: _State, name: Any, path: str) -> None:
         st.error(path, f"undefined marker {name!r}; define it under 'markers'")
 
 
-def _default(st: _State, default: Any, path: str, entity: str | None, *, group: bool = False,
-             measures: Iterable[str] = ()) -> None:
+def _default(
+    st: _State, default: Any, path: str, entity: str | None, *, group: bool = False, measures: Iterable[str] = ()
+) -> None:
     if default is None:
         return
     if _keys(st, default, path, "default outcome", ("marker", "message"), ("marker",)):
         _marker_ref(st, default.get("marker"), _p(path, "marker"))
         if "message" in default:
-            _template(st, default["message"], _p(path, "message"), entity, group=group, measures=measures, what="message")
+            _template(
+                st, default["message"], _p(path, "message"), entity, group=group, measures=measures, what="message"
+            )
 
 
 def _rules(st: _State, value: Any) -> None:
@@ -618,8 +729,12 @@ def _rules(st: _State, value: Any) -> None:
         rid = rule.get("id") if isinstance(rule, dict) else None
         label = f"rule '{rid}'" if isinstance(rid, str) else f"rule #{i}"
         aggregate = isinstance(rule, dict) and "aggregate" in rule
-        allowed = {"id", "label", "description", "rationale", "entity", "role"} | ({"aggregate"} if aggregate else {"outcomes", "default"})
-        if not _keys(st, rule, path, label, allowed, ("id", "entity") + (("aggregate",) if aggregate else ("outcomes",))):
+        allowed = {"id", "label", "description", "rationale", "entity", "role"} | (
+            {"aggregate"} if aggregate else {"outcomes", "default"}
+        )
+        if not _keys(
+            st, rule, path, label, allowed, ("id", "entity") + (("aggregate",) if aggregate else ("outcomes",))
+        ):
             continue
         if _ident(st, rid, _p(path, "id"), "rule id"):
             if rid in ids:
@@ -630,8 +745,10 @@ def _rules(st: _State, value: Any) -> None:
         _text(st, rule.get("rationale"), _p(path, "rationale"), "rationale")
         entity = rule.get("entity")
         if entity not in ENTITIES or (entity == "stop" and not aggregate):
-            st.error(_p(path, "entity"), f"{label}: entity must be one of "
-                                       f"{', '.join(e for e in ENTITIES if aggregate or e != 'stop')}")
+            st.error(
+                _p(path, "entity"),
+                f"{label}: entity must be one of {', '.join(e for e in ENTITIES if aggregate or e != 'stop')}",
+            )
             continue
         if isinstance(rid, str):
             st.rule_entities[rid] = entity
@@ -648,8 +765,14 @@ def _rules(st: _State, value: Any) -> None:
 
 
 def _aggregate(st: _State, agg: Any, path: str, entity: str, rid: str) -> None:
-    if not _keys(st, agg, path, "aggregate", ("group_by", "measures", "having", "outcomes", "default"),
-                 ("group_by", "measures", "outcomes")):
+    if not _keys(
+        st,
+        agg,
+        path,
+        "aggregate",
+        ("group_by", "measures", "having", "outcomes", "default"),
+        ("group_by", "measures", "outcomes"),
+    ):
         return
     group_by = agg.get("group_by")
     if group_by != "town":
@@ -713,6 +836,7 @@ def _measure(st: _State, m: Any, path: str, entity: str, group_by: Any, earlier:
 # ---------------------------------------------------------------------------
 # recommendations, ladders, reports
 
+
 def _recommendations(st: _State, value: Any) -> None:
     if value is None:
         return
@@ -721,8 +845,14 @@ def _recommendations(st: _State, value: Any) -> None:
     ids: set[str] = set()
     for i, rec in enumerate(value):
         path = _p("/recommendations", i)
-        if not _keys(st, rec, path, "recommendation", ("id", "when", "priority", "text", "rationale"),
-                     ("id", "when", "priority", "text")):
+        if not _keys(
+            st,
+            rec,
+            path,
+            "recommendation",
+            ("id", "when", "priority", "text", "rationale"),
+            ("id", "when", "priority", "text"),
+        ):
             continue
         if _ident(st, rec.get("id"), _p(path, "id"), "recommendation id"):
             if rec["id"] in ids:
@@ -746,8 +876,15 @@ def _recommendations(st: _State, value: Any) -> None:
                 st.error(_p(path, "when", "role"), f"role {when['role']!r} is not defined for {entity} roles")
         if "text" in rec and entity is not None:
             aggregate = rule_id in st.aggregate_rules
-            _template(st, rec["text"], _p(path, "text"), entity, group=aggregate,
-                      measures=st.aggregate_rules.get(rule_id, ()), what="text")
+            _template(
+                st,
+                rec["text"],
+                _p(path, "text"),
+                entity,
+                group=aggregate,
+                measures=st.aggregate_rules.get(rule_id, ()),
+                what="text",
+            )
         elif "text" in rec:
             _template(st, rec["text"], _p(path, "text"), None, what="text")
 
@@ -760,8 +897,14 @@ def _ladders(st: _State, value: Any) -> None:
     ids: set[str] = set()
     for i, ladder in enumerate(value):
         path = _p("/ladders", i)
-        if not _keys(st, ladder, path, "ladder", ("id", "label", "description", "rationale", "entity", "role", "metric",
-                                                 "bands", "text"), ("id", "entity", "metric", "bands", "text")):
+        if not _keys(
+            st,
+            ladder,
+            path,
+            "ladder",
+            ("id", "label", "description", "rationale", "entity", "role", "metric", "bands", "text"),
+            ("id", "entity", "metric", "bands", "text"),
+        ):
             continue
         if _ident(st, ladder.get("id"), _p(path, "id"), "ladder id"):
             if ladder["id"] in ids:
@@ -811,7 +954,9 @@ def _reports(st: _State, value: Any) -> None:
     if kinds is not None and _collection(st, kinds, "/reports/kinds", "kinds", 40, list):
         for i, kind in enumerate(kinds):
             if kind not in VALID_KINDS:
-                st.error(_p("/reports/kinds", i), f"unknown report kind {kind!r}; valid kinds: {', '.join(VALID_KINDS)}")
+                st.error(
+                    _p("/reports/kinds", i), f"unknown report kind {kind!r}; valid kinds: {', '.join(VALID_KINDS)}"
+                )
         if len(set(map(str, kinds))) != len(kinds):
             st.error("/reports/kinds", "report kinds must not repeat")
     tables = value.get("tables")
@@ -819,8 +964,14 @@ def _reports(st: _State, value: Any) -> None:
         ids: set[str] = set()
         for i, table in enumerate(tables):
             path = _p("/reports/tables", i)
-            if not _keys(st, table, path, "table", ("id", "label", "entity", "role", "sort", "descending", "columns", "limit"),
-                         ("id", "entity", "columns")):
+            if not _keys(
+                st,
+                table,
+                path,
+                "table",
+                ("id", "label", "entity", "role", "sort", "descending", "columns", "limit"),
+                ("id", "entity", "columns"),
+            ):
                 continue
             if _ident(st, table.get("id"), _p(path, "id"), "table id"):
                 if table["id"] in ids:
@@ -851,8 +1002,14 @@ def _reports(st: _State, value: Any) -> None:
         ids = set()
         for i, chart in enumerate(charts):
             path = _p("/reports/charts", i)
-            if not _keys(st, chart, path, "chart", ("id", "label", "type", "entity", "role", "metric", "agg", "group_by"),
-                         ("id", "type", "entity", "agg")):
+            if not _keys(
+                st,
+                chart,
+                path,
+                "chart",
+                ("id", "label", "type", "entity", "role", "metric", "agg", "group_by"),
+                ("id", "type", "entity", "agg"),
+            ):
                 continue
             if _ident(st, chart.get("id"), _p(path, "id"), "chart id"):
                 if chart["id"] in ids:

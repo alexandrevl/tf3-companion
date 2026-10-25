@@ -34,8 +34,9 @@ def check_pattern(pattern: str) -> str | None:
     if problem:
         return problem
     if state["unbounded"] > MAX_UNBOUNDED_QUANTIFIERS:
-        return (f"pattern has {state['unbounded']} unbounded quantifiers; "
-                f"at most {MAX_UNBOUNDED_QUANTIFIERS} are allowed")
+        return (
+            f"pattern has {state['unbounded']} unbounded quantifiers; at most {MAX_UNBOUNDED_QUANTIFIERS} are allowed"
+        )
     return None
 
 

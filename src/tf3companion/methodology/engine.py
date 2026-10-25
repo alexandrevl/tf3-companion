@@ -18,14 +18,23 @@ from .templates import clean_text, render
 
 MAX_HISTORY_POINTS = 24
 TABLE_LIMIT = 50
-SEVERITY_CATEGORY = {"line": "lines", "stop": "lines", "town": "lines", "vehicle": "vehicles",
-                     "industry": "industries", "stock": "industries"}
-DEFAULT_SUGGESTION = ("Review the evidence in the methodology verdicts report and decide in the game; "
-                      "the rule's rationale is shown there as untrusted methodology text.")
+SEVERITY_CATEGORY = {
+    "line": "lines",
+    "stop": "lines",
+    "town": "lines",
+    "vehicle": "vehicles",
+    "industry": "industries",
+    "stock": "industries",
+}
+DEFAULT_SUGGESTION = (
+    "Review the evidence in the methodology verdicts report and decide in the game; "
+    "the rule's rationale is shown there as untrusted methodology text."
+)
 
 
 # ---------------------------------------------------------------------------
 # result objects
+
 
 @dataclass
 class Hit:
@@ -50,8 +59,8 @@ class RuleResult:
     rationale: str | None
     entity: str
     role: str | None
-    kind: str                      # rule | aggregate
-    status: str                    # ok | skipped | unsupported
+    kind: str  # rule | aggregate
+    status: str  # ok | skipped | unsupported
     reason: str | None
     needs: list[str]
     evaluated: int = 0
@@ -59,7 +68,7 @@ class RuleResult:
     excluded_members: int = 0
     hits: list[Hit] = field(default_factory=list)
     marker_counts: dict[str, int] = field(default_factory=dict)
-    groups: list[dict[str, Any]] = field(default_factory=list)   # aggregate rows (all evaluated groups)
+    groups: list[dict[str, Any]] = field(default_factory=list)  # aggregate rows (all evaluated groups)
 
     def to_dict(self) -> dict[str, Any]:
         out = {k: v for k, v in asdict(self).items() if k != "hits"}
@@ -81,7 +90,7 @@ class RoleSummary:
 @dataclass
 class AdviceResult:
     id: str
-    kind: str                      # recommendation | ladder
+    kind: str  # recommendation | ladder
     status: str
     reason: str | None
     priority: int | None = None
@@ -142,8 +151,13 @@ class Verdicts:
 
     def _by_status(self, status: str) -> list[dict[str, Any]]:
         out = []
-        for kind, items in (("rule", self.rules), ("ladder", self.ladders), ("recommendation", self.recommendations),
-                            ("table", self.tables), ("chart", self.charts)):
+        for kind, items in (
+            ("rule", self.rules),
+            ("ladder", self.ladders),
+            ("recommendation", self.recommendations),
+            ("table", self.tables),
+            ("chart", self.charts),
+        ):
             out += [{"kind": kind, "id": i.id, "reason": i.reason} for i in items if i.status == status]
         for summary in self.roles.values():
             if summary.status == status:
@@ -152,34 +166,51 @@ class Verdicts:
 
     @property
     def not_evaluable(self) -> list[dict[str, Any]]:
-        out = [{"kind": "rule", "id": r.id, "entities": r.not_evaluable, "excludedMembers": r.excluded_members}
-               for r in self.rules if r.not_evaluable or r.excluded_members]
+        out = [
+            {"kind": "rule", "id": r.id, "entities": r.not_evaluable, "excludedMembers": r.excluded_members}
+            for r in self.rules
+            if r.not_evaluable or r.excluded_members
+        ]
         out += [{"kind": "ladder", "id": a.id, "entities": a.not_evaluable} for a in self.ladders if a.not_evaluable]
-        out += [{"kind": "roles", "id": s.entity, "entities": s.unclassified_unknown}
-                for s in self.roles.values() if s.unclassified_unknown]
+        out += [
+            {"kind": "roles", "id": s.entity, "entities": s.unclassified_unknown}
+            for s in self.roles.values()
+            if s.unclassified_unknown
+        ]
         return out
 
     def counts(self) -> dict[str, int]:
-        return {"skipped": len(self.skipped), "unsupported": len(self.unsupported),
-                "notEvaluable": sum(i.get("entities", 0) for i in self.not_evaluable)}
+        return {
+            "skipped": len(self.skipped),
+            "unsupported": len(self.unsupported),
+            "notEvaluable": sum(i.get("entities", 0) for i in self.not_evaluable),
+        }
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "methodology": self.methodology, "origin": self.origin, "parameters": self.parameters,
-            "parameterOverrides": self.overrides, "snapshot": self.snapshot,
-            "selection": self.selection, "timeBasis": self.time_basis,
+            "methodology": self.methodology,
+            "origin": self.origin,
+            "parameters": self.parameters,
+            "parameterOverrides": self.overrides,
+            "snapshot": self.snapshot,
+            "selection": self.selection,
+            "timeBasis": self.time_basis,
             "roles": {k: asdict(v) for k, v in self.roles.items()},
             "rules": [r.to_dict() for r in self.rules],
             "recommendations": [asdict(a) for a in self.recommendations],
             "ladders": [asdict(a) for a in self.ladders],
-            "tables": [asdict(t) for t in self.tables], "charts": [asdict(c) for c in self.charts],
-            "skipped": self.skipped, "unsupported": self.unsupported, "notEvaluable": self.not_evaluable,
+            "tables": [asdict(t) for t in self.tables],
+            "charts": [asdict(c) for c in self.charts],
+            "skipped": self.skipped,
+            "unsupported": self.unsupported,
+            "notEvaluable": self.not_evaluable,
             "disabledFindings": self.disabled_findings,
         }
 
 
 # ---------------------------------------------------------------------------
 # scopes
+
 
 class EntityScope:
     def __init__(self, record: fieldmod.Record, params: dict[str, Any], definitions: dict[str, Any]) -> None:
@@ -196,8 +227,13 @@ class EntityScope:
 
 
 class GroupScope:
-    def __init__(self, measures: dict[str, Any], members: list[fieldmod.Record], params: dict[str, Any],
-                 definitions: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        measures: dict[str, Any],
+        members: list[fieldmod.Record],
+        params: dict[str, Any],
+        definitions: dict[str, Any],
+    ) -> None:
         self._measures, self._members, self.params, self.definitions = measures, members, params, definitions
 
     def field(self, name: str) -> Any:  # pragma: no cover - rejected by the validator
@@ -213,6 +249,7 @@ class GroupScope:
 # ---------------------------------------------------------------------------
 # parameters
 
+
 def thresholds_for(m: Methodology | None) -> analysis.Thresholds:
     """Engine thresholds: defaults plus the methodology's `engine.thresholds`."""
     if m is None:
@@ -223,9 +260,16 @@ def thresholds_for(m: Methodology | None) -> analysis.Thresholds:
 # ---------------------------------------------------------------------------
 # the run
 
+
 class _Run:
-    def __init__(self, m: Methodology, snap: Snapshot, params: dict[str, Any], classification: Classification,
-                 facts: fieldmod.Facts) -> None:
+    def __init__(
+        self,
+        m: Methodology,
+        snap: Snapshot,
+        params: dict[str, Any],
+        classification: Classification,
+        facts: fieldmod.Facts,
+    ) -> None:
         self.m, self.snap, self.params, self.cls, self.facts = m, snap, params, classification, facts
         self.defs = m.data.get("definitions") or {}
         self.markers = m.data.get("markers") or {}
@@ -246,8 +290,12 @@ class _Run:
                 continue
             roles = declared[entity]
             support = self.cls.roles[entity]
-            summary = RoleSummary(entity, support.status, support.reason,
-                                  [{"id": r["id"], "label": r.get("label"), "count": 0} for r in roles])
+            summary = RoleSummary(
+                entity,
+                support.status,
+                support.reason,
+                [{"id": r["id"], "label": r.get("label"), "count": 0} for r in roles],
+            )
             self.roles[entity] = summary
             records = self.records(entity)
             if support.status != OK:
@@ -260,8 +308,13 @@ class _Run:
                 self.facts.line_roles = {r.raw["id"]: r.role or UNCLASSIFIED for r in records}
 
     # ---- templates -----------------------------------------------------------------
-    def lookup_for(self, record: fieldmod.Record | None, group: dict[str, Any] | None = None,
-                   measures: dict[str, Any] | None = None, band: dict[str, Any] | None = None):
+    def lookup_for(
+        self,
+        record: fieldmod.Record | None,
+        group: dict[str, Any] | None = None,
+        measures: dict[str, Any] | None = None,
+        band: dict[str, Any] | None = None,
+    ):
         def lookup(name: str) -> Any:
             if name == "group":
                 return group["label"] if group else None
@@ -274,6 +327,7 @@ class _Run:
             if "." not in name:
                 return (measures or {}).get(name)
             return None if record is None else record.get(name)
+
         return lookup
 
     def marker_label(self, marker: str) -> str:
@@ -284,8 +338,17 @@ class _Run:
         support = self.cls.of("rule", rule["id"])
         aggregate = "aggregate" in rule
         result = RuleResult(
-            rule["id"], rule.get("label"), rule.get("description"), rule.get("rationale"), rule["entity"],
-            rule.get("role"), "aggregate" if aggregate else "rule", support.status, support.reason, sorted(support.needs))
+            rule["id"],
+            rule.get("label"),
+            rule.get("description"),
+            rule.get("rationale"),
+            rule["entity"],
+            rule.get("role"),
+            "aggregate" if aggregate else "rule",
+            support.status,
+            support.reason,
+            sorted(support.needs),
+        )
         if support.status != OK:
             return result
         members = [r for r in self.records(rule["entity"]) if "role" not in rule or r.role == rule["role"]]
@@ -314,10 +377,23 @@ class _Run:
                 continue
             marker = outcome["marker"]
             message = outcome.get("message")
-            text = render(message, self.lookup_for(record)) if message else \
-                f"{clean_text(record.raw.get('name') or record.entity, 200)}: {self.marker_label(marker)}"
-            result.hits.append(Hit(rule["id"], marker, text, record.ident, record.role,
-                                   self._evidence(rule["id"], record), None, record))
+            text = (
+                render(message, self.lookup_for(record))
+                if message
+                else f"{clean_text(record.raw.get('name') or record.entity, 200)}: {self.marker_label(marker)}"
+            )
+            result.hits.append(
+                Hit(
+                    rule["id"],
+                    marker,
+                    text,
+                    record.ident,
+                    record.role,
+                    self._evidence(rule["id"], record),
+                    None,
+                    record,
+                )
+            )
 
     # ---- aggregate rules -------------------------------------------------------------------
     def _run_aggregate(self, rule: dict[str, Any], members: list[fieldmod.Record], result: RuleResult) -> None:
@@ -334,8 +410,10 @@ class _Run:
 
         def group(key: Any) -> dict[str, Any]:
             if key not in groups:
-                groups[key] = {"members": [], "acc": {name: {"n": 0, "total": 0, "missing": 0, "values": set(),
-                                                                "seen": set()} for name in order}}
+                groups[key] = {
+                    "members": [],
+                    "acc": {name: {"n": 0, "total": 0, "missing": 0, "values": set(), "seen": set()} for name in order},
+                }
             return groups[key]
 
         for index, record in enumerate(members):
@@ -385,8 +463,11 @@ class _Run:
                 marker = outcome["marker"]
                 group_info = {"key": key, "label": label}
                 message = outcome.get("message")
-                text = render(message, self.lookup_for(None, group_info, values)) if message else \
-                    f"{label}: {self.marker_label(marker)}"
+                text = (
+                    render(message, self.lookup_for(None, group_info, values))
+                    if message
+                    else f"{label}: {self.marker_label(marker)}"
+                )
                 row.update(marker=marker, message=text)
                 result.hits.append(Hit(rule["id"], marker, text, None, None, dict(values), group_info, None))
             result.groups.append(row)
@@ -434,11 +515,17 @@ class _Run:
             values = dict(hit.evidence)
             if hit.record is not None:
                 values.update({name: hit.record.get(name) for name in sorted(template_fields(rec["text"]))})
-            result.items.append({
-                "text": render(rec["text"], lookup),
-                "evidence": {"rule": hit.rule, "marker": hit.marker, "entity": hit.entity or hit.group,
-                             "values": values},
-            })
+            result.items.append(
+                {
+                    "text": render(rec["text"], lookup),
+                    "evidence": {
+                        "rule": hit.rule,
+                        "marker": hit.marker,
+                        "entity": hit.entity or hit.group,
+                        "values": values,
+                    },
+                }
+            )
         result.evaluated = len(result.items)
         return result
 
@@ -466,19 +553,26 @@ class _Run:
             if band["mode"] == carrier:
                 continue
             info = {"mode": band["mode"], "max_km": band.get("max_km")}
-            result.items.append({
-                "text": render(ladder["text"], self.lookup_for(record, band=info)),
-                "evidence": {"ladder": ladder["id"], "entity": record.ident, "distanceKm": round(distance, 3),
-                             "band": {"fromKm": lower, "toKm": band.get("max_km"), "mode": band["mode"]},
-                             "carrier": carrier},
-            })
+            result.items.append(
+                {
+                    "text": render(ladder["text"], self.lookup_for(record, band=info)),
+                    "evidence": {
+                        "ladder": ladder["id"],
+                        "entity": record.ident,
+                        "distanceKm": round(distance, 3),
+                        "band": {"fromKm": lower, "toKm": band.get("max_km"), "mode": band["mode"]},
+                        "carrier": carrier,
+                    },
+                }
+            )
         return result
 
     # ---- tables and charts ----------------------------------------------------------------
     def run_table(self, table: dict[str, Any]) -> TableResult:
         support = self.cls.of("table", table["id"])
-        result = TableResult(table["id"], table.get("label"), table["entity"], support.status, support.reason,
-                             list(table["columns"]))
+        result = TableResult(
+            table["id"], table.get("label"), table["entity"], support.status, support.reason, list(table["columns"])
+        )
         if support.status != OK:
             return result
         rows = [r for r in self.records(table["entity"]) if "role" not in table or r.role == table["role"]]
@@ -553,8 +647,13 @@ def _measure_values(measures: dict[str, Any], order: list[str], acc: dict[str, d
     return values
 
 
-def _assign(roles: list[dict[str, Any]], records: list[fieldmod.Record], params: dict[str, Any],
-            defs: dict[str, Any], summary: RoleSummary | None) -> Counter:
+def _assign(
+    roles: list[dict[str, Any]],
+    records: list[fieldmod.Record],
+    params: dict[str, Any],
+    defs: dict[str, Any],
+    summary: RoleSummary | None,
+) -> Counter:
     """First true selector wins; an unknown selector before it makes the entity unclassified."""
     counts: Counter = Counter()
     for record in records:
@@ -604,21 +703,39 @@ def _aggregate_values(chart: dict[str, Any], records: list[fieldmod.Record]) -> 
 # ---------------------------------------------------------------------------
 # entry point
 
+
 def _role_index(run: _Run) -> dict[str, dict[Any, str]]:
     return {entity: {r.raw.get("id"): r.role or UNCLASSIFIED for r in run.records(entity)} for entity in run.roles}
 
 
-def evaluate(m: Methodology, snap: Snapshot, *, overrides: dict[str, Any] | None = None,
-             probe_snapshots: list[Snapshot] | None = None, history: list[Snapshot] | None = None,
-             origin: str = "packaged-default", clock: Any = None) -> Verdicts:
+def evaluate(
+    m: Methodology,
+    snap: Snapshot,
+    *,
+    overrides: dict[str, Any] | None = None,
+    probe_snapshots: list[Snapshot] | None = None,
+    history: list[Snapshot] | None = None,
+    origin: str = "packaged-default",
+    clock: Any = None,
+) -> Verdicts:
     from .prepare import prepare
+
     m = prepare(m, overrides)
-    return _evaluate_prepared(m, snap, overrides=overrides, probe_snapshots=probe_snapshots,
-                              history=history, origin=origin, clock=clock)
+    return _evaluate_prepared(
+        m, snap, overrides=overrides, probe_snapshots=probe_snapshots, history=history, origin=origin, clock=clock
+    )
 
 
-def _evaluate_prepared(m: Methodology, snap: Snapshot, *, overrides=None, probe_snapshots=None,
-                       history=None, origin="packaged-default", clock=None) -> Verdicts:
+def _evaluate_prepared(
+    m: Methodology,
+    snap: Snapshot,
+    *,
+    overrides=None,
+    probe_snapshots=None,
+    history=None,
+    origin="packaged-default",
+    clock=None,
+) -> Verdicts:
     """Private handoff from the operation's gate; never reads a mutable source file."""
     params = m.parameters
     patterns = tuple((p["id"], p["pattern"]) for p in ((m.data.get("name_patterns") or {}).get("line") or []))
@@ -629,20 +746,27 @@ def _evaluate_prepared(m: Methodology, snap: Snapshot, *, overrides=None, probe_
     by_id = {r.id: r for r in rules}
     reports = m.data.get("reports") or {}
     return Verdicts(
-        methodology=m.provenance(), origin=origin, parameters=params, overrides=dict(m.effective_overrides),
-        selection=dict(m.selection), time_basis=clock.time_basis if clock else {},
+        methodology=m.provenance(),
+        origin=origin,
+        parameters=params,
+        overrides=dict(m.effective_overrides),
+        selection=dict(m.selection),
+        time_basis=clock.time_basis if clock else {},
         snapshot={"date": snap.date_label, "gameTime": snap.game_time},
-        roles=run.roles, rules=rules,
+        roles=run.roles,
+        rules=rules,
         recommendations=[run.run_recommendation(r, by_id) for r in m.data.get("recommendations") or []],
         ladders=[run.run_ladder(lad) for lad in m.data.get("ladders") or []],
         tables=[run.run_table(t) for t in reports.get("tables") or []],
         charts=[run.run_chart(c, history or [snap]) for c in reports.get("charts") or []],
-        classification=classification, role_index=_role_index(run),
+        classification=classification,
+        role_index=_role_index(run),
     )
 
 
 # ---------------------------------------------------------------------------
 # findings
+
 
 def rule_findings(m: Methodology, verdicts: Verdicts) -> list[analysis.Finding]:
     """Findings produced by methodology rule outcomes whose marker maps to a severity."""
@@ -660,16 +784,27 @@ def rule_findings(m: Methodology, verdicts: Verdicts) -> list[analysis.Finding]:
             name = clean_text((hit.entity or {}).get("name") or (hit.group or {}).get("label") or rule["entity"], 200)
             label = clean_text(rule.get("label") or rule["id"], 200)
             entity = hit.entity or {"type": rule["entity"], "id": None, "name": name}
-            out.append(analysis.Finding(
-                f"rule:{rule['id']}", severity, SEVERITY_CATEGORY[rule["entity"]],
-                f"{name}: {label} ({clean_text((markers.get(hit.marker) or {}).get('label') or hit.marker, 200)})",
-                hit.message, DEFAULT_SUGGESTION, entity,
-                {"rule": rule["id"], "marker": hit.marker, "role": hit.role, "values": hit.evidence},
-                m.identity, m.short_hash, "methodology"))
+            out.append(
+                analysis.Finding(
+                    f"rule:{rule['id']}",
+                    severity,
+                    SEVERITY_CATEGORY[rule["entity"]],
+                    f"{name}: {label} ({clean_text((markers.get(hit.marker) or {}).get('label') or hit.marker, 200)})",
+                    hit.message,
+                    DEFAULT_SUGGESTION,
+                    entity,
+                    {"rule": rule["id"], "marker": hit.marker, "role": hit.role, "values": hit.evidence},
+                    m.identity,
+                    m.short_hash,
+                    "methodology",
+                )
+            )
     return out
 
 
-def apply_finding_overrides(m: Methodology, verdicts: Verdicts, items: list[analysis.Finding]) -> list[analysis.Finding]:
+def apply_finding_overrides(
+    m: Methodology, verdicts: Verdicts, items: list[analysis.Finding]
+) -> list[analysis.Finding]:
     """Switch off or re-grade engine findings by code, optionally only for one role (first match wins)."""
     overrides = (m.data.get("engine") or {}).get("findings") or []
     if not overrides:
@@ -696,6 +831,8 @@ def apply_finding_overrides(m: Methodology, verdicts: Verdicts, items: list[anal
         else:
             finding.severity = chosen["severity"]
             out.append(finding)
-    verdicts.disabled_findings = [{"code": code, "role": role, "suppressed": count}
-                                  for (code, role), count in sorted(disabled.items(), key=lambda kv: (kv[0][0], kv[0][1] or ""))]
+    verdicts.disabled_findings = [
+        {"code": code, "role": role, "suppressed": count}
+        for (code, role), count in sorted(disabled.items(), key=lambda kv: (kv[0][0], kv[0][1] or ""))
+    ]
     return out

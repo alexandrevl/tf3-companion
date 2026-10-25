@@ -16,15 +16,37 @@ PAX_INDEX = 1  # lines[].capacity[].cargo is cargoTypeId + 1; passengers are car
 
 def _towns(step: int) -> list[dict]:
     """step = number of capacity steps gained by the growing towns so far."""
+
     def town(tid, name, caps, usage, supply=None, **extra):
-        return {"id": tid, "name": name, "capacities": caps, "lineUsage": usage, "developmentActive": True,
-                "noise": 60.0 + tid % 5, "pollution": 1000.0 * (tid % 7 + 1),
-                "cargoSupply": supply if supply is not None else [], **extra}
+        return {
+            "id": tid,
+            "name": name,
+            "capacities": caps,
+            "lineUsage": usage,
+            "developmentActive": True,
+            "noise": 60.0 + tid % 5,
+            "pollution": 1000.0 * (tid % 7 + 1),
+            "cargoSupply": supply if supply is not None else [],
+            **extra,
+        }
+
     return [
-        town(1, "Alpha", [500 + 10 * step, 300, 200], 0.7, [{"cargo": 3, "supply": 20.0, "limit": 100.0, "extra": 5}],
-             position=[0, 0, 0]),
-        town(2, "Beta <script>x</script>", [400, 300, 100], 0.2, [{"cargo": 3, "supply": 0, "limit": 80.0, "extra": 5}],
-             position=[30000, 40000, 0]),
+        town(
+            1,
+            "Alpha",
+            [500 + 10 * step, 300, 200],
+            0.7,
+            [{"cargo": 3, "supply": 20.0, "limit": 100.0, "extra": 5}],
+            position=[0, 0, 0],
+        ),
+        town(
+            2,
+            "Beta <script>x</script>",
+            [400, 300, 100],
+            0.2,
+            [{"cargo": 3, "supply": 0, "limit": 80.0, "extra": 5}],
+            position=[30000, 40000, 0],
+        ),
         town(3, "Gamma", [300, 200, 100], 0.0, position=[0, 90000, 0]),
         town(4, "Delta", [250, 100, 100], 0.0),
         town(5, "Epsilon", [100, 50, 50], 0.0),
@@ -35,8 +57,10 @@ def _towns(step: int) -> list[dict]:
 def _snapshot(year: int, month: int, step: int, with_positions: bool = True) -> Snapshot:
     data = base_snapshot(game_time=year * YEAR + month * (YEAR // 12))
     data["meta"]["date"] = {"year": year, "month": month, "day": 1}
-    data["cargos"] = [{"id": 0, "name": "Passengers", "res": "::/cargos/passengers/passengers.cargo"},
-                      {"id": 3, "name": "Coal", "res": "::/cargos/coal/coal.cargo"}]
+    data["cargos"] = [
+        {"id": 0, "name": "Passengers", "res": "::/cargos/passengers/passengers.cargo"},
+        {"id": 3, "name": "Coal", "res": "::/cargos/coal/coal.cargo"},
+    ]
     data["towns"] = _towns(step)
     if not with_positions:
         for t in data["towns"]:
@@ -47,10 +71,26 @@ def _snapshot(year: int, month: int, step: int, with_positions: bool = True) -> 
         {"id": 502, "name": "Delta Yard", "town": 4, "townName": "Delta", "lines": [101]},
     ]
     data["lines"] = [
-        {"id": 100, "name": "Pax A-B", "vehicles": [], "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
-         "profitYear": 1, "transportedYear": 1, "rate": 1, "capacity": [{"cargo": PAX_INDEX, "used": 1, "capacity": 40}]},
-        {"id": 101, "name": "Freight D", "vehicles": [], "stops": [{"stationGroup": 502}, {"stationGroup": 500}],
-         "profitYear": 1, "transportedYear": 1, "rate": 1, "capacity": [{"cargo": 4, "used": 1, "capacity": 40}]},
+        {
+            "id": 100,
+            "name": "Pax A-B",
+            "vehicles": [],
+            "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
+            "profitYear": 1,
+            "transportedYear": 1,
+            "rate": 1,
+            "capacity": [{"cargo": PAX_INDEX, "used": 1, "capacity": 40}],
+        },
+        {
+            "id": 101,
+            "name": "Freight D",
+            "vehicles": [],
+            "stops": [{"stationGroup": 502}, {"stationGroup": 500}],
+            "profitYear": 1,
+            "transportedYear": 1,
+            "rate": 1,
+            "capacity": [{"cargo": 4, "used": 1, "capacity": 40}],
+        },
     ]
     data["vehicles"] = []
     data["industries"] = [{"id": 7, "name": "Mine", "outputs": [{"cargo": 3, "producedYear": 100, "shippedYear": 20}]}]
@@ -88,8 +128,15 @@ def test_multi_year_sections_and_growth(multi_year_store):
     doc = document(multi_year_store, "towns")
     assert doc.kind == "towns"
     text = _text(doc)
-    for heading in ("Key findings", "Evolution", "Town ranking", "Growth and stalls", "Coverage by our lines",
-                    "Cargo demand: supply vs limit", "Pollution and noise hot spots"):
+    for heading in (
+        "Key findings",
+        "Evolution",
+        "Town ranking",
+        "Growth and stalls",
+        "Coverage by our lines",
+        "Cargo demand: supply vs limit",
+        "Pollution and noise hot spots",
+    ):
         assert f"## {heading}" in text
     # window is 3.75 calendar years, so annualised growth is shown and quarterly sampling is used
     assert "3.75 calendar years" in text
@@ -189,6 +236,7 @@ def test_deterministic(multi_year_store):
 # Direct view assertions
 # ---------------------------------------------------------------------------
 
+
 def _rows(v):
     return {r.name: r for r in v.rows}
 
@@ -238,14 +286,16 @@ def test_report_numbers_equal_view(multi_year_store):
     v = view(multi_year_store, "towns")
     doc = document(multi_year_store, "towns")
     ranking = next(t for t in _tables(doc) if t.columns[1] == "Town" and "Growth/yr" in t.columns)
-    assert [r[1] for r in ranking.rows] == [r.name for r in v.rows if r.capacity is not None][:len(ranking.rows)]
-    assert [r[2].replace(",", "") for r in ranking.rows] == [f"{r.capacity:.0f}" for r in v.rows][:len(ranking.rows)]
+    assert [r[1] for r in ranking.rows] == [r.name for r in v.rows if r.capacity is not None][: len(ranking.rows)]
+    assert [r[2].replace(",", "") for r in ranking.rows] == [f"{r.capacity:.0f}" for r in v.rows][: len(ranking.rows)]
     evolution = next(t for t in _tables(doc) if t.columns[0] == "Sample")
     assert [r[0] for r in evolution.rows] == [p.label for p in v.evolution]
     assert evolution.rows[0][0] == "1980-01-01" and evolution.rows[-1][0] == "1983-10-01"
     pairs = next(t for t in _tables(doc) if t.columns[0] == "Town A")
     names = {r.id: r.name for r in v.rows}
-    assert [(r[0], r[1]) for r in pairs.rows] == [(names[p.town_a], names[p.town_b]) for p in v.pairs.pairs][:len(pairs.rows)]
+    assert [(r[0], r[1]) for r in pairs.rows] == [(names[p.town_a], names[p.town_b]) for p in v.pairs.pairs][
+        : len(pairs.rows)
+    ]
     by_cargo = next(t for t in _tables(doc) if t.columns[0] == "Cargo")
     assert [r[0] for r in by_cargo.rows] == [c.cargo_name for c in v.cargo_demand.by_cargo]
     coal = v.cargo_demand.by_cargo[0]
@@ -256,14 +306,17 @@ def test_view_is_serializable(multi_year_store):
     v = view(multi_year_store, "towns")
     encoded = json.dumps(plain(v), allow_nan=False)
     assert '"rows"' in encoded and '"criteria"' in encoded
-    assert plain(evaluate_views(multi_year_store, _context_at(multi_year_store, multi_year_store.latest()), ("towns",)).towns) == plain(v)
+    assert plain(
+        evaluate_views(multi_year_store, _context_at(multi_year_store, multi_year_store.latest()), ("towns",)).towns
+    ) == plain(v)
 
 
 def test_entities_after_an_earlier_endpoint_are_excluded(multi_year_store):
     earlier = multi_year_store.hydrate(1981 * YEAR + 7 * (YEAR // 12))
     future = _snapshot(1984, 1, 20)
-    future.raw["towns"].append({"id": 99, "name": "Future Town", "capacities": [900, 900, 900], "lineUsage": 0.1,
-                                "cargoSupply": []})
+    future.raw["towns"].append(
+        {"id": 99, "name": "Future Town", "capacities": [900, 900, 900], "lineUsage": 0.1, "cargoSupply": []}
+    )
     future.raw["cargos"].append({"id": 8, "name": "Future Cargo", "res": "::/cargos/f/f.cargo"})
     multi_year_store.add_snapshot(future)
     ctx = _context_at(multi_year_store, earlier)
@@ -329,7 +382,9 @@ def test_idle_cargo_needs_known_flows(tmp_path):
     store.add_snapshot(snap)
     assert view(store, "towns").cargo_demand.idle_cargos == ()
     snap2 = _snapshot(1980, 2, 0)
-    snap2.raw["industries"] = [{"id": 7, "name": "Mine", "outputs": [{"cargo": 3, "producedYear": 0, "shippedYear": 0}]}]
+    snap2.raw["industries"] = [
+        {"id": 7, "name": "Mine", "outputs": [{"cargo": 3, "producedYear": 0, "shippedYear": 0}]}
+    ]
     for town in snap2.raw["towns"]:
         town["cargoSupply"] = [{"cargo": 3, "supply": 0, "limit": 50.0}] if town["id"] == 1 else []
     store.add_snapshot(snap2)

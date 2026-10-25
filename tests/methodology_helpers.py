@@ -1,4 +1,5 @@
 """Synthetic snapshots and tiny methodologies shared by the methodology tests."""
+
 from __future__ import annotations
 
 import copy
@@ -12,7 +13,8 @@ from tf3companion.methodology import evaluate, parse
 from tf3companion.snapshot import Snapshot
 
 PASSENGERS = 1  # lines[].capacity[].cargo is the cargo id + 1: 1 means passengers (cargo id 0)
-FREIGHT = 4     # cargo id 3
+FREIGHT = 4  # cargo id 3
+
 
 def fixture_clock(raw: dict[str, Any]) -> GameCalendarClock:
     """Eight calendar years of explicit test anchors, independent of production nominal conversion."""
@@ -24,15 +26,16 @@ def fixture_clock(raw: dict[str, Any]) -> GameCalendarClock:
     return GameCalendarClock.from_samples(samples, context={"selectedTick": now, "isolation": "legacy-unverified"})
 
 
-
 class Net:
     """Builds a snapshot with stations, towns, lines and vehicles."""
 
     def __init__(self, game_time: int = 10 * YEAR) -> None:
         self.data = base_snapshot(game_time)
         self.data["lines"], self.data["vehicles"], self.data["stations"], self.data["towns"] = [], [], [], []
-        self.data["cargos"] = [{"id": 0, "name": "Passengers", "res": "::/cargos/passengers/passengers.cargo"},
-                               {"id": 3, "name": "Coal", "res": "::/cargos/coal/coal.cargo"}]
+        self.data["cargos"] = [
+            {"id": 0, "name": "Passengers", "res": "::/cargos/passengers/passengers.cargo"},
+            {"id": 3, "name": "Coal", "res": "::/cargos/coal/coal.cargo"},
+        ]
         self._vehicle = 1000
 
     @property
@@ -50,17 +53,37 @@ class Net:
             self.data["towns"].append({"id": town_id, "name": town_name, "capacities": [100, 50, 10], "lineUsage": 0.1})
         return self
 
-    def line(self, line_id: int, name: str, stations: list[int], *, profit: int = 0, cargo: int = PASSENGERS, load=(50, 100),
-             carrier: str = "ROAD", age: float | None = 3.0, vehicles: int = 1, terminals: list[int] | None = None) -> "Net":
+    def line(
+        self,
+        line_id: int,
+        name: str,
+        stations: list[int],
+        *,
+        profit: int = 0,
+        cargo: int = PASSENGERS,
+        load=(50, 100),
+        carrier: str = "ROAD",
+        age: float | None = 3.0,
+        vehicles: int = 1,
+        terminals: list[int] | None = None,
+    ) -> "Net":
         ids = []
         for _ in range(vehicles if age is not None else 0):
             self._vehicle += 1
             ids.append(self._vehicle)
-            self.data["vehicles"].append({
-                "id": self._vehicle, "name": f"V{self._vehicle}", "carrier": carrier, "state": "EN_ROUTE", "line": line_id,
-                "purchaseTime": self.now - int(age * YEAR), "profitYear": profit // max(vehicles, 1), "models": [7],
-                "maintenanceState": 1.0,
-            })
+            self.data["vehicles"].append(
+                {
+                    "id": self._vehicle,
+                    "name": f"V{self._vehicle}",
+                    "carrier": carrier,
+                    "state": "EN_ROUTE",
+                    "line": line_id,
+                    "purchaseTime": self.now - int(age * YEAR),
+                    "profitYear": profit // max(vehicles, 1),
+                    "models": [7],
+                    "maintenanceState": 1.0,
+                }
+            )
         stops = []
         for index, station in enumerate(stations):
             stop: dict[str, Any] = {"stationGroup": station, "name": f"stop {index}"}
@@ -68,8 +91,18 @@ class Net:
                 stop["terminal"] = terminals[index]
             stops.append(stop)
         capacity = [{"cargo": cargo, "used": load[0], "capacity": load[1]}] if ids else []
-        self.data["lines"].append({"id": line_id, "name": name, "vehicles": ids, "stops": stops, "profitYear": profit,
-                                   "transportedYear": 100, "capacity": capacity, "issues": []})
+        self.data["lines"].append(
+            {
+                "id": line_id,
+                "name": name,
+                "vehicles": ids,
+                "stops": stops,
+                "profitYear": profit,
+                "transportedYear": 100,
+                "capacity": capacity,
+                "issues": [],
+            }
+        )
         return self
 
     def snapshot(self) -> Snapshot:
@@ -81,10 +114,19 @@ class Net:
 
 def methodology(**parts: Any):
     """A tiny valid methodology; `parts` are merged over the minimal document."""
-    data: dict[str, Any] = {"schema": "tf3c-methodology/1", "id": "test", "version": "1.0.0", "name": "Test",
-                            "description": "Test methodology.",
-                            "markers": {"ok": {"label": "ok"}, "watch": {"label": "watch", "finding": "low"},
-                                        "problem": {"label": "problem", "finding": "high"}, "note": {"label": "note"}}}
+    data: dict[str, Any] = {
+        "schema": "tf3c-methodology/1",
+        "id": "test",
+        "version": "1.0.0",
+        "name": "Test",
+        "description": "Test methodology.",
+        "markers": {
+            "ok": {"label": "ok"},
+            "watch": {"label": "watch", "finding": "low"},
+            "problem": {"label": "problem", "finding": "high"},
+            "note": {"label": "note"},
+        },
+    }
     data.update(parts)
     return parse(json.dumps(data).encode("utf-8"))
 
@@ -113,6 +155,7 @@ def cond(field: str, op: str, value: Any = None) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Companion fixtures
 
+
 def companion_with(paths, *snapshots: dict[str, Any]):
     """A Companion over `paths` with the given raw snapshot dicts ingested."""
     from conftest import write_snapshot
@@ -135,11 +178,32 @@ def troubled_company() -> dict[str, Any]:
     net.line(105, "Parked", [1, 2], age=None)
     net.data["lines"][0]["issues"] = [{"type": "NowhereToUnload", "stopIndex": 2, "cargo": 3}]
     net.data["vehicles"][0]["noPath"] = True
-    net.data["vehicles"].append({"id": 5000, "name": "Idle bus", "carrier": "ROAD", "state": "IN_DEPOT", "line": 0, "depot": 77,
-                                 "daysInDepot": 90, "value": 12_000, "purchaseTime": net.now - YEAR})
+    net.data["vehicles"].append(
+        {
+            "id": 5000,
+            "name": "Idle bus",
+            "carrier": "ROAD",
+            "state": "IN_DEPOT",
+            "line": 0,
+            "depot": 77,
+            "daysInDepot": 90,
+            "value": 12_000,
+            "purchaseTime": net.now - YEAR,
+        }
+    )
     net.data["depots"] = [{"id": 77, "name": "Depot"}]
-    net.data["industries"] = [{"id": 900, "name": "Old mine", "type": "::/industries/coal_mine/coal_mine.con",
-                               "closureTimeStamp": 123, "inputs": [], "outputs": [{"cargo": 3, "producedYear": 10, "shippedYear": 0}]}]
-    net.data["stocks"] = [{"kind": "industry", "owner": 900, "ownerName": "Old mine", "count": 95, "capacity": 100, "cargos": [3]}]
+    net.data["industries"] = [
+        {
+            "id": 900,
+            "name": "Old mine",
+            "type": "::/industries/coal_mine/coal_mine.con",
+            "closureTimeStamp": 123,
+            "inputs": [],
+            "outputs": [{"cargo": 3, "producedYear": 10, "shippedYear": 0}],
+        }
+    ]
+    net.data["stocks"] = [
+        {"kind": "industry", "owner": 900, "ownerName": "Old mine", "count": 95, "capacity": 100, "cargos": [3]}
+    ]
     net.data["errors"] = ["collector: partial data"]
     return net.data

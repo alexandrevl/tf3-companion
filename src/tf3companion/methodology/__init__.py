@@ -9,6 +9,16 @@ from .loader import load_default, load_file, load_packaged, parse
 from .model import FILE_SUFFIX, SCHEMA_ID, Issue, Methodology, MethodologyError
 
 __all__ = [
-    "FILE_SUFFIX", "SCHEMA_ID", "Issue", "Methodology", "MethodologyError", "Verdicts",
-    "evaluate", "load_default", "load_file", "load_packaged", "parse", "thresholds_for",
+    "FILE_SUFFIX",
+    "SCHEMA_ID",
+    "Issue",
+    "Methodology",
+    "MethodologyError",
+    "Verdicts",
+    "evaluate",
+    "load_default",
+    "load_file",
+    "load_packaged",
+    "parse",
+    "thresholds_for",
 ]

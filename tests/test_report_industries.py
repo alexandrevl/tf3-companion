@@ -15,10 +15,17 @@ from view_helpers import document, view
 
 
 def industry(iid=10, name="Mine", produced=100, shipped=50, level=2, closure=0):
-    return {"id": iid, "name": name, "type": "industries/coal_mine/coal_mine.con",
-            "level": level, "maxLevel": 6, "closureTimeStamp": closure, "productionRating": 1,
-            "inputs": [], "outputs": [{"cargo": 3, "producedYear": produced,
-                                         "maxProductionYear": 100, "shippedYear": shipped}]}
+    return {
+        "id": iid,
+        "name": name,
+        "type": "industries/coal_mine/coal_mine.con",
+        "level": level,
+        "maxLevel": 6,
+        "closureTimeStamp": closure,
+        "productionRating": 1,
+        "inputs": [],
+        "outputs": [{"cargo": 3, "producedYear": produced, "maxProductionYear": 100, "shippedYear": shipped}],
+    }
 
 
 def add(store, tick, date, inds, stocks=None):
@@ -37,8 +44,9 @@ def industries_view(store):
 
 def at(store, tick, thresholds=None):
     snap = store.hydrate(tick)
-    return EvaluationContext(snap, resolve_context(thresholds=thresholds), store.time_context(snap), None,
-                             store.previous_of(snap))
+    return EvaluationContext(
+        snap, resolve_context(thresholds=thresholds), store.time_context(snap), None, store.previous_of(snap)
+    )
 
 
 def evaluated(store, tick):
@@ -73,7 +81,10 @@ def test_realistic_change_lifecycle_and_closure_calendar(tmp_path):
 
         v = industries_view(store)
         assert [(e.code, e.industry.id) for e in v.events] == [
-            ("closure-at-first-sample", 20), ("new-industry", 30), ("closed-as-scheduled", 20)]
+            ("closure-at-first-sample", 20),
+            ("new-industry", 30),
+            ("closed-as-scheduled", 20),
+        ]
         assert v.events[0].remaining.status == "estimate" or v.events[0].remaining.status == "unavailable"
         assert v.comparison.common_count == 1
         assert (v.comparison.common_first.produced, v.comparison.common_last.produced) == (100, 140)
@@ -89,7 +100,12 @@ def test_realistic_change_lifecycle_and_closure_calendar(tmp_path):
 def test_view_and_report_agree_on_numbers_membership_and_order(tmp_path):
     with closing(Store(tmp_path / "x.db")) as store:
         add(store, 1000, (1980, 1, 1), [industry(10, "Alpha", 100, 50), industry(20, "Beta", 200, 100, level=1)])
-        add(store, 2000, (1980, 2, 1), [industry(10, "Alpha", 150, 90, level=3), industry(20, "Beta", 400, 200, level=4)])
+        add(
+            store,
+            2000,
+            (1980, 2, 1),
+            [industry(10, "Alpha", 150, 90, level=3), industry(20, "Beta", 400, 200, level=4)],
+        )
         v, doc = industries_view(store), document(store, "industries")
         movers = [t for t in tables(doc) if t.columns[0] == "Direction"][0]
         assert [r[1] for r in movers.rows] == [m.name for m in v.levels.movers] == ["Beta", "Alpha"]
@@ -100,7 +116,9 @@ def test_view_and_report_agree_on_numbers_membership_and_order(tmp_path):
         levels = [t for t in tables(doc) if t.columns[0] == "Industry" and "Max level" in t.columns][0]
         assert [r[0] for r in levels.rows] == [c.name for c in v.levels.level_changes]
         assert dict(zip(("first", "last"), (doc.header[1][1], doc.header[2][1]))) == {
-            "first": v.first.date, "last": v.latest.date}
+            "first": v.first.date,
+            "last": v.latest.date,
+        }
 
 
 def test_ratio_above_one_is_not_silently_capped(tmp_path):
@@ -169,18 +187,27 @@ def test_stocks_and_safe_offline_html(tmp_path):
     name = '<script>alert(1)</script> | "bad"'
     with closing(Store(tmp_path / "x.db")) as store:
         for tick, month, count in [(1000, 1, 50), (2000, 2, 95)]:
-            add(store, tick, (1980, month, 1), [industry(name=name)],
-                [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": count, "capacity": 100}])
+            add(
+                store,
+                tick,
+                (1980, month, 1),
+                [industry(name=name)],
+                [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": count, "capacity": 100}],
+            )
         doc = document(store, "industries")
         md, html = render_markdown(doc), render_html(doc)
         assert "50.0% → 95.0%" in md and "+45.0 pp" in md
-        assert '<script>' not in html
-        assert '&lt;script&gt;' in html
-        assert '<script' not in html and 'src="http' not in html
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+        assert "<script" not in html and 'src="http' not in html
         st = industries_view(store).stocks
         assert st.samples_with_stocks == 2
         assert [(g.code, g.stocks_last, g.mean_fill_first, g.mean_fill_last) for g in st.groups][0] == (
-            "output-shipped", 1, 0.5, 0.95)
+            "output-shipped",
+            1,
+            0.5,
+            0.95,
+        )
         assert [(m.fill_first, m.fill_last) for m in st.movers] == [(0.5, 0.95)]
 
 
@@ -188,8 +215,12 @@ def test_multi_year_sampling_retains_endpoints_and_adjacent_tables(tmp_path):
     with closing(Store(tmp_path / "x.db")) as store:
         for year in range(1980, 1990):
             for month in range(1, 13):
-                add(store, (year - 1979) * 1000 + month * 10, (year, month, 1),
-                    [industry(produced=100 + (year - 1980) * 20, shipped=50 + (year - 1980) * 10)])
+                add(
+                    store,
+                    (year - 1979) * 1000 + month * 10,
+                    (year, month, 1),
+                    [industry(produced=100 + (year - 1980) * 20, shipped=50 + (year - 1980) * 10)],
+                )
         doc = document(store, "industries")
         text = render_markdown(doc)
         assert "1980-01-01" in text and "1989-12-01" in text
@@ -241,8 +272,13 @@ def test_chain_consumption_and_station_inference(tmp_path):
 def test_full_stock_threshold_comes_from_the_context(tmp_path):
     with closing(Store(tmp_path / "x.db")) as store:
         for tick, month in [(1000, 1), (2000, 2)]:
-            add(store, tick, (1980, month, 1), [industry()],
-                [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 80, "capacity": 100}])
+            add(
+                store,
+                tick,
+                (1980, month, 1),
+                [industry()],
+                [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 80, "capacity": 100}],
+            )
         default = view(store, "industries")
         lowered = view(store, "industries", Thresholds(full_stock_ratio=0.75))
         assert default.comparison.full_outputs_last == 0 and lowered.comparison.full_outputs_last == 1
@@ -257,7 +293,9 @@ def test_manual_review_candidates(tmp_path):
         add(store, 2000, (1980, 2, 1), [industry(10, "Fall", 100, 50), industry(20, "Doomed", 50, 10, closure=9000)])
         v = industries_view(store)
         assert [(r.priority, r.code, r.name) for r in v.manual_review] == [
-            (1, "closure-flagged", "Doomed"), (2, "production-decline", "Fall")]
+            (1, "closure-flagged", "Doomed"),
+            (2, "production-decline", "Fall"),
+        ]
         assert v.manual_review[1].decline == 100
         text = render_markdown(document(store, "industries"))
         assert "Suggested Manual Review Priorities" in text and "200 → 100" in text
@@ -267,25 +305,42 @@ def test_historical_endpoint_excludes_later_entities_samples_and_stocks(tmp_path
     with closing(Store(tmp_path / "x.db")) as store:
         add(store, 1000, (1980, 1, 1), [industry(10, "Old")])
         add(store, 2000, (1980, 2, 1), [industry(10, "Old", 120, 60)])
-        add(store, 3000, (1980, 3, 1), [industry(10, "Old", 130, 70), industry(99, "Future", 500, 0, closure=5000)],
-            [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 99, "capacity": 100}])
+        add(
+            store,
+            3000,
+            (1980, 3, 1),
+            [industry(10, "Old", 130, 70), industry(99, "Future", 500, 0, closure=5000)],
+            [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 99, "capacity": 100}],
+        )
         v, ctx = evaluated(store, 2000)
         assert v.latest.tick == 2000 and v.sample_count == 2 and v.coverage.eligible == 2
         assert [i.name for i in v.industries] == ["Old"]
         assert all(e.industry.name != "Future" for e in v.events)
         assert v.stock_samples == 0 and v.stocks.samples_with_stocks == 0
         assert v.coverage.endpoint.tick == 2000
-        assert "Future" not in render_markdown(__import__("tf3companion.report_industries", fromlist=["build"]).build(v, context=ctx))
+        assert "Future" not in render_markdown(
+            __import__("tf3companion.report_industries", fromlist=["build"]).build(v, context=ctx)
+        )
 
 
 def test_views_are_serializable(tmp_path):
     with closing(Store(tmp_path / "x.db")) as store:
         ind = industry(20, "Centre")
         ind["inputs"] = [{"cargo": 3, "consumedYear": 10, "maxConsumptionYear": 100}]
-        add(store, 1000, (1980, 1, 1), [industry(), ind, industry(30, "Gone", 0, 0, closure=1500)],
-            [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 50, "capacity": 100}])
-        add(store, 2000, (1980, 2, 1), [industry(produced=150, shipped=0, level=3), ind],
-            [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 95, "capacity": 100}])
+        add(
+            store,
+            1000,
+            (1980, 1, 1),
+            [industry(), ind, industry(30, "Gone", 0, 0, closure=1500)],
+            [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 50, "capacity": 100}],
+        )
+        add(
+            store,
+            2000,
+            (1980, 2, 1),
+            [industry(produced=150, shipped=0, level=3), ind],
+            [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 95, "capacity": 100}],
+        )
         payload = plain(industries_view(store))
         decoded = json.loads(json.dumps(payload))
         assert decoded["status"] == "ok" and decoded["coverage"]["eligible"] == 2

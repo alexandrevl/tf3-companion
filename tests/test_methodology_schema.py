@@ -1,4 +1,5 @@
 """The published JSON Schema and the in-repo validator must agree on structure."""
+
 from __future__ import annotations
 
 import copy
@@ -14,7 +15,9 @@ from tf3companion.methodology.loader import schema_text
 
 PACKAGE = files("tf3companion.methodology")
 FIXTURES = Path(__file__).parent / "fixtures" / "methodologies"
-EXAMPLE = json.loads(PACKAGE.joinpath("examples", "local-feeder-intercity-trunk.tf3c-methodology.json").read_text(encoding="utf-8"))
+EXAMPLE = json.loads(
+    PACKAGE.joinpath("examples", "local-feeder-intercity-trunk.tf3c-methodology.json").read_text(encoding="utf-8")
+)
 SCHEMA = json.loads(schema_text())
 VALIDATOR = jsonschema.Draft202012Validator(SCHEMA)
 
@@ -64,27 +67,36 @@ STRUCTURAL = {
     "rule without entity": lambda d: d["rules"][0].pop("entity"),
     "unknown operator": lambda d: d["rules"][0]["outcomes"][0]["when"].update(op="roughly"),
     "comparison without value": lambda d: d["rules"][0]["outcomes"][0]["when"].pop("value"),
-    "exists with a value": lambda d: d["rules"][0]["outcomes"][0].update(when={"field": "line.name", "op": "exists", "value": 1}),
+    "exists with a value": lambda d: d["rules"][0]["outcomes"][0].update(
+        when={"field": "line.name", "op": "exists", "value": 1}
+    ),
     "condition with field and measure": lambda d: d["rules"][0]["outcomes"][0].update(
-        when={"field": "line.name", "measure": "x", "op": "exists"}),
+        when={"field": "line.name", "measure": "x", "op": "exists"}
+    ),
     "empty all": lambda d: d["rules"][0]["outcomes"][0].update(when={"all": []}),
     "field name not a path": lambda d: d["rules"][0]["outcomes"][0]["when"].update(field="profit"),
     "outcomes empty": lambda d: d["rules"][0].update(outcomes=[]),
     "aggregate measure without value": lambda d: d["rules"][5]["aggregate"]["measures"]["local_result"].pop("value"),
     "aggregate agg unknown": lambda d: d["rules"][5]["aggregate"]["measures"]["local_lines"].update(agg="median"),
-    "ratio side without measure": lambda d: d["rules"][5]["aggregate"]["measures"]["feeder_cost_ratio"]["numerator"].pop("measure"),
+    "ratio side without measure": lambda d: d["rules"][5]["aggregate"]["measures"]["feeder_cost_ratio"][
+        "numerator"
+    ].pop("measure"),
     "recommendation priority out of range": lambda d: d["recommendations"][0].update(priority=9),
     "recommendation without text": lambda d: d["recommendations"][0].pop("text"),
-    "report chart type unknown": lambda d: d.update(reports={"charts": [{"id": "c", "type": "radar", "entity": "line", "agg": "count"}]}),
+    "report chart type unknown": lambda d: d.update(
+        reports={"charts": [{"id": "c", "type": "radar", "entity": "line", "agg": "count"}]}
+    ),
     "role without select": lambda d: d["roles"]["line"][0].pop("select"),
     "roles for an unknown entity": lambda d: d["roles"].update(station=[]),
     "engine override without action": lambda d: d["engine"]["findings"][0].pop("action"),
     "set_severity without severity": lambda d: d["engine"]["findings"][0].update(action="set_severity"),
     "negative threshold": lambda d: d.update(engine={"thresholds": {"mature_years": -1}}),
-    "ladder entity not line": lambda d: d.update(ladders=[{"id": "l", "entity": "vehicle", "metric": "line.route_km",
-                                                          "bands": [{"mode": "AIR"}], "text": "t"}]),
-    "ladder band mode unknown": lambda d: d.update(ladders=[{"id": "l", "entity": "line", "metric": "line.route_km",
-                                                            "bands": [{"mode": "ROCKET"}], "text": "t"}]),
+    "ladder entity not line": lambda d: d.update(
+        ladders=[{"id": "l", "entity": "vehicle", "metric": "line.route_km", "bands": [{"mode": "AIR"}], "text": "t"}]
+    ),
+    "ladder band mode unknown": lambda d: d.update(
+        ladders=[{"id": "l", "entity": "line", "metric": "line.route_km", "bands": [{"mode": "ROCKET"}], "text": "t"}]
+    ),
     "description too long": lambda d: d.update(description="x" * 2001),
 }
 
@@ -130,6 +142,7 @@ def _with_policies(policies):
 
 def _policy_cases():
     from tf3companion.report_policy import REGISTRY
+
     valid, invalid = [], []
     for family, entries in REGISTRY.items():
         valid.append((f"{family} empty", {family: {}}))
@@ -148,8 +161,11 @@ def _policy_cases():
             for value in bad:
                 invalid.append((f"{family}.{key}={value!r}", {family: {key: value}}))
             invalid.append((f"{family}.{key} sibling unknown", {family: {key: spec.default, "ghost": 1}}))
-    invalid += [("unknown family", {"ghost": {}}), ("family not object", {"bottlenecks": 3}),
-                ("policies not object", [])]
+    invalid += [
+        ("unknown family", {"ghost": {}}),
+        ("family not object", {"bottlenecks": 3}),
+        ("policies not object", []),
+    ]
     return valid, invalid
 
 
@@ -170,8 +186,7 @@ def test_report_policies_structural_and_range_errors_rejected_by_both(name, poli
 
 
 def test_report_policies_cross_field_rules_are_runtime_only():
-    for policies in ({"expansion": {"weight_volume": 29}},
-                     {"expansion": {"distance_short_km": 3}}):
+    for policies in ({"expansion": {"weight_volume": 29}}, {"expansion": {"distance_short_km": 3}}):
         data = _with_policies(policies)
         assert schema_accepts(data)
         assert not validator_accepts(data)

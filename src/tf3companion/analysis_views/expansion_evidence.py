@@ -23,11 +23,11 @@ _DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 @dataclass(frozen=True)
 class ExpansionEvidence:
     endpoint: Snapshot
-    samples: tuple[Snapshot, ...]        # oldest first, always ending with the endpoint
-    catalog: Snapshot | None             # newest catalog snapshot at or before the endpoint
-    eligible: int                        # stored samples at or before the endpoint
-    read: int                            # compact index rows streamed
-    hydrated: int                        # full snapshots loaded besides the endpoint
+    samples: tuple[Snapshot, ...]  # oldest first, always ending with the endpoint
+    catalog: Snapshot | None  # newest catalog snapshot at or before the endpoint
+    eligible: int  # stored samples at or before the endpoint
+    read: int  # compact index rows streamed
+    hydrated: int  # full snapshots loaded besides the endpoint
     missing_ticks: tuple[int, ...] = ()  # selected ticks that could not be hydrated
 
 
@@ -64,5 +64,6 @@ def load(reader: EvidenceReader, context: EvaluationContext) -> ExpansionEvidenc
         else:
             samples.append(snap)
     catalog = reader.catalog()
-    return ExpansionEvidence(context.snapshot, tuple(samples), catalog, len(index), len(index),
-                             reader.hydrated, tuple(missing))
+    return ExpansionEvidence(
+        context.snapshot, tuple(samples), catalog, len(index), len(index), reader.hydrated, tuple(missing)
+    )

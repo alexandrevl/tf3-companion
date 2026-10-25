@@ -1,4 +1,5 @@
 """Calendar evidence boundaries must survive report rendering and aggregation."""
+
 from contextlib import closing
 from datetime import date
 
@@ -73,16 +74,49 @@ def fleet(tick, when, purchases=(0, -1), profit=100):
     """A dated observation with one line, vehicles bought at `purchases`, and one industry."""
     data = base_snapshot(tick)
     data["meta"]["date"] = when
-    data["lines"] = [{"id": 100, "name": "Line", "vehicles": [1000 + i for i in range(len(purchases))],
-                      "stops": [{"stationGroup": 500}, {"stationGroup": 501}], "profitYear": profit,
-                      "transportedYear": 5, "rate": 3, "capacity": [], "issues": []}]
-    data["vehicles"] = [{"id": 1000 + i, "name": f"Vehicle {i}", "carrier": "ROAD", "state": "EN_ROUTE", "line": 100,
-                         "purchaseTime": purchase, "profitYear": profit, "models": [7], "value": 10,
-                         "maintenanceState": .9, "loadConfig": [{"cargo": 0, "capacity": 20}], "canCarry": [0]}
-                        for i, purchase in enumerate(purchases)]
-    data["industries"] = [{"id": 10, "name": "Mine", "type": "industries/coal_mine/coal_mine.con", "level": 3,
-                           "maxLevel": 6, "closureTimeStamp": 0, "productionRating": 1, "inputs": [],
-                           "outputs": [{"cargo": 3, "producedYear": 100, "maxProductionYear": 100, "shippedYear": 50}]}]
+    data["lines"] = [
+        {
+            "id": 100,
+            "name": "Line",
+            "vehicles": [1000 + i for i in range(len(purchases))],
+            "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
+            "profitYear": profit,
+            "transportedYear": 5,
+            "rate": 3,
+            "capacity": [],
+            "issues": [],
+        }
+    ]
+    data["vehicles"] = [
+        {
+            "id": 1000 + i,
+            "name": f"Vehicle {i}",
+            "carrier": "ROAD",
+            "state": "EN_ROUTE",
+            "line": 100,
+            "purchaseTime": purchase,
+            "profitYear": profit,
+            "models": [7],
+            "value": 10,
+            "maintenanceState": 0.9,
+            "loadConfig": [{"cargo": 0, "capacity": 20}],
+            "canCarry": [0],
+        }
+        for i, purchase in enumerate(purchases)
+    ]
+    data["industries"] = [
+        {
+            "id": 10,
+            "name": "Mine",
+            "type": "industries/coal_mine/coal_mine.con",
+            "level": 3,
+            "maxLevel": 6,
+            "closureTimeStamp": 0,
+            "productionRating": 1,
+            "inputs": [],
+            "outputs": [{"cargo": 3, "producedYear": 100, "maxProductionYear": 100, "shippedYear": 50}],
+        }
+    ]
     return Snapshot(data)
 
 
@@ -105,7 +139,9 @@ def test_known_zero_calendar_span_is_zero_not_unknown_and_never_annualized(tmp_p
         if kind == "history":
             coverage = next(t for t in found if t.columns[0] == "Coverage fact")
             assert cell(coverage, "Coverage fact", "Calendar span (days)", "Value") == 0
-            assert cell(coverage, "Coverage fact", "Game ticks per calendar day (whole-span diagnostic)", "Value") == "-"
+            assert (
+                cell(coverage, "Coverage fact", "Game ticks per calendar day (whole-span diagnostic)", "Value") == "-"
+            )
         if kind == "industries":
             assert "0.000 GAME-YEAR" in text_of(document)
 
@@ -115,8 +151,10 @@ def test_null_calendar_never_reports_a_zero_span_or_ticks_per_day(tmp_path):
         for tick in (0, 1000, 2000):
             store.add_snapshot(fleet(tick, None))
         history = compose_report(store, "history")
-        assert not any(t.columns[0] == "Coverage fact" and "Calendar span (days)" in [r[0] for r in t.rows]
-                       for t in tables(history))
+        assert not any(
+            t.columns[0] == "Coverage fact" and "Calendar span (days)" in [r[0] for r in t.rows]
+            for t in tables(history)
+        )
         industries = compose_report(store, "industries")
         assert "0.000 GAME-YEAR" not in text_of(industries)
         assert "missing-calendar-date" in text_of(industries)
@@ -129,12 +167,14 @@ def test_unknown_age_vehicles_are_neither_mature_nor_young_nor_cohort_members(tm
             store.add_snapshot(fleet(tick, when, purchases=(0, 1500, -1)))
         roi_view = view(store, "vehicle-roi")
         ages = {o.id: o.age for o in roi_view.observations}
-        assert ages[1002] is None and ages[1000] == pytest.approx(1, abs=.01) and ages[1001] is not None
+        assert ages[1002] is None and ages[1000] == pytest.approx(1, abs=0.01) and ages[1001] is not None
         unknown = next(o for o in roi_view.observations if o.id == 1002)
         assert unknown.maturity == "unknown" and unknown.maturity not in ("mature", "young")
         assert roi_view.overall.mature + roi_view.overall.young <= 2
         cohorts = view(store, "history").cohorts
-        assert sum(c.vehicles for c in cohorts.cohorts) == 2 and cohorts.unknown_vehicles == 1   # excluded, not zero-aged
+        assert (
+            sum(c.vehicles for c in cohorts.cohorts) == 2 and cohorts.unknown_vehicles == 1
+        )  # excluded, not zero-aged
         roi = compose_report(store, "vehicle-roi")
         by_age = [t for t in tables(roi) if t.columns[:2] == ["Carrier", "Age"]]
         assert all(sum(row[2] for row in t.rows) <= 2 for t in by_age)
@@ -171,7 +211,7 @@ def test_markdown_and_html_carry_identical_time_provenance(tmp_path, kind):
 def decisions_store(tmp_path):
     with closing(Store(tmp_path / "decisions.db")) as store:
         first = fleet(1000, dated(1980, 1, 1), profit=100)
-        first.raw["meta"]["yearDuration"] = 91312      # nominal windows deliberately unrelated to dated time
+        first.raw["meta"]["yearDuration"] = 91312  # nominal windows deliberately unrelated to dated time
         store.add_snapshot(first)
         for tick, when, profit in [(2000, dated(1981, 1, 1), 250), (5000, dated(1984, 1, 1), 400)]:
             later = fleet(tick, when, profit=profit)
@@ -195,7 +235,10 @@ def test_decision_followup_separates_calendar_elapsed_from_nominal_window(decisi
     nominal = (5000 - 1000) / 91312
     assert f"elapsedNominalWindows={nominal}" in found["Nominal query-window diagnostic"]
     assert "not proof of a complete profitYear window" in found["Nominal query-window diagnostic"]
-    assert "elapsedNominalWindows" not in found["Calendar elapsed"] and "elapsedGameYears" not in found["Nominal query-window diagnostic"]
+    assert (
+        "elapsedNominalWindows" not in found["Calendar elapsed"]
+        and "elapsedGameYears" not in found["Nominal query-window diagnostic"]
+    )
 
 
 def test_decision_followup_discloses_baseline_and_preserves_raw_rolling_profits(decisions_store):
@@ -205,8 +248,8 @@ def test_decision_followup_discloses_baseline_and_preserves_raw_rolling_profits(
     comparison = next(t for t in tables(document) if t.columns[0] == "Entity")
     assert "1980-01-01" in comparison.columns[2] and "1984-01-01" in comparison.columns[3]
     profit = next(row for row in comparison.rows if row[1] == "Rolling Annual Profit")
-    assert profit[2] == 100 and profit[3] == 400          # raw values, not re-based or accumulated
-    assert profit[4] != 100 + 250 + 400 and 250 not in profit[2:4]   # never summed across overlapping snapshots
+    assert profit[2] == 100 and profit[3] == 400  # raw values, not re-based or accumulated
+    assert profit[4] != 100 + 250 + 400 and 250 not in profit[2:4]  # never summed across overlapping snapshots
     assert not any(isinstance(v, (int, float)) and v == 750 for row in comparison.rows for v in row)
 
 
@@ -244,7 +287,9 @@ def test_every_view_at_an_earlier_endpoint_never_references_later_samples(tmp_pa
         for tick in (0, 1000, 2000, 3000):
             store.add_snapshot(fleet(tick, calendar if calendar is None else dated(1980 + tick // 1000, 1, 1)))
         earlier = store.hydrate(1000)
-        ctx = EvaluationContext(earlier, resolve_context(), store.time_context(earlier), None, store.previous_of(earlier))
+        ctx = EvaluationContext(
+            earlier, resolve_context(), store.time_context(earlier), None, store.previous_of(earlier)
+        )
         views = evaluate_views(store, ctx, VIEW_NAMES)
         for name in VIEW_NAMES:
             coverage = getattr(views, name.replace("-", "_")).coverage

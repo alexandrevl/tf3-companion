@@ -1,4 +1,5 @@
 """Packaged methodology resources work from the checkout and from an installed wheel."""
+
 from __future__ import annotations
 
 import shutil

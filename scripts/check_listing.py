@@ -2,6 +2,7 @@
 
 Exit 0 when valid, 1 with one line per problem otherwise. Reads files only.
 """
+
 from __future__ import annotations
 
 import json
@@ -57,9 +58,15 @@ def _text_problems(modinfo_path: Path) -> list[str]:
     if not isinstance(description, str):
         return problems + ["modinfo: description is missing"]
     text = description.lower()
-    if not ("unofficial" in text and "urban games" in text and "paradox interactive" in text
-            and ("not affiliated" in text or "not endorsed" in text)):
-        problems.append("modinfo: description lacks the unofficial / not affiliated with Urban Games or Paradox Interactive disclaimer")
+    if not (
+        "unofficial" in text
+        and "urban games" in text
+        and "paradox interactive" in text
+        and ("not affiliated" in text or "not endorsed" in text)
+    ):
+        problems.append(
+            "modinfo: description lacks the unofficial / not affiliated with Urban Games or Paradox Interactive disclaimer"
+        )
     if "read-only" not in text:
         problems.append("modinfo: description does not state that the mod is read-only")
     if "companion app" not in text:
@@ -76,8 +83,10 @@ def check(root: Path) -> list[str]:
     for slot, subject in GALLERY_SLOTS.items():
         matches = sorted(gallery.glob(f"{slot}-*.png")) if gallery.is_dir() else []
         if not matches:
-            problems.append(f"gallery slot {slot} ({subject}): missing assets/gallery/{slot}-<name>.png "
-                            f"(expected PNG {GALLERY_SIZE[0]}x{GALLERY_SIZE[1]})")
+            problems.append(
+                f"gallery slot {slot} ({subject}): missing assets/gallery/{slot}-<name>.png "
+                f"(expected PNG {GALLERY_SIZE[0]}x{GALLERY_SIZE[1]})"
+            )
             continue
         for path in matches:
             problems += _image_problems(path, GALLERY_SIZE, f"gallery slot {slot}")

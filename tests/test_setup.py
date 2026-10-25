@@ -1,4 +1,5 @@
 """Portable discovery and installer tests use isolated fake game folders only."""
+
 import json
 from contextlib import contextmanager
 
@@ -15,12 +16,15 @@ def game(root, account="123"):
     return path
 
 
-@pytest.mark.parametrize("platform,relative", [
-    ("darwin", "Library/Application Support/Steam"),
-    ("linux", ".steam/steam"),
-    ("linux", ".local/share/Steam"),
-    ("linux", ".var/app/com.valvesoftware.Steam/.local/share/Steam"),
-])
+@pytest.mark.parametrize(
+    "platform,relative",
+    [
+        ("darwin", "Library/Application Support/Steam"),
+        ("linux", ".steam/steam"),
+        ("linux", ".local/share/Steam"),
+        ("linux", ".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+    ],
+)
 def test_native_and_flatpak_discovery(tmp_path, platform, relative):
     expected = game(tmp_path / relative)
     result = discover(platform=platform, env={}, home=tmp_path)
@@ -32,9 +36,15 @@ def test_native_and_flatpak_discovery(tmp_path, platform, relative):
 def test_windows_registry_and_default(tmp_path, registry):
     root = tmp_path / ("custom-steam" if registry else "program-files/Steam")
     expected = game(root)
-    result = discover(platform="win32", env={"ProgramFiles(x86)": str(tmp_path / "program-files"),
-                     "ProgramFiles": str(tmp_path / "other-program-files")}, home=tmp_path,
-                      registry_reader=lambda: str(root) if registry else None)
+    result = discover(
+        platform="win32",
+        env={
+            "ProgramFiles(x86)": str(tmp_path / "program-files"),
+            "ProgramFiles": str(tmp_path / "other-program-files"),
+        },
+        home=tmp_path,
+        registry_reader=lambda: str(root) if registry else None,
+    )
     assert result.userdata == expected
 
 
@@ -46,15 +56,19 @@ def test_ambiguity_requires_override(tmp_path):
     assert set(discover(**kwargs).candidates) == {first, second}
     with pytest.raises(ConfigError):
         discover_userdata(**kwargs)
-    assert discover(platform="darwin", home=tmp_path,
-                    env={"TF3C_USERDATA_DIR": str(second)}).userdata == second
+    assert discover(platform="darwin", home=tmp_path, env={"TF3C_USERDATA_DIR": str(second)}).userdata == second
 
 
 def test_override_skips_registry_and_rejects_missing_directory(tmp_path):
     def unexpected_registry():
         pytest.fail("override must bypass registry discovery")
-    assert discover(platform="win32", env={"TF3C_USERDATA_DIR": str(tmp_path)},
-                    registry_reader=unexpected_registry).userdata == tmp_path
+
+    assert (
+        discover(
+            platform="win32", env={"TF3C_USERDATA_DIR": str(tmp_path)}, registry_reader=unexpected_registry
+        ).userdata
+        == tmp_path
+    )
     assert discover(env={"TF3C_USERDATA_DIR": str(tmp_path / "missing")}).userdata is None
 
 

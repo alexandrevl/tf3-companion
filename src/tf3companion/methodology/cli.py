@@ -33,17 +33,36 @@ def parse_params(items: list[str] | None) -> dict[str, Any] | None:
 
 def add_parsers(sub: Any) -> None:
     p = sub.add_parser("analyse", help="apply a methodology to the latest snapshot and write its report folder")
-    p.add_argument("--methodology", metavar="ID|FILE", help="one-off id[@version] or path; otherwise save override > user default > packaged default")
+    p.add_argument(
+        "--methodology",
+        metavar="ID|FILE",
+        help="one-off id[@version] or path; otherwise save override > user default > packaged default",
+    )
     p.add_argument("--save", metavar="ID", help="save id under <data>/saves/ (default: the implicit single save)")
-    p.add_argument("--param", action="append", metavar="NAME=VALUE", help="override a methodology parameter for this run")
+    p.add_argument(
+        "--param", action="append", metavar="NAME=VALUE", help="override a methodology parameter for this run"
+    )
     p.add_argument("--json", action="store_true", help="print the full summary as JSON")
 
-    p = sub.add_parser("evaluate", help="complete analytical result over stored evidence; writes nothing and never ingests")
-    p.add_argument("--methodology", metavar="ID|FILE", help="one-off id[@version] or path; otherwise save override > user default > packaged default")
+    p = sub.add_parser(
+        "evaluate", help="complete analytical result over stored evidence; writes nothing and never ingests"
+    )
+    p.add_argument(
+        "--methodology",
+        metavar="ID|FILE",
+        help="one-off id[@version] or path; otherwise save override > user default > packaged default",
+    )
     p.add_argument("--save", metavar="ID", help="save id under <data>/saves/ (default: the implicit single save)")
-    p.add_argument("--param", action="append", metavar="NAME=VALUE", help="override a methodology parameter for this run")
-    p.add_argument("--view", action="append", metavar="NAME", help="also compute one analysis view over stored history (repeatable): "
-                   "bottlenecks, expansion, lines-history, history, industries, vehicle-roi, towns")
+    p.add_argument(
+        "--param", action="append", metavar="NAME=VALUE", help="override a methodology parameter for this run"
+    )
+    p.add_argument(
+        "--view",
+        action="append",
+        metavar="NAME",
+        help="also compute one analysis view over stored history (repeatable): "
+        "bottlenecks, expansion, lines-history, history, industries, vehicle-roi, towns",
+    )
     p.add_argument("--json", action="store_true", help="print the complete version-1 result as JSON")
 
     m = sub.add_parser("methodology", help="list, validate, import, export and bind analysis methodologies")
@@ -55,7 +74,9 @@ def add_parsers(sub: Any) -> None:
     p.add_argument("ref")
     p = actions.add_parser("validate", help="validate a file without importing it")
     p.add_argument("file")
-    p.add_argument("--strict", action="store_true", help="fail when any rule is unsupported or needs data this release lacks")
+    p.add_argument(
+        "--strict", action="store_true", help="fail when any rule is unsupported or needs data this release lacks"
+    )
     p.add_argument("--param", action="append", metavar="NAME=VALUE", help="validate effective parameter overrides")
     p = actions.add_parser("import", help="validate a file and copy it into the user library")
     p.add_argument("file")
@@ -77,16 +98,22 @@ def add_parsers(sub: Any) -> None:
 
 
 def _print_list(listing: dict[str, Any]) -> None:
-    print(f"Save: {listing['save'].get('saveId') or 'implicit single save'}"
-          f"{'' if listing['save']['isolated'] else ' (no per-save isolation)'}")
+    print(
+        f"Save: {listing['save'].get('saveId') or 'implicit single save'}"
+        f"{'' if listing['save']['isolated'] else ' (no per-save isolation)'}"
+    )
     print(f"Effective: {listing['effective'] or 'unresolved'} ({listing['origin']})")
     print(f"Library root: {listing['libraryRoot']}")
     print(f"User default: {listing['userDefault']['reference']}; save override: {listing['saveOverride']['reference']}")
     if listing["error"]:
         print(f"error: {listing['error']}")
     for e in listing["methodologies"]:
-        flags = ("*" if e["effective"] else " ") + ("S" if e["selectedAsSaveOverride"] else "U" if e["selectedAsUserDefault"] else " ")
-        print(f"{flags} {e['identity'] or '?':<44} {e['status']:<9} {e['source']:<9} {e['hash'] or '-':<19} {e['name'] or ''}")
+        flags = ("*" if e["effective"] else " ") + (
+            "S" if e["selectedAsSaveOverride"] else "U" if e["selectedAsUserDefault"] else " "
+        )
+        print(
+            f"{flags} {e['identity'] or '?':<44} {e['status']:<9} {e['source']:<9} {e['hash'] or '-':<19} {e['name'] or ''}"
+        )
         if e["error"]:
             print(f"      {e['file']}: {e['error']}")
 
@@ -100,6 +127,7 @@ def run_methodology(args: argparse.Namespace) -> int:
     elif action == "show":
         from .library import looks_like_path
         from .resolve import describe
+
         origin = "file" if looks_like_path(args.ref) else "request"
         m = resolver.library.load_path(args.ref) if origin == "file" else resolver.library.resolve(args.ref)
         _print(describe(m, origin, resolver.scope))
@@ -129,7 +157,9 @@ def _print_identity_and_gaps(result: dict[str, Any], skipped: list, unsupported:
     m = result["methodology"]
     print(f"Methodology: {m['identity']} ({m['hash']}, from {m['origin']}; file source: {m['source']})")
     save = result["save"]
-    print("Save: " + (save["saveId"] or "implicit single save") + ("" if save["isolated"] else " (no per-save isolation)"))
+    print(
+        "Save: " + (save["saveId"] or "implicit single save") + ("" if save["isolated"] else " (no per-save isolation)")
+    )
     print(f"Snapshot: {result['snapshot']['date']} (game time {result['snapshot']['gameTime']})")
     if skipped or unsupported or not_evaluable:
         print("\nCoverage gaps (read before the verdicts):")
@@ -150,7 +180,10 @@ def print_evaluation(result: dict[str, Any]) -> None:
         print(f"\nRoles ({entity}): {counts}, unclassified={roles['unclassified']}")
     for rule in result["ruleResults"]:
         if rule["status"] == "ok":
-            print(f"  {rule['id']}: " + (", ".join(f"{k}={v}" for k, v in sorted(rule["markerCounts"].items())) or "no hits"))
+            print(
+                f"  {rule['id']}: "
+                + (", ".join(f"{k}={v}" for k, v in sorted(rule["markerCounts"].items())) or "no hits")
+            )
     findings = result["findings"]
     by_severity: dict[str, int] = {}
     for f in findings:
@@ -168,8 +201,11 @@ def print_evaluation(result: dict[str, Any]) -> None:
         print(f"  disabled by methodology: {item['code']} (role {item['role'] or 'any'}): {item['suppressed']}")
     for name, view in result["analysisViews"].items():
         cov = view["coverage"]
-        print(f"\nView {name}: {cov['used']} of {cov['eligible']} eligible samples used up to tick {cov['endpoint']['tick']}"
-              + (f"; warnings: {'; '.join(cov['warnings'])}" if cov["warnings"] else "") + "; `--json` returns the full view.")
+        print(
+            f"\nView {name}: {cov['used']} of {cov['eligible']} eligible samples used up to tick {cov['endpoint']['tick']}"
+            + (f"; warnings: {'; '.join(cov['warnings'])}" if cov["warnings"] else "")
+            + "; `--json` returns the full view."
+        )
 
 
 def print_analysis(summary: dict[str, Any]) -> None:

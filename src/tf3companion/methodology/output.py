@@ -82,7 +82,6 @@ def add_files(folder: Path, files: dict[str, str], manifest: dict[str, Any]) -> 
     """Stage the complete existing folder plus new files before publishing a replacement."""
     merged: dict[str, str] = {}
     if folder.is_dir():
-        merged = {p.name: p.read_text(encoding="utf-8") for p in folder.iterdir()
-                  if p.is_file() and p.name != MANIFEST}
+        merged = {p.name: p.read_text(encoding="utf-8") for p in folder.iterdir() if p.is_file() and p.name != MANIFEST}
     merged.update(files)
     return write_bundle(folder, merged, manifest)

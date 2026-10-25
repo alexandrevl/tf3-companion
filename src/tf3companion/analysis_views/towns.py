@@ -67,12 +67,12 @@ class TownRow:
     delta: float | None
     growth: float | None
     annual_growth: float | None
-    last_change: str | None            # label of the newest sample whose capacity differed from the previous one
+    last_change: str | None  # label of the newest sample whose capacity differed from the previous one
     last_change_tick: int | None
     usage: float | None
     usage_first: float | None
     usage_change: float | None
-    headroom: float | None             # gap between usage and the passenger-rating cap; None when usage is unknown
+    headroom: float | None  # gap between usage and the passenger-rating cap; None when usage is unknown
     noise: float | None
     noise_first: float | None
     pollution: float | None
@@ -81,7 +81,7 @@ class TownRow:
     stations: int
     lines_all: int
     lines_passenger: int
-    lines: tuple[TownLine, ...]        # passenger lines first, then by name
+    lines: tuple[TownLine, ...]  # passenger lines first, then by name
     supply: tuple[CargoSupply, ...]
     demands_met: int
     demands_total: int
@@ -89,7 +89,7 @@ class TownRow:
     share: float | None
     large: bool
     served: bool
-    reading: str                       # stall-reading code: no-station, freight-only, usage-at-cap, usage-unknown, below-cap
+    reading: str  # stall-reading code: no-station, freight-only, usage-at-cap, usage-unknown, below-cap
     position: tuple[float, float] | None
 
 
@@ -99,8 +99,8 @@ class TownsSummary:
     sized: int
     total_capacity: float | None
     first_total_capacity: float | None
-    capacity_change: float | None       # None with a single sample
-    growing: int | None                 # None with a single sample
+    capacity_change: float | None  # None with a single sample
+    growing: int | None  # None with a single sample
     served: int
     served_share: float | None
     passenger_served: int
@@ -133,9 +133,9 @@ class EvolutionPoint:
 class GrowthScreen:
     window_sufficient: bool
     comparable: int
-    risers: tuple[int, ...]            # town ids, fastest relative growth first
+    risers: tuple[int, ...]  # town ids, fastest relative growth first
     median_growth: float | None
-    stalled: tuple[int, ...]           # town ids without a net gain, largest first
+    stalled: tuple[int, ...]  # town ids without a net gain, largest first
     stalled_served: int
     stalled_unserved: int
     large_served_stalled: tuple[int, ...]
@@ -144,18 +144,18 @@ class GrowthScreen:
 @dataclass(frozen=True)
 class CoverageScreen:
     stations_known: bool
-    passenger_gaps: tuple[int, ...]    # sized towns with no passenger line, largest first
+    passenger_gaps: tuple[int, ...]  # sized towns with no passenger line, largest first
     gaps_unserved: int
     gaps_unserved_share: float | None
-    zero_usage: tuple[int, ...]        # sized towns with a passenger line and a known line usage of exactly 0
-    served_ranked: tuple[int, ...]     # sized served towns in rank order
+    zero_usage: tuple[int, ...]  # sized towns with a passenger line and a known line usage of exactly 0
+    served_ranked: tuple[int, ...]  # sized served towns in rank order
 
 
 @dataclass(frozen=True)
 class UsageGap:
-    code: str | None                   # None when evaluable; otherwise the stable insufficiency code
-    towns: tuple[int, ...]             # large towns more than the margin below the cap, by capacity x headroom
-    scores: tuple[float, ...]          # capacity x headroom, parallel to `towns`
+    code: str | None  # None when evaluable; otherwise the stable insufficiency code
+    towns: tuple[int, ...]  # large towns more than the margin below the cap, by capacity x headroom
+    scores: tuple[float, ...]  # capacity x headroom, parallel to `towns`
 
 
 @dataclass(frozen=True)
@@ -170,8 +170,8 @@ class CargoDemand:
     producers: int
     produced_year: float
     unshipped_year: float
-    produced_unknown: int              # outputs of this cargo without a stored producedYear
-    unshipped_unknown: int             # outputs without both producedYear and shippedYear
+    produced_unknown: int  # outputs of this cargo without a stored producedYear
+    unshipped_unknown: int  # outputs without both producedYear and shippedYear
 
 
 @dataclass(frozen=True)
@@ -194,7 +194,7 @@ class CargoDemandScreen:
     towns_receiving_none: int
     by_cargo: tuple[CargoDemand, ...]  # largest limit-minus-supply gap first
     served_towns: tuple[TownDemand, ...]
-    idle_cargos: tuple[int, ...]       # demanded, none delivered, and no output producing it with known flows
+    idle_cargos: tuple[int, ...]  # demanded, none delivered, and no output producing it with known flows
     idle_names: tuple[str, ...]
 
 
@@ -212,7 +212,7 @@ class PollutionSummary:
     value: float
     ratio_to_next: float | None
     ratio_to_median: float | None
-    relative_worst_id: int | None      # worst pollution per capacity when it is not the highest town
+    relative_worst_id: int | None  # worst pollution per capacity when it is not the highest town
 
 
 @dataclass(frozen=True)
@@ -228,13 +228,13 @@ class TownPair:
     town_b: int
     capacity_a: float
     capacity_b: float
-    status: str                        # no-passenger-link | indirect-shared-network
-    distance_km: float | None          # straight line between stored positions; None when a position is unknown
+    status: str  # no-passenger-link | indirect-shared-network
+    distance_km: float | None  # straight line between stored positions; None when a position is unknown
 
 
 @dataclass(frozen=True)
 class PairScreen:
-    pool: tuple[int, ...]              # the largest towns considered (PAIR_POOL)
+    pool: tuple[int, ...]  # the largest towns considered (PAIR_POOL)
     linked_pairs: int
     separate_networks: int
     transfer_pairs: int
@@ -244,7 +244,7 @@ class PairScreen:
 
 @dataclass(frozen=True)
 class KeyObservation:
-    code: str                          # unserved-towns | usage-gap | stalled-large-served | fastest-growth | starved-served
+    code: str  # unserved-towns | usage-gap | stalled-large-served | fastest-growth | starved-served
     town_id: int
     count: int | None = None
     total: int | None = None
@@ -257,7 +257,7 @@ class KeyObservation:
 @dataclass(frozen=True)
 class TownsView:
     summary: TownsSummary
-    rows: tuple[TownRow, ...]          # ranked towns first (largest capacity first), then towns without a capacity
+    rows: tuple[TownRow, ...]  # ranked towns first (largest capacity first), then towns without a capacity
     evolution: tuple[EvolutionPoint, ...]
     growth: GrowthScreen
     coverage_screen: CoverageScreen
@@ -273,6 +273,7 @@ class TownsView:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _cap(point: TownPoint) -> float | None:
     return float(sum(point.capacities)) if point.capacities else None
@@ -346,7 +347,7 @@ class _Network:
             if passenger:
                 for i, a in enumerate(towns):
                     find(a)
-                    for b in towns[i + 1:]:
+                    for b in towns[i + 1 :]:
                         self.edges.add(frozenset((a, b)))
                         parent[find(a)] = find(b)
         self.component = {tid: find(tid) for tid in parent}
@@ -364,7 +365,9 @@ def _reading(served: bool, passengers: int, usage: float | None) -> str:
     return "below-cap"
 
 
-def _rows(evidence: TownsEvidence, samples: tuple[TownSample, ...], net: _Network, span: float | None) -> tuple[TownRow, ...]:
+def _rows(
+    evidence: TownsEvidence, samples: tuple[TownSample, ...], net: _Network, span: float | None
+) -> tuple[TownRow, ...]:
     last = samples[-1]
     enough = span is not None and span >= MIN_WINDOW_YEARS and len(samples) >= MIN_WINDOW_SAMPLES
     names = dict(evidence.cargo_names)
@@ -393,22 +396,44 @@ def _rows(evidence: TownsEvidence, samples: tuple[TownSample, ...], net: _Networ
         supply = {c: (s, lim) for c, s, lim in now.supply}
         stations = len(net.stations_by_town.get(now.id, ()))
         passengers = sum(1 for p in lines.values() if p[1])
-        drafts.append(dict(
-            id=now.id, name=now.name, capacity=now_cap, capacities=now.capacities, first_capacity=first_cap,
-            delta=delta, growth=growth, annual_growth=annual, last_change=change_label, last_change_tick=change_tick,
-            usage=now.usage, usage_first=first.usage,
-            usage_change=None if now.usage is None or first.usage is None else now.usage - first.usage,
-            headroom=None if now.usage is None else max(0.0, USAGE_CAP - now.usage),
-            noise=now.noise, noise_first=first.noise, pollution=now.pollution, pollution_first=first.pollution,
-            development=now.development, stations=stations, lines_all=len(lines), lines_passenger=passengers,
-            lines=tuple(TownLine(lid, n, p) for lid, n, p in ordered),
-            supply=tuple(CargoSupply(c, names.get(c, str(c)), s, lim) for c, (s, lim) in supply.items()),
-            demands_met=sum(1 for s, _ in supply.values() if s > 0), demands_total=len(supply),
-            served=stations > 0, reading=_reading(stations > 0, passengers, now.usage), position=positions.get(now.id),
-        ))
+        drafts.append(
+            dict(
+                id=now.id,
+                name=now.name,
+                capacity=now_cap,
+                capacities=now.capacities,
+                first_capacity=first_cap,
+                delta=delta,
+                growth=growth,
+                annual_growth=annual,
+                last_change=change_label,
+                last_change_tick=change_tick,
+                usage=now.usage,
+                usage_first=first.usage,
+                usage_change=None if now.usage is None or first.usage is None else now.usage - first.usage,
+                headroom=None if now.usage is None else max(0.0, USAGE_CAP - now.usage),
+                noise=now.noise,
+                noise_first=first.noise,
+                pollution=now.pollution,
+                pollution_first=first.pollution,
+                development=now.development,
+                stations=stations,
+                lines_all=len(lines),
+                lines_passenger=passengers,
+                lines=tuple(TownLine(lid, n, p) for lid, n, p in ordered),
+                supply=tuple(CargoSupply(c, names.get(c, str(c)), s, lim) for c, (s, lim) in supply.items()),
+                demands_met=sum(1 for s, _ in supply.values() if s > 0),
+                demands_total=len(supply),
+                served=stations > 0,
+                reading=_reading(stations > 0, passengers, now.usage),
+                position=positions.get(now.id),
+            )
+        )
     sized = sorted((d for d in drafts if d["capacity"] is not None), key=lambda d: (-d["capacity"], d["name"]))
     total = sum(d["capacity"] for d in sized)
-    threshold = _quantile([d["capacity"] for d in sized], LARGE_QUANTILE) if len(sized) >= MIN_TOWNS_FOR_QUANTILE else None
+    threshold = (
+        _quantile([d["capacity"] for d in sized], LARGE_QUANTILE) if len(sized) >= MIN_TOWNS_FOR_QUANTILE else None
+    )
     for i, d in enumerate(sized, 1):
         d["rank"] = i
         d["share"] = d["capacity"] / total if total else None
@@ -431,12 +456,22 @@ def _evolution(samples: tuple[TownSample, ...], span: float | None) -> tuple[Evo
         total = float(sum(caps))
         base = total if base is None else base
         full = [p for p in s.towns if len(p.capacities) >= 3]
-        weighted = _weighted_usage([(c, p.usage) for p in s.towns if (c := _cap(p)) is not None and p.usage is not None])
-        out.append(EvolutionPoint(
-            s.tick, s.label, total, total - base, float(sum(p.capacities[0] for p in full)),
-            float(sum(p.capacities[1] for p in full)), float(sum(p.capacities[2] for p in full)), weighted,
-            sum(1 for p in s.towns if p.development),
-        ))
+        weighted = _weighted_usage(
+            [(c, p.usage) for p in s.towns if (c := _cap(p)) is not None and p.usage is not None]
+        )
+        out.append(
+            EvolutionPoint(
+                s.tick,
+                s.label,
+                total,
+                total - base,
+                float(sum(p.capacities[0] for p in full)),
+                float(sum(p.capacities[1] for p in full)),
+                float(sum(p.capacities[2] for p in full)),
+                weighted,
+                sum(1 for p in s.towns if p.development),
+            )
+        )
     return tuple(out)
 
 
@@ -445,11 +480,17 @@ def _growth(rows: tuple[TownRow, ...], samples: tuple[TownSample, ...], span: fl
         return GrowthScreen(False, 0, (), None, (), 0, 0, ())
     comparable = [r for r in rows if r.delta is not None and r.growth is not None]
     risers = sorted((r for r in comparable if r.delta > 0), key=lambda r: (-r.growth, r.name))
-    stalled = sorted((r for r in comparable if r.delta <= 0 and r.capacity is not None), key=lambda r: (-r.capacity, r.name))
+    stalled = sorted(
+        (r for r in comparable if r.delta <= 0 and r.capacity is not None), key=lambda r: (-r.capacity, r.name)
+    )
     return GrowthScreen(
-        True, len(comparable), tuple(r.id for r in risers),
+        True,
+        len(comparable),
+        tuple(r.id for r in risers),
         statistics.median(r.growth for r in comparable) if risers else None,
-        tuple(r.id for r in stalled), sum(1 for r in stalled if r.served), sum(1 for r in stalled if not r.served),
+        tuple(r.id for r in stalled),
+        sum(1 for r in stalled if r.served),
+        sum(1 for r in stalled if not r.served),
         tuple(r.id for r in stalled if r.served and r.large),
     )
 
@@ -461,8 +502,13 @@ def _coverage_screen(rows: tuple[TownRow, ...], net: _Network) -> CoverageScreen
     total = sum(r.capacity for r in sized)
     share = (sum(r.capacity for r in unserved) / total if total else None) if unserved else 0.0
     return CoverageScreen(
-        bool(net.station_town), tuple(r.id for r in gaps), len(unserved), share,
-        tuple(r.id for r in sorted((r for r in sized if r.lines_passenger and r.usage == 0), key=lambda r: -r.capacity)),
+        bool(net.station_town),
+        tuple(r.id for r in gaps),
+        len(unserved),
+        share,
+        tuple(
+            r.id for r in sorted((r for r in sized if r.lines_passenger and r.usage == 0), key=lambda r: -r.capacity)
+        ),
         tuple(r.id for r in sized if r.served),
     )
 
@@ -499,33 +545,57 @@ def _cargo_demand(rows: tuple[TownRow, ...], evidence: TownsEvidence) -> CargoDe
             c["zero"] += 1 if entry.supply <= 0 else 0
             c["supply"] += entry.supply
             c["limit"] += entry.limit
-    ranked = sorted(per_cargo.items(), key=lambda kv: (-(kv[1]["limit"] - kv[1]["supply"]), names.get(kv[0], str(kv[0]))))
+    ranked = sorted(
+        per_cargo.items(), key=lambda kv: (-(kv[1]["limit"] - kv[1]["supply"]), names.get(kv[0], str(kv[0])))
+    )
     by_cargo = tuple(
         CargoDemand(
-            cargo, names.get(cargo, str(cargo)), int(c["towns"]), int(c["zero"]), c["supply"], c["limit"],
+            cargo,
+            names.get(cargo, str(cargo)),
+            int(c["towns"]),
+            int(c["zero"]),
+            c["supply"],
+            c["limit"],
             c["supply"] / c["limit"] if c["limit"] else None,
-            int(producers.get(cargo, {}).get("count", 0)), producers.get(cargo, {}).get("produced", 0.0),
-            producers.get(cargo, {}).get("unshipped", 0.0), int(producers.get(cargo, {}).get("pu", 0)),
+            int(producers.get(cargo, {}).get("count", 0)),
+            producers.get(cargo, {}).get("produced", 0.0),
+            producers.get(cargo, {}).get("unshipped", 0.0),
+            int(producers.get(cargo, {}).get("pu", 0)),
             int(producers.get(cargo, {}).get("uu", 0)),
         )
         for cargo, c in ranked
     )
-    served = sorted((r for r in with_supply if r.served),
-                    key=lambda r: (-sum(max(0.0, e.limit - e.supply) for e in r.supply), r.name))
+    served = sorted(
+        (r for r in with_supply if r.served),
+        key=lambda r: (-sum(max(0.0, e.limit - e.supply) for e in r.supply), r.name),
+    )
     towns: list[TownDemand] = []
     for r in served:
         sup = sum(e.supply for e in r.supply)
         lim = sum(e.limit for e in r.supply)
         big = max(r.supply, key=lambda e: e.limit - e.supply)
-        towns.append(TownDemand(
-            r.id, sup, lim, sup / lim if lim else None, r.demands_met, r.demands_total,
-            sum(max(0.0, e.limit - e.supply) for e in r.supply), big.cargo, big.cargo_name,
-            max(0.0, big.limit - big.supply),
-        ))
+        towns.append(
+            TownDemand(
+                r.id,
+                sup,
+                lim,
+                sup / lim if lim else None,
+                r.demands_met,
+                r.demands_total,
+                sum(max(0.0, e.limit - e.supply) for e in r.supply),
+                big.cargo,
+                big.cargo_name,
+                max(0.0, big.limit - big.supply),
+            )
+        )
     idle = tuple(d.cargo for d in by_cargo if d.supply <= 0 and d.produced_year <= 0 and d.produced_unknown == 0)
     return CargoDemandScreen(
-        len(with_supply), sum(1 for r in with_supply if all(e.supply <= 0 for e in r.supply)), by_cargo, tuple(towns),
-        idle, tuple(names.get(c, str(c)) for c in idle),
+        len(with_supply),
+        sum(1 for r in with_supply if all(e.supply <= 0 for e in r.supply)),
+        by_cargo,
+        tuple(towns),
+        idle,
+        tuple(names.get(c, str(c)) for c in idle),
     )
 
 
@@ -538,8 +608,11 @@ def _hotspots(rows: tuple[TownRow, ...]) -> Hotspots:
         out = []
         for r in ordered:
             now, first = getattr(r, value), getattr(r, f"{value}_first")
-            out.append(HotspotRank(r.id, now, None if first is None else now - first,
-                                   now / r.capacity * 100 if r.capacity else None))
+            out.append(
+                HotspotRank(
+                    r.id, now, None if first is None else now - first, now / r.capacity * 100 if r.capacity else None
+                )
+            )
         return tuple(out)
 
     summary = None
@@ -549,7 +622,8 @@ def _hotspots(rows: tuple[TownRow, ...]) -> Hotspots:
         worst = max((r for r in pol if r.capacity), key=lambda r: (r.pollution / r.capacity, r.name), default=None)
         top = ordered[0]
         summary = PollutionSummary(
-            top.id, top.pollution,
+            top.id,
+            top.pollution,
             top.pollution / ordered[1].pollution if median > 0 and ordered[1].pollution > 0 else None,
             top.pollution / median if median > 0 and ordered[1].pollution > 0 else None,
             worst.id if worst is not None and worst is not top else None,
@@ -569,19 +643,32 @@ def _pairs(rows: tuple[TownRow, ...], net: _Network) -> PairScreen:
         return PairScreen(tuple(r.id for r in pool), 0, 0, 0, (), False)
     candidates = []
     for i, a in enumerate(pool):
-        for b in pool[i + 1:]:
+        for b in pool[i + 1 :]:
             if frozenset((a.id, b.id)) in net.edges:
                 continue
             comp_a, comp_b = net.component.get(a.id), net.component.get(b.id)
             indirect = comp_a is not None and comp_a == comp_b
-            candidates.append((1 if indirect else 0, -(a.capacity * b.capacity), a, b,
-                               "indirect-shared-network" if indirect else "no-passenger-link"))
+            candidates.append(
+                (
+                    1 if indirect else 0,
+                    -(a.capacity * b.capacity),
+                    a,
+                    b,
+                    "indirect-shared-network" if indirect else "no-passenger-link",
+                )
+            )
     candidates.sort(key=lambda c: (c[0], c[1], c[2].name, c[3].name))
-    pairs = tuple(TownPair(a.id, b.id, a.capacity, b.capacity, status, _distance_km(a, b)) for _, _, a, b, status in candidates)
+    pairs = tuple(
+        TownPair(a.id, b.id, a.capacity, b.capacity, status, _distance_km(a, b)) for _, _, a, b, status in candidates
+    )
     isolated = sum(1 for c in candidates if c[0] == 0)
     return PairScreen(
-        tuple(r.id for r in pool), (len(pool) * (len(pool) - 1)) // 2 - len(candidates), isolated,
-        len(candidates) - isolated, pairs, any(p.distance_km is not None for p in pairs),
+        tuple(r.id for r in pool),
+        (len(pool) * (len(pool) - 1)) // 2 - len(candidates),
+        isolated,
+        len(candidates) - isolated,
+        pairs,
+        any(p.distance_km is not None for p in pairs),
     )
 
 
@@ -593,15 +680,24 @@ def _key_observations(rows: tuple[TownRow, ...], span: float | None, samples_cou
     unserved = [r for r in sized if not r.served]
     if unserved:
         out.append(KeyObservation("unserved-towns", unserved[0].id, len(unserved), len(sized)))
-    low = sorted((r for r in sized if r.large and r.usage is not None and (r.headroom or 0) > HEADROOM_MARGIN),
-                 key=lambda r: -(r.capacity * (r.headroom or 0)))
+    low = sorted(
+        (r for r in sized if r.large and r.usage is not None and (r.headroom or 0) > HEADROOM_MARGIN),
+        key=lambda r: -(r.capacity * (r.headroom or 0)),
+    )
     if low:
         out.append(KeyObservation("usage-gap", low[0].id))
     if span is not None and span >= MIN_WINDOW_YEARS and samples_count >= MIN_WINDOW_SAMPLES:
         stalled = [r for r in sized if r.large and r.served and r.delta is not None and r.delta <= 0]
         if stalled:
-            out.append(KeyObservation("stalled-large-served", stalled[0].id, sum(1 for x in sized if (x.delta or 0) > 0),
-                                      len(sized), span_years=span))
+            out.append(
+                KeyObservation(
+                    "stalled-large-served",
+                    stalled[0].id,
+                    sum(1 for x in sized if (x.delta or 0) > 0),
+                    len(sized),
+                    span_years=span,
+                )
+            )
         growing = [r for r in sized if r.growth is not None and r.growth > 0]
         if growing:
             r = max(growing, key=lambda r: (r.growth, r.name))
@@ -610,21 +706,59 @@ def _key_observations(rows: tuple[TownRow, ...], span: float | None, samples_cou
     if starved:
         r = starved[0]
         top = sorted(r.supply, key=lambda e: -e.limit)[:3]
-        out.append(KeyObservation("starved-served", r.id, len(starved), len(r.supply),
-                                  cargo_names=tuple(e.cargo_name for e in top)))
+        out.append(
+            KeyObservation(
+                "starved-served", r.id, len(starved), len(r.supply), cargo_names=tuple(e.cargo_name for e in top)
+            )
+        )
     return tuple(out)
 
 
 def _criteria() -> tuple[Criterion, ...]:
     return (
-        Criterion("usageCap", USAGE_CAP, "ratio", "Passenger rating is min(1, 2 x usage), so usage above this adds nothing; headroom is the gap to it."),
-        Criterion("minWindowYears", MIN_WINDOW_YEARS, "game-year", "Growth and stall screens need at least this supported span."),
-        Criterion("minWindowSamples", MIN_WINDOW_SAMPLES, "samples", "Growth and stall screens need at least this many samples."),
-        Criterion("largeQuantile", LARGE_QUANTILE, "quantile", "A town is large when its capacity is at or above this quantile of capacity (needs four sized towns)."),
-        Criterion("headroomMargin", HEADROOM_MARGIN, "ratio", "Usage gaps at or below this margin are not reported and usage within it counts as at the cap."),
+        Criterion(
+            "usageCap",
+            USAGE_CAP,
+            "ratio",
+            "Passenger rating is min(1, 2 x usage), so usage above this adds nothing; headroom is the gap to it.",
+        ),
+        Criterion(
+            "minWindowYears",
+            MIN_WINDOW_YEARS,
+            "game-year",
+            "Growth and stall screens need at least this supported span.",
+        ),
+        Criterion(
+            "minWindowSamples",
+            MIN_WINDOW_SAMPLES,
+            "samples",
+            "Growth and stall screens need at least this many samples.",
+        ),
+        Criterion(
+            "largeQuantile",
+            LARGE_QUANTILE,
+            "quantile",
+            "A town is large when its capacity is at or above this quantile of capacity (needs four sized towns).",
+        ),
+        Criterion(
+            "headroomMargin",
+            HEADROOM_MARGIN,
+            "ratio",
+            "Usage gaps at or below this margin are not reported and usage within it counts as at the cap.",
+        ),
         Criterion("pairPool", PAIR_POOL, "towns", "Passenger pairs are screened among this many largest towns."),
-        Criterion("maxEvolutionPoints", MAX_EVOLUTION_POINTS, "samples", "Evolution keeps at most this many representative samples, always the first and latest."),
-        Criterion("minTownsForHotspotSummary", MIN_TOWNS_FOR_HOTSPOT_SUMMARY, "towns", "The pollution comparison needs this many towns with a value."),
+        Criterion(
+            "maxEvolutionPoints",
+            MAX_EVOLUTION_POINTS,
+            "samples",
+            "Evolution keeps at most this many representative samples, always the first and latest.",
+        ),
+        Criterion(
+            "minTownsForHotspotSummary",
+            MIN_TOWNS_FOR_HOTSPOT_SUMMARY,
+            "towns",
+            "The pollution comparison needs this many towns with a value.",
+        ),
     )
 
 
@@ -632,13 +766,19 @@ def _criteria() -> tuple[Criterion, ...]:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def evaluate(evidence: TownsEvidence, *, context: EvaluationContext) -> TownsView:
     clock = context.clock
     samples = evidence.samples
     unavailable: list[Unavailable] = []
     if clock.ambiguous:
         samples = samples[-1:]
-        unavailable.append(Unavailable("ambiguous-timeline", "growth and history windows need an unambiguous calendar; only the latest sample is used"))
+        unavailable.append(
+            Unavailable(
+                "ambiguous-timeline",
+                "growth and history windows need an unambiguous calendar; only the latest sample is used",
+            )
+        )
     measure = clock.elapsed_between_ticks(samples[0].tick, samples[-1].tick)
     span = measure.value
     net = _Network(evidence)
@@ -651,18 +791,25 @@ def evaluate(evidence: TownsEvidence, *, context: EvaluationContext) -> TownsVie
     multi = len(samples) > 1
     threshold = _quantile([r.capacity for r in sized], LARGE_QUANTILE) if len(sized) >= MIN_TOWNS_FOR_QUANTILE else None
     summary = TownsSummary(
-        towns=len(rows), sized=len(sized), total_capacity=total if sized else None,
+        towns=len(rows),
+        sized=len(sized),
+        total_capacity=total if sized else None,
         first_total_capacity=first_total if sized else None,
         capacity_change=total - first_total if multi and sized else None,
         growing=sum(1 for r in sized if (r.delta or 0) > 0) if multi and sized else None,
-        served=len(served), served_share=sum(r.capacity for r in served) / total if total else None,
-        passenger_served=len(pax), passenger_share=sum(r.capacity for r in pax) / total if total else None,
+        served=len(served),
+        served_share=sum(r.capacity for r in served) / total if total else None,
+        passenger_served=len(pax),
+        passenger_share=sum(r.capacity for r in pax) / total if total else None,
         weighted_usage=_weighted_usage([(r.capacity, r.usage) for r in sized if r.usage is not None]),
         development_active=sum(1 for r in sized if r.development),
         large_threshold=threshold,
         window_samples=len(samples),
-        window_first=SampleRef(samples[0].tick, samples[0].label), window_last=SampleRef(samples[-1].tick, samples[-1].label),
-        span_years=span, span_days=span * DAYS_PER_YEAR if span is not None else None, span_reason=measure.reason,
+        window_first=SampleRef(samples[0].tick, samples[0].label),
+        window_last=SampleRef(samples[-1].tick, samples[-1].label),
+        span_years=span,
+        span_days=span * DAYS_PER_YEAR if span is not None else None,
+        span_reason=measure.reason,
     )
     evolution = _evolution(samples, span)
     growth = _growth(rows, samples, span)
@@ -674,9 +821,16 @@ def evaluate(evidence: TownsEvidence, *, context: EvaluationContext) -> TownsVie
     if not rows:
         unavailable.append(Unavailable("no-towns", "the endpoint lists no towns"))
     if rows and not growth.window_sufficient:
-        unavailable.append(Unavailable("growth-window-insufficient", f"needs {MIN_WINDOW_SAMPLES} samples spanning {MIN_WINDOW_YEARS} game-year"))
+        unavailable.append(
+            Unavailable(
+                "growth-window-insufficient",
+                f"needs {MIN_WINDOW_SAMPLES} samples spanning {MIN_WINDOW_YEARS} game-year",
+            )
+        )
     if rows and not coverage_screen.stations_known:
-        unavailable.append(Unavailable("stations-unassigned", "no station is assigned to a town, so coverage cannot be verified"))
+        unavailable.append(
+            Unavailable("stations-unassigned", "no station is assigned to a town, so coverage cannot be verified")
+        )
     if rows and usage_gap.code:
         unavailable.append(Unavailable(usage_gap.code, "too few towns with capacity and line usage"))
     if rows and not cargo_demand.towns_with_demand:
@@ -686,17 +840,30 @@ def evaluate(evidence: TownsEvidence, *, context: EvaluationContext) -> TownsVie
     if rows and len(pairs.pool) < 2:
         unavailable.append(Unavailable("pair-pool-too-small", "fewer than two towns with capacities"))
     coverage = ViewCoverage(
-        endpoint=evidence.endpoint, eligible=evidence.eligible, read=evidence.read, used=len(samples),
-        hydrated=evidence.hydrated, hydration_limit=0,
+        endpoint=evidence.endpoint,
+        eligible=evidence.eligible,
+        read=evidence.read,
+        used=len(samples),
+        hydrated=evidence.hydrated,
+        hydration_limit=0,
         sampled=tuple(SampleRef(p.tick, p.label) for p in evolution),
         limits={"evolutionPoints": MAX_EVOLUTION_POINTS, "pairPool": PAIR_POOL},
         omitted=max(0, evidence.eligible - len(samples)),
         warnings=tuple(str(w) for w in clock.time_basis["warnings"]),
-        collection_errors=evidence.collection_errors, unavailable=tuple(unavailable),
+        collection_errors=evidence.collection_errors,
+        unavailable=tuple(unavailable),
     )
     return TownsView(
-        summary=summary, rows=rows, evolution=evolution, growth=growth, coverage_screen=coverage_screen,
-        usage_gap=usage_gap, cargo_demand=cargo_demand, hotspots=hotspots, pairs=pairs,
+        summary=summary,
+        rows=rows,
+        evolution=evolution,
+        growth=growth,
+        coverage_screen=coverage_screen,
+        usage_gap=usage_gap,
+        cargo_demand=cargo_demand,
+        hotspots=hotspots,
+        pairs=pairs,
         key_observations=_key_observations(rows, span, len(samples)),
-        criteria=_criteria(), coverage=coverage,
+        criteria=_criteria(),
+        coverage=coverage,
     )

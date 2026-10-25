@@ -1,4 +1,5 @@
 """TF3 Companion package metadata."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:

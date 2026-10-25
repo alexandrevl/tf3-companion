@@ -47,10 +47,14 @@ def test_html_escapes_entity_markup_and_has_no_external_dependencies(test_store)
     assert not surface.urls
     assert "Main &lt;script&gt;alert(1)&lt;/script&gt;" in output
 
+
 def test_markdown_entity_names_cannot_inject_images_or_raw_html(test_store):
-    document = reports.ReportDocument("lines", "Lines", [], [
-        reports.Table(["Name"], [['![remote](https://example.invalid/image) <script>bad</script>']])
-    ])
+    document = reports.ReportDocument(
+        "lines",
+        "Lines",
+        [],
+        [reports.Table(["Name"], [["![remote](https://example.invalid/image) <script>bad</script>"]])],
+    )
     output = reports.render_markdown(document)
     assert "![remote](" not in output
     assert "<script>" not in output
@@ -60,8 +64,9 @@ def test_markdown_entity_names_cannot_inject_images_or_raw_html(test_store):
 def test_annual_profit_is_closing_rolling_window_not_sum(test_store):
     document = reports.compose_report(test_store, "annual", 1984)
     money_tables = [block for block in document.blocks if isinstance(block, reports.Table)]
-    profit_row = next(row for table in money_tables for row in table.rows
-                      if row[0] == "Closing Rolling Annual Line Profit")
+    profit_row = next(
+        row for table in money_tables for row in table.rows if row[0] == "Closing Rolling Annual Line Profit"
+    )
     assert profit_row[2] == 160_000
     assert profit_row[2] != sum(100_000 + month * 5_000 for month in range(1, 13))
 
@@ -104,8 +109,7 @@ def test_annual_report_coverage_and_year_gap(tmp_path):
 def test_ranking_tables_do_not_repeat_lines_when_count_is_between_15_and_30(tmp_path):
     store = Store(tmp_path / "rankings.db")
     data = base_snapshot()
-    data["lines"] = [{"id": i, "name": f"Line {i}", "profitYear": i, "vehicles": [], "stops": []}
-                     for i in range(20)]
+    data["lines"] = [{"id": i, "name": f"Line {i}", "profitYear": i, "vehicles": [], "stops": []} for i in range(20)]
     store.add_snapshot(Snapshot(data))
     document = reports.compose_report(store, "lines")
     tables = [block for block in document.blocks if isinstance(block, reports.Table)]
@@ -126,8 +130,9 @@ def test_decision_tracks_renamed_line_by_baseline_identity(tmp_path):
     after["lines"][0]["capacity"][0]["used"] = 80
     store.add_snapshot(Snapshot(after))
     document = reports.compose_report(store, "decisions")
-    table = next(block for block in document.blocks
-                 if isinstance(block, reports.Table) and block.columns[0] == "Entity")
+    table = next(
+        block for block in document.blocks if isinstance(block, reports.Table) and block.columns[0] == "Entity"
+    )
     assert table.rows == [
         ["Renamed Express", "Rolling Annual Profit", 800_000, 900_000, "+100,000"],
         ["Renamed Express", "Vehicles", 1, 2, "+1"],
@@ -181,20 +186,28 @@ def test_annual_closing_profit_is_a_known_subtotal_and_tied_lines_are_ordered_by
     with closing(Store(tmp_path / "annual.db")) as store:
         data = base_snapshot(game_time=1984 * YEAR)
         data["meta"]["date"] = {"year": 1984, "month": 1, "day": 1}
-        data["lines"] = [{"id": i, "name": f"L{i}", "profitYear": p, "vehicles": [], "stops": []}
-                         for i, p in ((3, 50), (1, 50), (2, None), (4, 70))]
+        data["lines"] = [
+            {"id": i, "name": f"L{i}", "profitYear": p, "vehicles": [], "stops": []}
+            for i, p in ((3, 50), (1, 50), (2, None), (4, 70))
+        ]
         store.add_snapshot(Snapshot(data))
         document = reports.compose_report(store, "annual", 1984)
         summary = _tables(document)[0]
         assert next(r for r in summary.rows if r[0] == "Closing Rolling Annual Line Profit")[2] == 170
-        assert "1 line(s) without a recorded profit" in "".join(b.text for b in document.blocks if isinstance(b, reports.Paragraph))
+        assert "1 line(s) without a recorded profit" in "".join(
+            b.text for b in document.blocks if isinstance(b, reports.Paragraph)
+        )
         top = next(t for t in _tables(document) if t.columns == ["Line", "Rolling Annual Profit"])
         assert [r[0] for r in top.rows] == ["L4", "L1", "L3", "L2"]
 
 
 def test_annual_report_excludes_samples_after_the_selected_endpoint(tmp_path):
     with closing(Store(tmp_path / "future.db")) as store:
-        for tick, month, balance in ((1984 * YEAR + 10, 1, 100), (1984 * YEAR + 30, 3, 999_999), (1984 * YEAR + 20, 2, 200)):
+        for tick, month, balance in (
+            (1984 * YEAR + 10, 1, 100),
+            (1984 * YEAR + 30, 3, 999_999),
+            (1984 * YEAR + 20, 2, 200),
+        ):
             data = base_snapshot(game_time=tick)
             data["meta"]["date"] = {"year": 1984, "month": month, "day": 1}
             data["company"]["balance"] = balance
@@ -221,10 +234,15 @@ def test_decision_comparison_ignores_decisions_recorded_after_the_endpoint(tmp_p
 
 def test_cargo_full_stock_screen_uses_the_effective_threshold_and_label(tmp_path):
     from tf3companion.analysis import Thresholds
+
     with closing(Store(tmp_path / "cargo.db")) as store:
         data = base_snapshot()
-        data["industries"] = [{"id": 7, "name": "Mine", "outputs": [{"cargo": 3, "producedYear": 10, "shippedYear": 0}]}]
-        data["stocks"] = [{"kind": "industry", "owner": 7, "ownerName": "Mine", "cargos": [3], "count": 75, "capacity": 100}]
+        data["industries"] = [
+            {"id": 7, "name": "Mine", "outputs": [{"cargo": 3, "producedYear": 10, "shippedYear": 0}]}
+        ]
+        data["stocks"] = [
+            {"kind": "industry", "owner": 7, "ownerName": "Mine", "cargos": [3], "count": 75, "capacity": 100}
+        ]
         store.add_snapshot(Snapshot(data))
         default = reports.compose_report(store, "cargo")
         lowered = reports.compose_report(store, "cargo", thresholds=Thresholds(full_stock_ratio=0.75))

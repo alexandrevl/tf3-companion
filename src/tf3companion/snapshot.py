@@ -30,8 +30,11 @@ def _list(value: Any) -> list:
 
 def positive_line_capacity(line: dict[str, Any]) -> list[dict[str, Any]]:
     """A line's stored capacity entries that carry something; the game also lists every cargo with zero capacity."""
-    return [c for c in _list(line.get("capacity")) if isinstance(c, dict) and (c.get("capacity") or 0) > 0
-            and isinstance(c.get("cargo"), int)]
+    return [
+        c
+        for c in _list(line.get("capacity"))
+        if isinstance(c, dict) and (c.get("capacity") or 0) > 0 and isinstance(c.get("cargo"), int)
+    ]
 
 
 @dataclass
@@ -48,13 +51,12 @@ class Snapshot:
         if type(schema) is not int or schema < 1:
             raise ValueError("snapshot schemaVersion must be a positive integer")
         if schema > READABLE_SCHEMA:
-            raise ValueError(f"snapshot schema {schema} is newer than readable schema "
-                             f"{READABLE_SCHEMA}; update TF3 Companion.")
+            raise ValueError(
+                f"snapshot schema {schema} is newer than readable schema {READABLE_SCHEMA}; update TF3 Companion."
+            )
         for key in ("gameTime", "yearDuration", "requestId", "year"):
             value = meta.get(key)
-            if (key == "gameTime" or value is not None) and (
-                type(value) is not int or not 0 <= value <= 2**63 - 1
-            ):
+            if (key == "gameTime" or value is not None) and (type(value) is not int or not 0 <= value <= 2**63 - 1):
                 raise ValueError(f"meta.{key} must be a nonnegative 64-bit integer")
         if "saveId" in meta and (not isinstance(meta["saveId"], str) or not meta["saveId"].strip()):
             raise ValueError("meta.saveId must be a nonempty string")
@@ -68,8 +70,19 @@ class Snapshot:
             value = self.raw.get(section)
             if value is not None and value != [] and not isinstance(value, dict):
                 raise ValueError(f"{section} must be a table")
-        for section in ("lines", "vehicles", "stations", "industries", "towns", "cargos",
-                        "models", "stocks", "depots", "catalog", "errors"):
+        for section in (
+            "lines",
+            "vehicles",
+            "stations",
+            "industries",
+            "towns",
+            "cargos",
+            "models",
+            "stocks",
+            "depots",
+            "catalog",
+            "errors",
+        ):
             value = self.raw.get(section)
             if value is not None and not isinstance(value, (list, dict)):
                 raise ValueError(f"{section} must be a collection")
@@ -197,8 +210,10 @@ class Snapshot:
 
     def line_capacity(self, line: dict[str, Any]) -> list[dict[str, Any]]:
         """The line's carried cargo: positive-capacity entries with the cargo named from its decoded id."""
-        return [{**entry, "cargo": self.cargo_or_unknown(entry["cargo"] - LINE_CAPACITY_CARGO_OFFSET)}
-                for entry in positive_line_capacity(line)]
+        return [
+            {**entry, "cargo": self.cargo_or_unknown(entry["cargo"] - LINE_CAPACITY_CARGO_OFFSET)}
+            for entry in positive_line_capacity(line)
+        ]
 
     def line_vehicles(self, line: dict[str, Any]) -> list[dict[str, Any]]:
         return [self.vehicles_by_id[v] for v in _list(line.get("vehicles")) if v in self.vehicles_by_id]
@@ -230,7 +245,10 @@ class Snapshot:
 def snapshot_files(folders: list[Path]) -> list[Path]:
     """Snapshot files across the mod's output folders, oldest game time first."""
     files = {
-        p.resolve() for folder in folders if folder.is_dir() for p in folder.iterdir()
+        p.resolve()
+        for folder in folders
+        if folder.is_dir()
+        for p in folder.iterdir()
         if SNAPSHOT_FILE.match(p.name) and p.is_file() and not p.is_symlink()
     }
     return sorted(files, key=lambda p: (int(SNAPSHOT_FILE.match(p.name).group(1)), str(p)))

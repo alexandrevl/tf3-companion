@@ -7,17 +7,29 @@ from tf3companion.snapshot import Snapshot
 def add_line(data, line_id, *, profit, vehicles_age_years=3.0, load=(50, 100), vehicles=1, **extra):
     now = data["meta"]["gameTime"]
     vehicle_ids = [line_id * 10 + i for i in range(vehicles)]
-    data["lines"].append({
-        "id": line_id, "name": f"L{line_id}", "vehicles": vehicle_ids,
-        "stops": [{"stationGroup": 20}, {"stationGroup": 21}],
-        "profitYear": profit, "capacity": [{"cargo": 0, "used": load[0], "capacity": load[1]}], "issues": [],
-        **extra,
-    })
+    data["lines"].append(
+        {
+            "id": line_id,
+            "name": f"L{line_id}",
+            "vehicles": vehicle_ids,
+            "stops": [{"stationGroup": 20}, {"stationGroup": 21}],
+            "profitYear": profit,
+            "capacity": [{"cargo": 0, "used": load[0], "capacity": load[1]}],
+            "issues": [],
+            **extra,
+        }
+    )
     for vid in vehicle_ids:
-        data["vehicles"].append({
-            "id": vid, "name": f"V{vid}", "state": "EN_ROUTE", "line": line_id,
-            "purchaseTime": now - int(vehicles_age_years * YEAR), "profitYear": profit // max(vehicles, 1),
-        })
+        data["vehicles"].append(
+            {
+                "id": vid,
+                "name": f"V{vid}",
+                "state": "EN_ROUTE",
+                "line": line_id,
+                "purchaseTime": now - int(vehicles_age_years * YEAR),
+                "profitYear": profit // max(vehicles, 1),
+            }
+        )
 
 
 def test_healthy_company_has_no_findings():
@@ -30,8 +42,7 @@ def test_losing_line_severity_depends_on_line_maturity():
     add_line(data, 2, profit=-50_000, vehicles_age_years=0.4)
     items = analysis.findings(Snapshot(data), clock=fixture_clock(data))
     losing = [f for f in items if f.code == "line_losing_money"]
-    assert [(f.entity["id"], f.severity, f.category) for f in losing] == [
-        (1, "high", "lines"), (2, "low", "lines")]
+    assert [(f.entity["id"], f.severity, f.category) for f in losing] == [(1, "high", "lines"), (2, "low", "lines")]
 
 
 def test_load_thresholds_flag_overloaded_and_underused_lines():
@@ -40,8 +51,7 @@ def test_load_thresholds_flag_overloaded_and_underused_lines():
     add_line(data, 2, profit=10, load=(10, 100), vehicles=3)
     add_line(data, 3, profit=10, load=(10, 100), vehicles=1)  # single vehicle: not "too many vehicles"
     items = analysis.findings(Snapshot(data))
-    assert [(f.code, f.category) for f in items] == [
-        ("line_overloaded", "lines"), ("line_underused", "lines")]
+    assert [(f.code, f.category) for f in items] == [("line_overloaded", "lines"), ("line_underused", "lines")]
 
 
 def test_line_issues_and_empty_lines_are_reported():
@@ -64,6 +74,7 @@ def test_orphan_and_no_stop_lines():
     assert any(f.code == "line_orphan" and f.entity["id"] == 10 for f in items)
     assert any(f.code == "line_no_stops" and f.entity["id"] == 11 for f in items)
 
+
 def test_profit_drop_compares_with_previous_snapshot():
     prev = base_snapshot(game_time=9 * YEAR)
     cur = base_snapshot()
@@ -83,8 +94,14 @@ def test_vehicle_findings():
         {"id": 1, "name": "Lost", "state": "EN_ROUTE", "line": 100, "noPath": True},
         {"id": 2, "name": "Idle", "state": "IN_DEPOT", "line": None, "daysInDepot": 90, "value": 40_000},
         {"id": 3, "name": "Recent", "state": "IN_DEPOT", "line": None, "daysInDepot": 5, "value": 99},
-        {"id": 4, "name": "Surplus", "state": "EN_ROUTE", "line": 100, "profitYear": -20_000,
-         "purchaseTime": data["meta"]["gameTime"] - 2 * YEAR},
+        {
+            "id": 4,
+            "name": "Surplus",
+            "state": "EN_ROUTE",
+            "line": 100,
+            "profitYear": -20_000,
+            "purchaseTime": data["meta"]["gameTime"] - 2 * YEAR,
+        },
     ]
     items = analysis.findings(Snapshot(data), clock=fixture_clock(data))
     no_path = next(f for f in items if f.code == "vehicle_no_path")
@@ -115,23 +132,41 @@ def test_closing_industry_and_collection_errors():
 def test_opportunities_pair_unshipped_cargo_with_nearest_consumers():
     data = base_snapshot()
     data["industries"] = [
-        {"id": 1, "name": "Mine", "position": [0, 0, 0],
-         "outputs": [{"cargo": 3, "producedYear": 400, "maxProductionYear": 800, "shippedYear": 100}]},
+        {
+            "id": 1,
+            "name": "Mine",
+            "position": [0, 0, 0],
+            "outputs": [{"cargo": 3, "producedYear": 400, "maxProductionYear": 800, "shippedYear": 100}],
+        },
         {"id": 2, "name": "Distant plant", "position": [9000, 0, 0], "inputs": [{"cargo": 3, "deliveredYear": 0}]},
         {"id": 3, "name": "Nearby plant", "position": [3000, 4000, 0], "inputs": [{"cargo": 3, "deliveredYear": 50}]},
-        {"id": 4, "name": "Served mine", "position": [0, 0, 0],
-         "outputs": [{"cargo": 3, "producedYear": 400, "maxProductionYear": 400, "shippedYear": 390}]},
-        {"id": 5, "name": "Idle factory", "position": [20000, 0, 0],
-         "inputs": [{"cargo": 3, "deliveredYear": 0}, {"cargo": 0, "deliveredYear": 20}],
-         "outputs": [{"cargo": 0, "producedYear": 0, "maxProductionYear": 900, "shippedYear": 0}]},
+        {
+            "id": 4,
+            "name": "Served mine",
+            "position": [0, 0, 0],
+            "outputs": [{"cargo": 3, "producedYear": 400, "maxProductionYear": 400, "shippedYear": 390}],
+        },
+        {
+            "id": 5,
+            "name": "Idle factory",
+            "position": [20000, 0, 0],
+            "inputs": [{"cargo": 3, "deliveredYear": 0}, {"cargo": 0, "deliveredYear": 20}],
+            "outputs": [{"cargo": 0, "producedYear": 0, "maxProductionYear": 900, "shippedYear": 0}],
+        },
     ]
     ops = analysis.opportunities(Snapshot(data))
     # cargo actually waiting comes first, even if idle capacity elsewhere is larger
-    assert [(o["producer"]["name"], o["kind"]) for o in ops] == [("Mine", "unshipped"), ("Idle factory", "needs_inputs")]
+    assert [(o["producer"]["name"], o["kind"]) for o in ops] == [
+        ("Mine", "unshipped"),
+        ("Idle factory", "needs_inputs"),
+    ]
     op = ops[0]
     assert op["cargo"] == "Coal" and op["unshippedYear"] == 300
     assert [(c["name"], c["distanceKm"]) for c in op["nearestConsumers"]] == [
-        ("Nearby plant", 5.0), ("Distant plant", 9.0), ("Idle factory", 20.0)]
+        ("Nearby plant", 5.0),
+        ("Distant plant", 9.0),
+        ("Idle factory", 20.0),
+    ]
     assert ops[1]["idleCapacityYear"] == 900 and ops[1]["missingInputs"] == ["Coal"]
 
 
@@ -159,8 +194,7 @@ def test_finding_codes_are_stable_across_snapshots():
 def test_idle_depot_finding_aggregates_vehicles_and_value():
     data = base_snapshot()
     data["vehicles"].extend(
-        {"id": i, "name": f"Idle {i}", "state": "IN_DEPOT", "line": None,
-         "daysInDepot": 40, "value": 10_000 * i}
+        {"id": i, "name": f"Idle {i}", "state": "IN_DEPOT", "line": None, "daysInDepot": 40, "value": 10_000 * i}
         for i in range(1, 4)
     )
     items = analysis.findings(Snapshot(data))
@@ -173,7 +207,7 @@ def test_idle_depot_finding_aggregates_vehicles_and_value():
 def test_collection_errors_evidence_is_limited_to_twenty():
     data = base_snapshot()
     data["errors"] = [f"error {i}" for i in range(25)]
-    finding, = analysis.findings(Snapshot(data))
+    (finding,) = analysis.findings(Snapshot(data))
     assert finding.code == "snapshot_collection_errors"
     assert finding.evidence == {"errors": data["errors"][:20]}
 

@@ -48,13 +48,21 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--timeout", type=float, default=30.0)
     sub.add_parser("overview", help="company overview")
     p = sub.add_parser("lines", help="company lines")
-    p.add_argument("--sort", default="profitYear", choices=("profitYear", "transportedYear", "rate", "load", "vehicles", "ageYears"))
+    p.add_argument(
+        "--sort",
+        default="profitYear",
+        choices=("profitYear", "transportedYear", "rate", "load", "vehicles", "ageYears"),
+    )
     p.add_argument("--limit", type=int, default=50)
     p = sub.add_parser("line", help="line details by id or name")
     p.add_argument("ref")
     p = sub.add_parser("findings", help="problems and recommendations")
     p.add_argument("--json", action="store_true")
-    p.add_argument("--methodology", metavar="ID|FILE", help="one-off id[@version] or path; otherwise save override > user default > packaged default")
+    p.add_argument(
+        "--methodology",
+        metavar="ID|FILE",
+        help="one-off id[@version] or path; otherwise save override > user default > packaged default",
+    )
     p = sub.add_parser("opportunities", help="unshipped cargo opportunities")
     p.add_argument("--limit", type=int, default=20)
     p = sub.add_parser("notes", help="read or append dated player notes")
@@ -67,11 +75,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--open", action="store_true", help="open using the default application")
     p = sub.add_parser("report", help="generate evidence-backed Markdown or offline HTML")
     from .reports import VALID_KINDS
+
     p.add_argument("kind", choices=VALID_KINDS)
     p.add_argument("--year", type=int)
     p.add_argument("--html", action="store_true")
     p.add_argument("--open", action="store_true")
-    p.add_argument("--methodology", metavar="ID|FILE", help="one-off id[@version] or path; otherwise save override > user default > packaged default")
+    p.add_argument(
+        "--methodology",
+        metavar="ID|FILE",
+        help="one-off id[@version] or path; otherwise save override > user default > packaged default",
+    )
     sub.add_parser("mcp", help="start the MCP server over stdio")
     from .methodology.cli import add_parsers
 
@@ -82,15 +95,18 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "mcp":
             from .mcp_server import main as run_mcp
+
             run_mcp()
             return 0
         if args.command == "doctor":
             from .setup_tools import doctor
+
             result = doctor()
             _print(result)
             return 0 if result["ok"] else 1
         if args.command == "mod":
             from .setup_tools import install_mod, uninstall_mod
+
             _print((install_mod if args.action == "install" else uninstall_mod)(load_paths()))
             return 0
         if args.command == "knowledge":
@@ -99,13 +115,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "methodology":
             from .methodology.cli import run_methodology
+
             return run_methodology(args)
         if args.command == "evaluate":
             from .methodology.cli import parse_params, print_evaluation
 
             companion = Companion.open_stored(save=args.save)
-            result = companion.evaluate(args.methodology, allow_path=True, param_overrides=parse_params(args.param),
-                                        views=args.view or ())
+            result = companion.evaluate(
+                args.methodology, allow_path=True, param_overrides=parse_params(args.param), views=args.view or ()
+            )
             _print(result) if args.json else print_evaluation(result)
             return 0
         companion = Companion(save=args.save) if args.command == "analyse" else Companion()
@@ -140,19 +158,32 @@ def main(argv: list[str] | None = None) -> int:
             case "export":
                 _print(companion.export_spreadsheet(open_app=args.open))
             case "report":
-                result = companion.report(args.kind, args.year, args.html, methodology=args.methodology, allow_path=True)
+                result = companion.report(
+                    args.kind, args.year, args.html, methodology=args.methodology, allow_path=True
+                )
                 if args.open:
                     try:
                         open_default(Path(result.get("html_file", result["file"])))
                     except (OSError, subprocess.CalledProcessError) as exc:
-                        print(f"warning: Report saved, but the default application could not open it: {exc}", file=sys.stderr)
+                        print(
+                            f"warning: Report saved, but the default application could not open it: {exc}",
+                            file=sys.stderr,
+                        )
                 _print({key: value for key, value in result.items() if key != "markdown"})
             case "analyse":
                 from .methodology.cli import parse_params, print_analysis
 
                 summary = companion.analyse(args.methodology, allow_path=True, param_overrides=parse_params(args.param))
                 _print(summary) if args.json else print_analysis(summary)
-    except (NoSnapshotError, ConfigError, LookupError, ValueError, OSError, sqlite3.Error, subprocess.CalledProcessError) as exc:
+    except (
+        NoSnapshotError,
+        ConfigError,
+        LookupError,
+        ValueError,
+        OSError,
+        sqlite3.Error,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     finally:

@@ -6,6 +6,7 @@ assets/art/cover.png  ->  assets/logo.png                           (512x512 PNG
 If assets/art/logo-source.png exists it is resized instead of cropping the cover.
 Output is deterministic: fixed resampling filter, no timestamp metadata.
 """
+
 from __future__ import annotations
 
 import sys

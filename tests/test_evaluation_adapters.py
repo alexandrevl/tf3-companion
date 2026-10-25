@@ -1,4 +1,5 @@
 """CLI and MCP adapters over the stored-only evaluation."""
+
 from __future__ import annotations
 
 import hashlib
@@ -18,8 +19,14 @@ from tf3companion.cli import main
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
 
-EXAMPLE = Path(__file__).parent.parent / "src" / "tf3companion" / "methodology" / "examples" / \
-    "local-feeder-intercity-trunk.tf3c-methodology.json"
+EXAMPLE = (
+    Path(__file__).parent.parent
+    / "src"
+    / "tf3companion"
+    / "methodology"
+    / "examples"
+    / "local-feeder-intercity-trunk.tf3c-methodology.json"
+)
 
 
 def seed(data: Path, *raws: dict[str, Any]) -> Path:
@@ -32,7 +39,9 @@ def seed(data: Path, *raws: dict[str, Any]) -> Path:
 
 
 def inventory(root: Path) -> dict[str, str | None]:
-    return {str(p): hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None for p in sorted(root.rglob("*"))}
+    return {
+        str(p): hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None for p in sorted(root.rglob("*"))
+    }
 
 
 @pytest.fixture
@@ -53,6 +62,7 @@ def cli_json(capsys, *args: str) -> dict[str, Any]:
 def tool(name: str, arguments: dict[str, Any] | None = None):
     async def go():
         return await mcp_server.server.call_tool(name, arguments or {})
+
     return anyio.run(go)
 
 
@@ -64,6 +74,7 @@ def tool_payload(name: str, arguments: dict[str, Any] | None = None) -> Any:
 
 
 # ---- CLI ----------------------------------------------------------------------------------------------------
+
 
 def test_cli_evaluates_without_steam_and_changes_nothing(stored, tmp_path, capsys):
     before = inventory(tmp_path)
@@ -122,9 +133,11 @@ def test_cli_one_off_path_and_invalid_overrides(stored, tmp_path, capsys):
 
 # ---- MCP ----------------------------------------------------------------------------------------------------
 
+
 def test_mcp_tool_is_registered_with_its_documented_arguments():
     async def listed():
         return {t.name: t for t in await mcp_server.server.list_tools()}
+
     schema = anyio.run(listed)["evaluate"].input_schema
     assert set(schema["properties"]) == {"methodology", "save", "parameters", "views"} and not schema.get("required")
 
@@ -137,7 +150,9 @@ def test_mcp_and_cli_return_the_same_analytical_result(stored, tmp_path, capsys)
     assert inventory(tmp_path) == before
     implicit = tool_payload("evaluate")
     assert implicit["methodology"]["origin"] == "packaged-default"  # no explicit request: the default applies
-    assert implicit["methodology"]["sha256"] == cli["methodology"]["sha256"] and [(f["code"], f["title"]) for f in implicit["findings"]] == [(f["code"], f["title"]) for f in cli["findings"]]
+    assert implicit["methodology"]["sha256"] == cli["methodology"]["sha256"] and [
+        (f["code"], f["title"]) for f in implicit["findings"]
+    ] == [(f["code"], f["title"]) for f in cli["findings"]]
 
 
 def test_mcp_rejects_paths_and_invalid_parameters(stored, tmp_path):
@@ -190,6 +205,7 @@ ALL_VIEWS = ["bottlenecks", "expansion", "lines-history", "history", "industries
 
 def test_service_cli_and_mcp_return_the_same_requested_views_without_writing(stored, tmp_path, capsys):
     from tf3companion.service import Companion
+
     before = inventory(tmp_path)
     service = Companion.open_stored()
     try:

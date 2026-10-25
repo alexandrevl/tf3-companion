@@ -1,4 +1,5 @@
 """The same evidence-bound age across rows, facts, findings, workbook and history."""
+
 from __future__ import annotations
 
 import json
@@ -23,10 +24,28 @@ def snapshot(tick, dated, schema=1, purchase=1000):
         raw["meta"].pop("date", None)
     else:
         raw["meta"]["date"] = dict(zip(("year", "month", "day"), dated))
-    raw["lines"] = [{"id": 1, "name": "Measured line", "vehicles": [2], "stops": [{}, {}],
-                     "profitYear": -100, "capacity": [], "issues": []}]
-    raw["vehicles"] = [{"id": 2, "name": "Measured vehicle", "line": 1, "purchaseTime": purchase,
-                        "profitYear": -100, "carrier": "ROAD", "models": []}]
+    raw["lines"] = [
+        {
+            "id": 1,
+            "name": "Measured line",
+            "vehicles": [2],
+            "stops": [{}, {}],
+            "profitYear": -100,
+            "capacity": [],
+            "issues": [],
+        }
+    ]
+    raw["vehicles"] = [
+        {
+            "id": 2,
+            "name": "Measured vehicle",
+            "line": 1,
+            "purchaseTime": purchase,
+            "profitYear": -100,
+            "carrier": "ROAD",
+            "models": [],
+        }
+    ]
     return Snapshot(raw, source=f"fixture-{tick}")
 
 
@@ -68,7 +87,7 @@ def test_old_purchase_unknown_and_replacement_does_not_inherit_observed_age(tmp_
         latest = snapshot(4000, (1984, 1, 1), purchase=3999)
         store.add_snapshot(latest)
         clock = store.time_context(latest)
-        assert analysis.line_age_years(latest, latest.lines[0], clock=clock) == pytest.approx(.001)
+        assert analysis.line_age_years(latest, latest.lines[0], clock=clock) == pytest.approx(0.001)
         latest.raw["vehicles"][0]["purchaseTime"] = -1
         row = analysis.line_row(latest, latest.lines[0], clock=clock)
         assert row["ageYears"] is None and row["ageTime"]["reason"] == "outside-observed-calendar"
@@ -109,10 +128,14 @@ def test_store_refuses_conversion_across_save_identities(tmp_path):
         store.add_snapshot(snapshot(0, (1980, 1, 1)))
         store.add_snapshot(snapshot(4000, (1984, 1, 1)))
         latest = store.latest()
-        assert store.time_context(latest).elapsed_between_ticks(0, 4000).value == pytest.approx(4, abs=.01)
+        assert store.time_context(latest).elapsed_between_ticks(0, 4000).value == pytest.approx(4, abs=0.01)
         # Legacy rows can carry a different identity; the store API refuses to write them, so alter evidence in place.
-        store.conn.execute("UPDATE snapshots SET data = json_set(data, '$.meta.saveId', 'other-save') WHERE game_time = 0")
-        store.conn.execute("UPDATE snapshots SET data = json_set(data, '$.meta.saveId', 'this-save') WHERE game_time = 4000")
+        store.conn.execute(
+            "UPDATE snapshots SET data = json_set(data, '$.meta.saveId', 'other-save') WHERE game_time = 0"
+        )
+        store.conn.execute(
+            "UPDATE snapshots SET data = json_set(data, '$.meta.saveId', 'this-save') WHERE game_time = 4000"
+        )
         store.conn.commit()
         latest = store.latest()
         clock = store.time_context(latest)
@@ -174,25 +197,45 @@ def test_age_years_supported_zero_unknown_past_and_future(tmp_path):
         latest = snapshot(5000, (1984, 1, 1))
         store.add_snapshot(latest)
         clock = store.time_context(latest)
-        assert latest.age_years(5000, clock=clock) == 0          # supported zero, not unknown
+        assert latest.age_years(5000, clock=clock) == 0  # supported zero, not unknown
         assert latest.age_years(3000, clock=clock) == pytest.approx(
-            (date(1984, 1, 1).toordinal() - date(1982, 1, 1).toordinal()) / 365.25, abs=.01)
-        assert latest.age_years(1000, clock=clock) == pytest.approx(4, abs=.01)
-        assert latest.age_years(999, clock=clock) is None        # before the first anchor
-        assert latest.age_years(5001, clock=clock) is None       # purchased after the snapshot
+            (date(1984, 1, 1).toordinal() - date(1982, 1, 1).toordinal()) / 365.25, abs=0.01
+        )
+        assert latest.age_years(1000, clock=clock) == pytest.approx(4, abs=0.01)
+        assert latest.age_years(999, clock=clock) is None  # before the first anchor
+        assert latest.age_years(5001, clock=clock) is None  # purchased after the snapshot
         assert latest.age_years(None, clock=clock) is None
-        assert latest.age_years(3000) is None                    # no implicit nominal clock
+        assert latest.age_years(3000) is None  # no implicit nominal clock
         undated = snapshot(9000, None)
         assert undated.age_years(9000, clock=GameCalendarClock.from_samples([(9000, None)])) is None
 
 
 def _surface_snapshot(tick, dated):
     raw = snapshot(tick, dated).raw
-    raw["lines"] = [{"id": i, "name": f"Line {i}", "vehicles": [10 + i], "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
-                     "profitYear": -10 * i, "capacity": [], "issues": []} for i in (1, 2, 3)]
-    raw["vehicles"] = [{"id": 10 + i, "name": f"Vehicle {i}", "line": i, "purchaseTime": purchase,
-                        "profitYear": -10 * i, "carrier": "ROAD", "models": []}
-                       for i, purchase in ((1, 0), (2, 2999), (3, -1))]
+    raw["lines"] = [
+        {
+            "id": i,
+            "name": f"Line {i}",
+            "vehicles": [10 + i],
+            "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
+            "profitYear": -10 * i,
+            "capacity": [],
+            "issues": [],
+        }
+        for i in (1, 2, 3)
+    ]
+    raw["vehicles"] = [
+        {
+            "id": 10 + i,
+            "name": f"Vehicle {i}",
+            "line": i,
+            "purchaseTime": purchase,
+            "profitYear": -10 * i,
+            "carrier": "ROAD",
+            "models": [],
+        }
+        for i, purchase in ((1, 0), (2, 2999), (3, -1))
+    ]
     return raw
 
 
@@ -201,6 +244,7 @@ def surfaces(tmp_path, monkeypatch):
     from conftest import write_snapshot
     from tf3companion import mcp_server
     from tf3companion.service import Companion
+
     data, userdata = tmp_path / "data", tmp_path / "userdata"
     monkeypatch.setenv("TF3C_DATA_DIR", str(data))
     monkeypatch.setenv("TF3C_USERDATA_DIR", str(userdata))
@@ -215,9 +259,10 @@ def surfaces(tmp_path, monkeypatch):
 
 def test_same_unrounded_age_and_time_basis_on_every_surface(surfaces, capsys):
     from tf3companion.cli import main
+
     companion, mcp = surfaces
     ages = {r["id"]: r["ageYears"] for r in companion.lines("ageYears", 10)}
-    assert ages[1] == pytest.approx(4, abs=.01) and ages[3] is None
+    assert ages[1] == pytest.approx(4, abs=0.01) and ages[3] is None
     assert 0 < ages[2] < ages[1] and ages[2] != round(ages[2], 2)
     anchor_hash = companion.overview()["timeBasis"]["anchorHash"]
 
@@ -242,6 +287,7 @@ def test_same_unrounded_age_and_time_basis_on_every_surface(surfaces, capsys):
 
 def test_age_sorting_places_unknown_ages_last_on_every_surface(surfaces, capsys):
     from tf3companion.cli import main
+
     companion, mcp = surfaces
     assert [r["id"] for r in companion.lines("ageYears", 10)] == [1, 2, 3]
     assert [r["id"] for r in mcp.list_lines("ageYears", 10)] == [1, 2, 3]

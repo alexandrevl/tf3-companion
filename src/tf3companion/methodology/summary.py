@@ -17,8 +17,10 @@ def summarise(evaluation: dict[str, Any], folder: Path, files: list[str]) -> dic
     The display caps live only here; the evaluation itself is always complete.
     """
     findings = evaluation["findings"]
-    roles = {entity: {key: value for key, value in summary.items() if key != "assignments"}
-             for entity, summary in evaluation["roles"].items()}
+    roles = {
+        entity: {key: value for key, value in summary.items() if key != "assignments"}
+        for entity, summary in evaluation["roles"].items()
+    }
     markers = {r["id"]: r["markerCounts"] for r in evaluation["ruleResults"] if r["status"] == "ok"}
     coverage = evaluation["coverage"]
     return {
@@ -34,9 +36,17 @@ def summarise(evaluation: dict[str, Any], folder: Path, files: list[str]) -> dic
         "findings": {
             "bySeverity": dict(Counter(f["severity"] for f in findings)),
             "bySource": dict(Counter(f["source"] for f in findings)),
-            "top": [{"severity": f["severity"], "code": f["code"], "source": f["source"], "title": f["title"],
-                     "detail": f["detail"], **({"untrusted": True} if f.get("untrusted") else {})}
-                    for f in findings[:TOP_FINDINGS]],
+            "top": [
+                {
+                    "severity": f["severity"],
+                    "code": f["code"],
+                    "source": f["source"],
+                    "title": f["title"],
+                    "detail": f["detail"],
+                    **({"untrusted": True} if f.get("untrusted") else {}),
+                }
+                for f in findings[:TOP_FINDINGS]
+            ],
         },
         "recommendations": evaluation["recommendations"][:TOP_RECOMMENDATIONS],
         "skipped": coverage["skipped"],

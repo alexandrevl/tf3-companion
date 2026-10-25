@@ -1,4 +1,5 @@
 """Calendar arithmetic and conservative evidence bounds, independent of nominal duration."""
+
 from datetime import date
 
 import pytest
@@ -11,8 +12,9 @@ def clock(samples, **context):
 
 
 def test_fourfold_mismatch_and_local_rates():
-    c = clock([(0, "1980-01-01"), (28000, "1980-01-29"),
-               (42000, "1980-02-12"), (70000, "1980-02-26")], selectedTick=70000)
+    c = clock(
+        [(0, "1980-01-01"), (28000, "1980-01-29"), (42000, "1980-02-12"), (70000, "1980-02-26")], selectedTick=70000
+    )
     result = c.elapsed_between_ticks(14000, 28000)
     assert result.value == pytest.approx(14 / 365.25)
     assert result.method == "calendar-interpolation"
@@ -42,14 +44,16 @@ def test_unknown_never_nominal_or_clamped():
 
 
 def test_scope_reversal_conflicting_ticks_and_future_exclusion():
-    for samples in ([(0, "1980-01-10"), (100, "1980-01-01")],
-                    [(0, "1980-01-01"), (0, "1980-02-01")]):
+    for samples in ([(0, "1980-01-10"), (100, "1980-01-01")], [(0, "1980-01-01"), (0, "1980-02-01")]):
         assert clock(samples).elapsed_between_ticks(0, 100).reason == "ambiguous-timeline"
     c = clock([(0, "1980-01-01"), (100, "1980-01-10"), (200, "1980-02-01")], selectedTick=100)
     assert [t for t, _ in c.anchors] == [0, 100]
     assert c.time_basis["version"] == "game-calendar-v1"
     assert c.time_basis["isolation"] == "legacy-unverified"
-    assert c.time_basis["anchorHash"] == clock([(0, "1980-01-01"), (100, "1980-01-10")], selectedTick=100).time_basis["anchorHash"]
+    assert (
+        c.time_basis["anchorHash"]
+        == clock([(0, "1980-01-01"), (100, "1980-01-10")], selectedTick=100).time_basis["anchorHash"]
+    )
 
 
 def test_exact_zero_requires_calendar_evidence():
@@ -60,9 +64,13 @@ def test_exact_zero_requires_calendar_evidence():
 def test_reusable_numeric_fixture():
     import json
     from pathlib import Path
+
     fixture = json.loads((Path(__file__).parent / "fixtures" / "game-calendar-v1.json").read_text())
     c = clock(fixture["samples"], selectedTick=fixture["evaluationTick"])
     measured = c.elapsed_between_ticks(fixture["purchaseTick"], fixture["evaluationTick"])
     assert measured.value == fixture["expectedElapsedDays"] / fixture["daysPerYear"]
     assert measured.method == fixture["expectedMethod"]
-    assert c.elapsed_between_ticks(fixture["unsupportedPurchaseTick"], fixture["evaluationTick"]).reason == fixture["unsupportedReason"]
+    assert (
+        c.elapsed_between_ticks(fixture["unsupportedPurchaseTick"], fixture["evaluationTick"]).reason
+        == fixture["unsupportedReason"]
+    )

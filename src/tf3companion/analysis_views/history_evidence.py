@@ -34,8 +34,8 @@ class HistorySample:
     track: int | None
     passengers: int | None
     cargo: int | None
-    lines: tuple[tuple[int, str], ...]                       # (id, name)
-    vehicles: tuple[tuple[int, str, str, int | None, int | None], ...]   # (id, name, carrier, value, purchase tick)
+    lines: tuple[tuple[int, str], ...]  # (id, name)
+    vehicles: tuple[tuple[int, str, str, int | None, int | None], ...]  # (id, name, carrier, value, purchase tick)
     stations: int
     rolling_profit: int | None
     lines_losing: int
@@ -69,18 +69,32 @@ def _sample(row: dict[str, Any]) -> HistorySample:
     ordinal = calendar_ordinal(date)
     ymd = (date["year"], date["month"], date["day"]) if ordinal is not None else None
     lines = tuple((line["id"], line["name"] or f"Line #{line['id']}") for line in row["lines"] or ())
-    vehicles = tuple((v["id"], v["name"] or f"Vehicle #{v['id']}", v["carrier"] or "UNKNOWN", v["value"], v["purchase"])
-                     for v in row["vehicles"] or ())
+    vehicles = tuple(
+        (v["id"], v["name"] or f"Vehicle #{v['id']}", v["carrier"] or "UNKNOWN", v["value"], v["purchase"])
+        for v in row["vehicles"] or ()
+    )
     profits = [line["profit"] for line in row["lines"] or () if line["profit"] is not None]
     errors = row["errors"]
     return HistorySample(
-        tick=row["game_time"], year_duration=row["year_duration"] or 0, ymd=ymd, ordinal=ordinal,
-        label=row["date_label"], reason=row["reason"],
-        balance=row["balance"], loan=row["loan"], earnings=row["earnings"], score=row["score"],
-        track=row["track"], passengers=row["passengers"], cargo=row["cargo"],
-        lines=lines, vehicles=vehicles, stations=row["stations"],
+        tick=row["game_time"],
+        year_duration=row["year_duration"] or 0,
+        ymd=ymd,
+        ordinal=ordinal,
+        label=row["date_label"],
+        reason=row["reason"],
+        balance=row["balance"],
+        loan=row["loan"],
+        earnings=row["earnings"],
+        score=row["score"],
+        track=row["track"],
+        passengers=row["passengers"],
+        cargo=row["cargo"],
+        lines=lines,
+        vehicles=vehicles,
+        stations=row["stations"],
         rolling_profit=sum(profits) if profits else None,
-        lines_losing=sum(1 for p in profits if p < 0), lines_with_profit=len(profits),
+        lines_losing=sum(1 for p in profits if p < 0),
+        lines_with_profit=len(profits),
         errors=tuple(errors.values() if isinstance(errors, dict) else errors or ()),
     )
 

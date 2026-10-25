@@ -1,4 +1,5 @@
 """Lens-folder output layout, manifests, `analyse` and the report cutover."""
+
 from __future__ import annotations
 
 import json
@@ -38,7 +39,15 @@ def test_analyse_summary_and_bundle_contents(paths):
     folder = Path(summary["outputFolder"])
     assert folder == paths.data / "reports" / "1980-01-01__local-feeder-intercity-trunk@1.0.0"
     assert sorted(summary["files"]) == sorted(p.name for p in folder.iterdir())
-    assert {"company.md", "lines-history.md", "towns.md", "cargo.md", "fleet.md", "methodology.md", "manifest.json"} == set(summary["files"])
+    assert {
+        "company.md",
+        "lines-history.md",
+        "towns.md",
+        "cargo.md",
+        "fleet.md",
+        "methodology.md",
+        "manifest.json",
+    } == set(summary["files"])
     manifest = json.loads((folder / "manifest.json").read_text())
     assert manifest["methodology"]["identity"] == "local-feeder-intercity-trunk@1.0.0"
     assert manifest["methodology"]["parameters"]["intercity_loss_alert"] == 100_000
@@ -67,9 +76,13 @@ def test_two_lenses_coexist_for_the_same_game_date(paths):
     companion = companion_with(paths, troubled_company())
     try:
         companion.analyse(EXAMPLE)
-        before = (paths.data / "reports" / "1980-01-01__local-feeder-intercity-trunk@1.0.0" / "manifest.json").read_text()
+        before = (
+            paths.data / "reports" / "1980-01-01__local-feeder-intercity-trunk@1.0.0" / "manifest.json"
+        ).read_text()
         companion.analyse("default")
-        after = (paths.data / "reports" / "1980-01-01__local-feeder-intercity-trunk@1.0.0" / "manifest.json").read_text()
+        after = (
+            paths.data / "reports" / "1980-01-01__local-feeder-intercity-trunk@1.0.0" / "manifest.json"
+        ).read_text()
     finally:
         companion.close()
     assert folders(paths.data) == ["1980-01-01__default@1.0.0", "1980-01-01__local-feeder-intercity-trunk@1.0.0"]
@@ -83,7 +96,14 @@ def test_default_lens_generates_the_standard_set_plus_verdicts(paths):
     finally:
         companion.close()
     assert summary["methodology"]["origin"] == "packaged-default"
-    assert set(summary["files"]) == {"company.md", "lines.md", "fleet.md", "cargo.md", "methodology.md", "manifest.json"}
+    assert set(summary["files"]) == {
+        "company.md",
+        "lines.md",
+        "fleet.md",
+        "cargo.md",
+        "methodology.md",
+        "manifest.json",
+    }
 
 
 def test_two_saves_stay_apart(paths):
@@ -169,10 +189,17 @@ def test_no_snapshot_fails_and_writes_nothing(paths):
 
 
 def test_skipped_rules_are_visible_in_summary_report_and_manifest(paths):
-    draft = methodology(rules=[{
-        "id": "maintenance", "entity": "vehicle",
-        "outcomes": [{"when": {"field": "vehicle.maintenance_state", "op": "lt", "value": 0.7}, "marker": "problem"}],
-    }])
+    draft = methodology(
+        rules=[
+            {
+                "id": "maintenance",
+                "entity": "vehicle",
+                "outcomes": [
+                    {"when": {"field": "vehicle.maintenance_state", "op": "lt", "value": 0.7}, "marker": "problem"}
+                ],
+            }
+        ]
+    )
     draft_file = paths.userdata / "maintenance.json"
     draft_file.write_bytes(draft.raw)
     Library(paths.data).import_file(draft_file)
@@ -265,7 +292,8 @@ def test_analyse_summary_is_a_presentation_of_the_same_evaluation(paths):
     assert summary["methodology"] == evaluation["methodology"] and summary["snapshot"] == evaluation["snapshot"]
     assert summary["findings"]["bySeverity"] == {
         severity: sum(f["severity"] == severity for f in evaluation["findings"])
-        for severity in {f["severity"] for f in evaluation["findings"]}}
+        for severity in {f["severity"] for f in evaluation["findings"]}
+    }
     assert summary["recommendations"] == evaluation["recommendations"][:15]
     assert "outputFolder" not in evaluation and "files" not in evaluation
     assert not any(p.name == "evaluation.json" for p in Path(summary["outputFolder"]).iterdir())

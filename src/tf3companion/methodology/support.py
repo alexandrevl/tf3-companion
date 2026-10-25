@@ -42,19 +42,21 @@ class Support:
 
 @dataclass
 class ItemInfo:
-    kind: str                      # rule | ladder | recommendation | table | chart
+    kind: str  # rule | ladder | recommendation | table | chart
     id: str
     entity: str | None
     fields: set[str] = field(default_factory=set)
     role_entities: set[str] = field(default_factory=set)
-    rule: str | None = None        # trigger rule (recommendations)
+    rule: str | None = None  # trigger rule (recommendations)
 
 
 # ---------------------------------------------------------------------------
 # field collection
 
-def condition_fields(node: Any, definitions: dict[str, Any], out: set[str] | None = None,
-                     _stack: tuple[str, ...] = ()) -> set[str]:
+
+def condition_fields(
+    node: Any, definitions: dict[str, Any], out: set[str] | None = None, _stack: tuple[str, ...] = ()
+) -> set[str]:
     out = set() if out is None else out
     if not isinstance(node, dict):
         return out
@@ -127,14 +129,24 @@ def items_of(m: Methodology) -> list[ItemInfo]:
         items.append(info)
     rule_entities = {r["id"]: r["entity"] for r in data.get("rules") or []}
     for rec in data.get("recommendations") or []:
-        info = ItemInfo("recommendation", rec["id"], rule_entities.get(rec["when"]["rule"]),
-                        template_fields(rec["text"]), rule=rec["when"]["rule"])
+        info = ItemInfo(
+            "recommendation",
+            rec["id"],
+            rule_entities.get(rec["when"]["rule"]),
+            template_fields(rec["text"]),
+            rule=rec["when"]["rule"],
+        )
         if "role" in rec["when"]:
             info.role_entities.add(info.entity or "line")
         items.append(info)
     reports = data.get("reports") or {}
     for table in reports.get("tables") or []:
-        info = ItemInfo("table", table["id"], table["entity"], set(table["columns"]) | ({table["sort"]} if "sort" in table else set()))
+        info = ItemInfo(
+            "table",
+            table["id"],
+            table["entity"],
+            set(table["columns"]) | ({table["sort"]} if "sort" in table else set()),
+        )
         if "role" in table:
             info.role_entities.add(table["entity"])
         info.role_entities |= role_entities(info.fields)
@@ -161,6 +173,7 @@ def role_fields(m: Methodology, entity: str) -> set[str]:
 
 # ---------------------------------------------------------------------------
 # classification
+
 
 def _field_support(names: Iterable[str], probe: Probe) -> Support:
     support = Support()
@@ -194,14 +207,18 @@ def classify(m: Methodology, probe: Probe) -> Classification:
         for entity in info.role_entities:
             role_support = roles.get(entity)
             if role_support is not None and role_support.status != OK:
-                support.merge(role_support.status, f"role classification for {entity} is unavailable: {role_support.reason}")
+                support.merge(
+                    role_support.status, f"role classification for {entity} is unavailable: {role_support.reason}"
+                )
             if role_support is not None:
                 support.needs |= role_support.needs
         if info.kind == "recommendation":
             trigger = classification.items.get(("rule", info.rule or ""))
             if trigger is not None and trigger.status != OK:
-                support.merge(SKIPPED if trigger.status == SKIPPED else UNSUPPORTED,
-                              f"trigger rule '{info.rule}': {trigger.reason}")
+                support.merge(
+                    SKIPPED if trigger.status == SKIPPED else UNSUPPORTED,
+                    f"trigger rule '{info.rule}': {trigger.reason}",
+                )
         classification.items[(info.kind, info.id)] = support
     return classification
 

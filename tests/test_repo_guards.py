@@ -1,4 +1,5 @@
 """Repository guards: each violation class fails, each documented placeholder passes."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -41,22 +42,28 @@ def test_the_checked_in_repository_complies():
     assert guards.check(REPO) == []
 
 
-@pytest.mark.parametrize("line", [
-    "export PATH=/Users/realperson/bin",
-    "cd /home/realperson/projects",
-    r"set C:\Users\realperson\Documents",
-])
+@pytest.mark.parametrize(
+    "line",
+    [
+        "export PATH=/Users/realperson/bin",
+        "cd /home/realperson/projects",
+        r"set C:\Users\realperson\Documents",
+    ],
+)
 def test_personal_absolute_paths_fail(tmp_path, line):
     found = violations(tmp_path, {"docs/a.md": f"intro\n{line}\n"}, "private-data")
     assert [(v.path, v.line) for v in found] == [("docs/a.md", 2)]
 
 
-@pytest.mark.parametrize("line", [
-    "use /Users/username/.cargo/bin/uv",
-    r"use C:\Users\username\.cargo\bin\uv.exe",
-    "see /home/name/project",
-    "$HOME/Library/Application Support/Steam/userdata/ACCOUNT_ID/3493540/local",
-])
+@pytest.mark.parametrize(
+    "line",
+    [
+        "use /Users/username/.cargo/bin/uv",
+        r"use C:\Users\username\.cargo\bin\uv.exe",
+        "see /home/name/project",
+        "$HOME/Library/Application Support/Steam/userdata/ACCOUNT_ID/3493540/local",
+    ],
+)
 def test_documented_placeholder_paths_pass(tmp_path, line):
     assert violations(tmp_path, {"docs/a.md": line + "\n"}, "private-data") == []
 
@@ -66,16 +73,18 @@ def test_steam_account_identifiers_fail(tmp_path, line):
     assert rules_of(violations(tmp_path, {"docs/a.md": line + "\n"}, "private-data")) == {"private-data"}
 
 
-@pytest.mark.parametrize("name", ["data/tf3.db", "notes/store.sqlite3", "tf3c_snap_000000000010000.lua",
-                                  "mod/tf3c_request.lua"])
+@pytest.mark.parametrize(
+    "name", ["data/tf3.db", "notes/store.sqlite3", "tf3c_snap_000000000010000.lua", "mod/tf3c_request.lua"]
+)
 def test_tracked_player_data_files_fail(tmp_path, name):
     found = violations(tmp_path, {name: "x"}, "private-data")
     assert [v.path for v in found] == [name]
 
 
 def test_only_the_declared_author_address_is_allowed(tmp_path):
-    ok = violations(tmp_path / "ok", {"a.md": "mail alexandrevl@gmail.com\nid sample@1.0.0.tf3c-methodology.json\n"},
-                    "private-data")
+    ok = violations(
+        tmp_path / "ok", {"a.md": "mail alexandrevl@gmail.com\nid sample@1.0.0.tf3c-methodology.json\n"}, "private-data"
+    )
     bad = violations(tmp_path / "bad", {"a.md": "mail someone.else@example.org\n"}, "private-data")
     assert ok == [] and rules_of(bad) == {"private-data"}
 

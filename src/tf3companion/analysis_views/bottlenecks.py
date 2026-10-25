@@ -22,12 +22,12 @@ from ..snapshot import Snapshot
 from .bottlenecks_evidence import LOAD_LIMIT, BottlenecksEvidence
 from .models import EvaluationContext, SampleRef, Unavailable, ViewCoverage
 
-WINDOW = 36            # most recent merged samples used for persistence
-CHART_POINTS = 24      # at most this many health points once history exceeds the window
-RISE_MIN_POINTS = 3    # stock-rise needs at least this many recent samples ...
-RISE_MAX_POINTS = 6    # ... and uses at most this many
-TERMINAL_DAYS = 5      # daysAtTerminal level counted for the discontinuity screen
-TERMINAL_JUMP = 10     # a jump between zero and at least this many such vehicles is a discontinuity
+WINDOW = 36  # most recent merged samples used for persistence
+CHART_POINTS = 24  # at most this many health points once history exceeds the window
+RISE_MIN_POINTS = 3  # stock-rise needs at least this many recent samples ...
+RISE_MAX_POINTS = 6  # ... and uses at most this many
+TERMINAL_DAYS = 5  # daysAtTerminal level counted for the discontinuity screen
+TERMINAL_JUMP = 10  # a jump between zero and at least this many such vehicles is a discontinuity
 
 SEV_RANK = {"high": 0, "medium": 1, "low": 2}
 
@@ -56,6 +56,7 @@ AFFECTS = ("depot", "stock", "line", "vehicle", "industr", "station", "town")
 # typed result records
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Criterion:
     """An engine-owned heuristic or safeguard exposed with its value; not methodology policy."""
@@ -69,28 +70,28 @@ class Criterion:
 @dataclass(frozen=True)
 class BottleneckItem:
     code: str
-    entity: tuple                          # scope of the flagged entity, e.g. ("line", 100)
-    key: tuple                             # identity of this condition
+    entity: tuple  # scope of the flagged entity, e.g. ("line", 100)
+    key: tuple  # identity of this condition
     name: str
-    observations: int                      # samples in which it was flagged
-    eligible: int                          # samples in which the entity/data source existed (>= observations)
-    streak: int                            # consecutive flagged samples ending at the latest
+    observations: int  # samples in which it was flagged
+    eligible: int  # samples in which the entity/data source existed (>= observations)
+    streak: int  # consecutive flagged samples ending at the latest
     in_latest: bool
-    status: str                            # persistent | intermittent | new | resolved
-    severity: str                          # high | medium | low
+    status: str  # persistent | intermittent | new | resolved
+    severity: str  # high | medium | low
     first_tick: int
     last_tick: int
     first_label: str
     last_label: str
-    evidence: dict[str, Any]               # latest flagged reading (numbers/strings/tuples)
+    evidence: dict[str, Any]  # latest flagged reading (numbers/strings/tuples)
 
 
 @dataclass(frozen=True)
 class BottleneckSummary:
-    high: int                              # active (not resolved) by severity
+    high: int  # active (not resolved) by severity
     medium: int
     low: int
-    persistent: int                        # all items by status
+    persistent: int  # all items by status
     intermittent: int
     new: int
     resolved: int
@@ -112,11 +113,11 @@ class StockRise:
     name: str
     cargo_names: tuple[str, ...]
     fill: float
-    count_start: int                       # first of the points used
+    count_start: int  # first of the points used
     count_latest: int
     capacity: int
-    slope_per_sample: float                # units per sample, least squares over `points`
-    samples_to_full: float                 # conditional linear extrapolation (the policy slope minimum is positive)
+    slope_per_sample: float  # units per sample, least squares over `points`
+    samples_to_full: float  # conditional linear extrapolation (the policy slope minimum is positive)
     points: tuple[StockPoint, ...]
 
 
@@ -131,22 +132,22 @@ class UnservedStock:
 
 @dataclass(frozen=True)
 class StockSummary:
-    samples_with_stocks: int               # window samples that carry measurable stocks
+    samples_with_stocks: int  # window samples that carry measurable stocks
     first_with_stocks: SampleRef | None
     latest_has_stocks: bool
-    unserved: tuple[UnservedStock, ...]    # near/full industry outputs with zero recorded annual shipments (latest)
+    unserved: tuple[UnservedStock, ...]  # near/full industry outputs with zero recorded annual shipments (latest)
 
 
 @dataclass(frozen=True)
 class OccupancyPattern:
     line: Any
     name: str
-    pattern: str                           # "high" | "low"
+    pattern: str  # "high" | "low"
     observations: int
     eligible: int
     status: str
-    known_samples: int                     # window samples with a measurable occupancy
-    mean: float | None                     # unweighted mean of instants, not a time average
+    known_samples: int  # window samples with a measurable occupancy
+    mean: float | None  # unweighted mean of instants, not a time average
     minimum: float | None
     maximum: float | None
     latest: float | None
@@ -169,8 +170,8 @@ class StationGroup:
 @dataclass(frozen=True)
 class DepotGroup:
     depot: Any
-    name: str | None                       # None when the name was not collected
-    vehicles: int                          # vehicles inside in the latest sample
+    name: str | None  # None when the name was not collected
+    vehicles: int  # vehicles inside in the latest sample
     without_line: int
     value_without_line: int | float | None  # None when any such vehicle has an unknown recorded value
 
@@ -180,12 +181,12 @@ class HealthPoint:
     tick: int
     date_label: str
     stocks_known: bool
-    counts: dict[str, int]                 # TREND_SERIES key -> flagged conditions in that sample
+    counts: dict[str, int]  # TREND_SERIES key -> flagged conditions in that sample
 
 
 @dataclass(frozen=True)
 class DataSourceCoverage:
-    source: str                            # lines_vehicles | stocks | depots | vehicle_depot_id
+    source: str  # lines_vehicles | stocks | depots | vehicle_depot_id
     samples: int
     of: int
     first: SampleRef | None
@@ -195,38 +196,38 @@ class DataSourceCoverage:
 class ErrorFamily:
     family: str
     message: str
-    samples: int                           # window samples with this error family
+    samples: int  # window samples with this error family
     of: int
     latest_occurrences: int
-    affects: str | None                    # keyword from AFFECTS, None when unknown
+    affects: str | None  # keyword from AFFECTS, None when unknown
 
 
 @dataclass(frozen=True)
 class TerminalReset:
     from_sample: SampleRef
     to_sample: SampleRef
-    before: int                            # vehicles with daysAtTerminal >= TERMINAL_DAYS
+    before: int  # vehicles with daysAtTerminal >= TERMINAL_DAYS
     after: int
 
 
 @dataclass(frozen=True)
 class BottlenecksView:
     coverage: ViewCoverage
-    samples: int                           # merged samples in the persistence window
-    merged_available: int                  # merged samples read (window source)
+    samples: int  # merged samples in the persistence window
+    merged_available: int  # merged samples read (window source)
     window_start: SampleRef
     window_end: SampleRef
-    insufficient_history: bool             # fewer samples than the persistence streak
-    rising_interval_empty: bool            # no fill interval is both rising-eligible and not full
+    insufficient_history: bool  # fewer samples than the persistence streak
+    rising_interval_empty: bool  # no fill interval is both rising-eligible and not full
     latest_errors: int
     summary: BottleneckSummary
-    items: tuple[BottleneckItem, ...]      # severity, then observations, fill, name
+    items: tuple[BottleneckItem, ...]  # severity, then observations, fill, name
     stocks: StockSummary
     stock_rises: tuple[StockRise, ...]
     occupancy: tuple[OccupancyPattern, ...]
     station_groups: tuple[StationGroup, ...]
     depot_groups: tuple[DepotGroup, ...]
-    bucketed: bool                         # health points are quarter representatives
+    bucketed: bool  # health points are quarter representatives
     health: tuple[HealthPoint, ...]
     data_sources: tuple[DataSourceCoverage, ...]
     error_families: tuple[ErrorFamily, ...]
@@ -237,6 +238,7 @@ class BottlenecksView:
 # ---------------------------------------------------------------------------
 # per-sample observation (internal)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class _Obs:
@@ -304,29 +306,68 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
     for f in analysis.findings(snap, t=context.thresholds):
         ent = f.entity or {}
         if f.code == "vehicle_no_path":
-            sm.flag(_Obs(f.code, ("vehicle", ent["id"]), (f.code, ent["id"]), ent.get("name") or f"Vehicle #{ent['id']}",
-                         {"line": f.evidence.get("lineName"), "state": f.evidence.get("state")}))
+            sm.flag(
+                _Obs(
+                    f.code,
+                    ("vehicle", ent["id"]),
+                    (f.code, ent["id"]),
+                    ent.get("name") or f"Vehicle #{ent['id']}",
+                    {"line": f.evidence.get("lineName"), "state": f.evidence.get("state")},
+                )
+            )
         elif f.code == "line_config_issue":
             issue = f.evidence.get("issue") or {}
             key = (f.code, ent["id"], issue.get("type"), issue.get("stopIndex"), issue.get("cargo"))
-            sm.flag(_Obs(f.code, ("line", ent["id"]), key, _line_name(snap.lines_by_id.get(ent["id"]), ent["id"]),
-                         {"type": issue.get("type"), "stopIndex": issue.get("stopIndex"),
-                          "cargo": snap.cargo(issue.get("cargo")),
-                          "stopName": _stop_name(snap.lines_by_id.get(ent["id"]), issue.get("stopIndex"))}))
+            sm.flag(
+                _Obs(
+                    f.code,
+                    ("line", ent["id"]),
+                    key,
+                    _line_name(snap.lines_by_id.get(ent["id"]), ent["id"]),
+                    {
+                        "type": issue.get("type"),
+                        "stopIndex": issue.get("stopIndex"),
+                        "cargo": snap.cargo(issue.get("cargo")),
+                        "stopName": _stop_name(snap.lines_by_id.get(ent["id"]), issue.get("stopIndex")),
+                    },
+                )
+            )
         elif f.code in ("line_orphan", "line_no_vehicles", "line_no_stops"):
-            sm.flag(_Obs(f.code, ("line", ent["id"]), (f.code, ent["id"]), _line_name(snap.lines_by_id.get(ent["id"]), ent["id"]),
-                         {"stops": f.evidence.get("stops"), "vehicles": f.evidence.get("vehicles")}))
+            sm.flag(
+                _Obs(
+                    f.code,
+                    ("line", ent["id"]),
+                    (f.code, ent["id"]),
+                    _line_name(snap.lines_by_id.get(ent["id"]), ent["id"]),
+                    {"stops": f.evidence.get("stops"), "vehicles": f.evidence.get("vehicles")},
+                )
+            )
         elif f.code == "industry_closing":
             ind = snap.industries_by_id.get(ent["id"]) or {}
-            served = any((o.get("shippedYear") or 0) > 0 for o in ind.get("outputs") or []) or \
-                any((i.get("deliveredYear") or 0) > 0 for i in ind.get("inputs") or [])
-            sm.flag(_Obs(f.code, ("industry", ent["id"]), (f.code, ent["id"]), ent.get("name") or f"Industry #{ent['id']}",
-                         {"served": served}))
+            served = any((o.get("shippedYear") or 0) > 0 for o in ind.get("outputs") or []) or any(
+                (i.get("deliveredYear") or 0) > 0 for i in ind.get("inputs") or []
+            )
+            sm.flag(
+                _Obs(
+                    f.code,
+                    ("industry", ent["id"]),
+                    (f.code, ent["id"]),
+                    ent.get("name") or f"Industry #{ent['id']}",
+                    {"served": served},
+                )
+            )
     for vid in snap.problems.get("noPathVehicles") or []:
         v = snap.vehicles_by_id.get(vid)
         if v and ("vehicle_no_path", vid) not in sm.obs:
-            sm.flag(_Obs("vehicle_no_path", ("vehicle", vid), ("vehicle_no_path", vid), _vehicle_name(v),
-                         {"line": (snap.lines_by_id.get(v.get("line")) or {}).get("name"), "state": v.get("state")}))
+            sm.flag(
+                _Obs(
+                    "vehicle_no_path",
+                    ("vehicle", vid),
+                    ("vehicle_no_path", vid),
+                    _vehicle_name(v),
+                    {"line": (snap.lines_by_id.get(v.get("line")) or {}).get("name"), "state": v.get("state")},
+                )
+            )
 
     # ---- vehicles: user stopped; idle in depot (grouped per depot)
     depot_names = {**known_depots, **{d["id"]: d.get("name") for d in snap.depots if d.get("name")}}
@@ -336,18 +377,38 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
     for v in snap.vehicles:
         if v.get("userStopped"):
             row = analysis.vehicle_row(snap, v)
-            sm.flag(_Obs("vehicle_user_stopped", ("vehicle", v["id"]), ("vehicle_user_stopped", v["id"]),
-                         _vehicle_name(v), {"line": row["lineName"], "state": v.get("state"), "value": v.get("value")}))
+            sm.flag(
+                _Obs(
+                    "vehicle_user_stopped",
+                    ("vehicle", v["id"]),
+                    ("vehicle_user_stopped", v["id"]),
+                    _vehicle_name(v),
+                    {"line": row["lineName"], "state": v.get("state"), "value": v.get("value")},
+                )
+            )
         if v.get("state") == "IN_DEPOT" and not _has_line(snap, v):
             idle.setdefault(v.get("depot"), []).append(v)
     for depot_id, vs in idle.items():
-        label = depot_names.get(depot_id) or (f"Depot #{depot_id} (name not available)" if depot_id is not None else "Unknown depot")
-        sm.flag(_Obs("vehicle_idle_depot", ("idledepot", depot_id), ("vehicle_idle_depot", depot_id), label,
-                     {"count": len(vs), "days": max((v["daysInDepot"] for v in vs), default=None)
-                      if all(v.get("daysInDepot") is not None for v in vs) else None,
-                      "value": _known_sum(vs, "value"),
-                      "examples": tuple(sorted(_vehicle_name(v) for v in vs)[:3]),
-                      "carriers": tuple(sorted({v.get("carrier") for v in vs if v.get("carrier")}))}))
+        label = depot_names.get(depot_id) or (
+            f"Depot #{depot_id} (name not available)" if depot_id is not None else "Unknown depot"
+        )
+        sm.flag(
+            _Obs(
+                "vehicle_idle_depot",
+                ("idledepot", depot_id),
+                ("vehicle_idle_depot", depot_id),
+                label,
+                {
+                    "count": len(vs),
+                    "days": max((v["daysInDepot"] for v in vs), default=None)
+                    if all(v.get("daysInDepot") is not None for v in vs)
+                    else None,
+                    "value": _known_sum(vs, "value"),
+                    "examples": tuple(sorted(_vehicle_name(v) for v in vs)[:3]),
+                    "carriers": tuple(sorted({v.get("carrier") for v in vs if v.get("carrier")})),
+                },
+            )
+        )
 
     # ---- long waits at terminals, per line (daysAtTerminal semantics unverified)
     for line in snap.lines:
@@ -355,8 +416,15 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
         waits = [v.get("daysAtTerminal") or 0 for v in vehicles]
         long = [w for w in waits if w >= policy.long_wait_days]
         if long:
-            sm.flag(_Obs("long_terminal_wait", ("line", line["id"]), ("long_terminal_wait", line["id"]), _line_name(line),
-                         {"count": len(long), "max": max(long), "vehicles": len(vehicles)}))
+            sm.flag(
+                _Obs(
+                    "long_terminal_wait",
+                    ("line", line["id"]),
+                    ("long_terminal_wait", line["id"]),
+                    _line_name(line),
+                    {"count": len(long), "max": max(long), "vehicles": len(vehicles)},
+                )
+            )
 
     # ---- line occupancy (instant readings)
     for line in snap.lines:
@@ -367,9 +435,13 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
         n_veh = len(line.get("vehicles") or [])
         ev = {"load": load, "vehicles": n_veh, "profitYear": line.get("profitYear")}
         if load >= context.thresholds.overloaded_load:
-            sm.flag(_Obs("line_load_high", ("lineload", line["id"]), ("line_load_high", line["id"]), _line_name(line), ev))
+            sm.flag(
+                _Obs("line_load_high", ("lineload", line["id"]), ("line_load_high", line["id"]), _line_name(line), ev)
+            )
         elif load <= context.thresholds.underused_load and n_veh >= context.thresholds.underused_min_vehicles:
-            sm.flag(_Obs("line_load_low", ("lineload", line["id"]), ("line_load_low", line["id"]), _line_name(line), ev))
+            sm.flag(
+                _Obs("line_load_low", ("lineload", line["id"]), ("line_load_low", line["id"]), _line_name(line), ev)
+            )
 
     # ---- stations: vehicles piled up at the same stop
     group_name: dict[Any, str] = {s["id"]: s.get("name") for s in snap.stations}
@@ -386,15 +458,27 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
     for v in snap.vehicles:
         line = snap.lines_by_id.get(v.get("line"))
         idx = v.get("stopIndex")
-        if v.get("state") == "AT_TERMINAL" and line and isinstance(idx, int) and 0 <= idx < len(line.get("stops") or []):
+        if (
+            v.get("state") == "AT_TERMINAL"
+            and line
+            and isinstance(idx, int)
+            and 0 <= idx < len(line.get("stops") or [])
+        ):
             gid = line["stops"][idx].get("stationGroup")
             if gid is not None:
                 waiting[gid] += 1
     for gid, n in waiting.items():
         if n >= policy.pileup_min:
             names = sorted(_line_name(snap.lines_by_id.get(i), i) for i in group_lines.get(gid, ()))
-            sm.flag(_Obs("station_pileup", ("station", gid), ("station_pileup", gid), group_name.get(gid) or f"Station #{gid}",
-                         {"waiting": n, "lines": len(names), "lineNames": tuple(names[:3])}))
+            sm.flag(
+                _Obs(
+                    "station_pileup",
+                    ("station", gid),
+                    ("station_pileup", gid),
+                    group_name.get(gid) or f"Station #{gid}",
+                    {"waiting": n, "lines": len(names), "lineNames": tuple(names[:3])},
+                )
+            )
 
     # ---- stocks (only present in newer snapshots)
     if snap.stocks:
@@ -419,13 +503,38 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
                 cargos = set(r.get("cargos") or [])
                 outs = [o for o in ind.get("outputs") or [] if o.get("cargo") in cargos]
                 produced, shipped = _known_sum(outs, "producedYear"), _known_sum(outs, "shippedYear")
-                sm.flag(_Obs("stock_output_full", skey, ("stock_output_full", r.get("owner"), r.get("stockId")), r["name"],
-                             {"cargo": ", ".join(r["cargoNames"]), "count": r["count"], "capacity": r["capacity"],
-                              "fill": r["fill"], "produced": produced, "shipped": shipped,
-                              "shippedRatio": shipped / produced if produced and shipped is not None else None}))
+                sm.flag(
+                    _Obs(
+                        "stock_output_full",
+                        skey,
+                        ("stock_output_full", r.get("owner"), r.get("stockId")),
+                        r["name"],
+                        {
+                            "cargo": ", ".join(r["cargoNames"]),
+                            "count": r["count"],
+                            "capacity": r["capacity"],
+                            "fill": r["fill"],
+                            "produced": produced,
+                            "shipped": shipped,
+                            "shippedRatio": shipped / produced if produced and shipped is not None else None,
+                        },
+                    )
+                )
             elif kind == "station" and full:
-                sm.flag(_Obs("station_stock_full", skey, ("station_stock_full", r.get("owner"), r.get("stockId")), r["name"],
-                             {"cargo": ", ".join(r["cargoNames"]), "count": r["count"], "capacity": r["capacity"], "fill": r["fill"]}))
+                sm.flag(
+                    _Obs(
+                        "station_stock_full",
+                        skey,
+                        ("station_stock_full", r.get("owner"), r.get("stockId")),
+                        r["name"],
+                        {
+                            "cargo": ", ".join(r["cargoNames"]),
+                            "count": r["count"],
+                            "capacity": r["capacity"],
+                            "fill": r["fill"],
+                        },
+                    )
+                )
             elif kind == "warehouse":
                 w = warehouses.setdefault(r.get("owner"), {"name": r["name"], "total": 0, "full": 0, "cargos": set()})
                 w["total"] += 1
@@ -438,14 +547,22 @@ def _observe(snap: Snapshot, known_depots: dict[Any, str], context: EvaluationCo
                 w["name"] = f"{w['name']} (warehouse #{owner})"
             ex.add(("warehouse", owner))
             if w["full"]:
-                sm.flag(_Obs("warehouse_full", ("warehouse", owner), ("warehouse_full", owner), w["name"],
-                             {"full": w["full"], "total": w["total"], "cargos": tuple(sorted(w["cargos"]))}))
+                sm.flag(
+                    _Obs(
+                        "warehouse_full",
+                        ("warehouse", owner),
+                        ("warehouse_full", owner),
+                        w["name"],
+                        {"full": w["full"], "total": w["total"], "cargos": tuple(sorted(w["cargos"]))},
+                    )
+                )
     return sm
 
 
 # ---------------------------------------------------------------------------
 # persistence layer
 # ---------------------------------------------------------------------------
+
 
 def _status(in_latest: bool, n: int, eligible: int, streak: int, policy) -> str:
     if not in_latest:
@@ -466,8 +583,15 @@ def _severity(code: str, status: str, ev: dict[str, Any], context: EvaluationCon
         return "high" if ev.get("served") else "low"
     if code == "vehicle_idle_depot":
         return "medium" if (ev.get("days") or 0) >= context.thresholds.idle_depot_days else "low"
-    if code in ("vehicle_user_stopped", "line_orphan", "line_no_vehicles", "line_no_stops",
-                "warehouse_full", "station_stock_full", "station_pileup"):
+    if code in (
+        "vehicle_user_stopped",
+        "line_orphan",
+        "line_no_vehicles",
+        "line_no_stops",
+        "warehouse_full",
+        "station_stock_full",
+        "station_pileup",
+    ):
         return "medium"
     if code == "line_load_high":
         return "medium" if ev.get("vehicles", 0) >= 2 else "low"
@@ -503,16 +627,32 @@ def _track(samples: list[_Sample], context: EvaluationContext) -> list[Bottlenec
         if final.code in NOISY and not (n >= policy.persistence_streak and n / eligible >= policy.noisy_min_share):
             continue
         first, latest = samples[idxs[0]].snap, samples[idxs[-1]].snap
-        items.append(BottleneckItem(
-            final.code, final.scope, key, final.name, n, eligible, streak, in_latest, status,
-            _severity(final.code, status, final.ev, context), first.game_time, latest.game_time,
-            first.date_label, latest.date_label, dict(final.ev)))
+        items.append(
+            BottleneckItem(
+                final.code,
+                final.scope,
+                key,
+                final.name,
+                n,
+                eligible,
+                streak,
+                in_latest,
+                status,
+                _severity(final.code, status, final.ev, context),
+                first.game_time,
+                latest.game_time,
+                first.date_label,
+                latest.date_label,
+                dict(final.ev),
+            )
+        )
     return sorted(items, key=_sort_key)
 
 
 # ---------------------------------------------------------------------------
 # stocks, occupancy, groups
 # ---------------------------------------------------------------------------
+
 
 def _slope(values: list[float]) -> float:
     n = len(values)
@@ -529,7 +669,8 @@ def _stock_rises(samples: list[_Sample], context: EvaluationContext) -> list[Sto
     for i, sm in enumerate(samples):
         for r in sm.stock_rows:
             series.setdefault((r.get("kind"), r.get("owner"), r.get("stockId")), []).append(
-                (i, sm.snap.game_time, r["count"], r["capacity"], r["fill"]))
+                (i, sm.snap.game_time, r["count"], r["capacity"], r["fill"])
+            )
     names = {(r.get("kind"), r.get("owner"), r.get("stockId")): r for r in latest.stock_rows}
     out: list[StockRise] = []
     for key, pts in series.items():
@@ -548,10 +689,22 @@ def _stock_rises(samples: list[_Sample], context: EvaluationContext) -> list[Sto
         cap = recent[-1][3]
         if slope / cap < policy.rising_stock_min_slope:
             continue
-        out.append(StockRise(
-            r["kind"], r.get("owner"), r.get("stockId"), r["name"], tuple(c for c in r["cargoNames"] if c), fill,
-            recent[0][2], recent[-1][2], cap, slope, (cap - recent[-1][2]) / slope,
-            tuple(StockPoint(p[1], p[2], p[3], p[4]) for p in recent)))
+        out.append(
+            StockRise(
+                r["kind"],
+                r.get("owner"),
+                r.get("stockId"),
+                r["name"],
+                tuple(c for c in r["cargoNames"] if c),
+                fill,
+                recent[0][2],
+                recent[-1][2],
+                cap,
+                slope,
+                (cap - recent[-1][2]) / slope,
+                tuple(StockPoint(p[1], p[2], p[3], p[4]) for p in recent),
+            )
+        )
     return sorted(out, key=lambda x: (x.samples_to_full, x.name, str(x.kind), str(x.owner), str(x.stock_id)))
 
 
@@ -568,18 +721,41 @@ def _occupancy(items: list[BottleneckItem], samples: list[_Sample]) -> list[Occu
             if val is not None:
                 loads.append(val)
         current = current_snap.lines_by_id.get(it.key[1])
-        out.append(OccupancyPattern(
-            it.key[1], it.name, "high" if it.code == "line_load_high" else "low", it.observations, it.eligible, it.status,
-            len(loads), sum(loads) / len(loads) if loads else None, min(loads) if loads else None,
-            max(loads) if loads else None, _load(current) if current else None,
-            len(current.get("vehicles") or []) if current else None, current.get("profitYear") if current else None))
+        out.append(
+            OccupancyPattern(
+                it.key[1],
+                it.name,
+                "high" if it.code == "line_load_high" else "low",
+                it.observations,
+                it.eligible,
+                it.status,
+                len(loads),
+                sum(loads) / len(loads) if loads else None,
+                min(loads) if loads else None,
+                max(loads) if loads else None,
+                _load(current) if current else None,
+                len(current.get("vehicles") or []) if current else None,
+                current.get("profitYear") if current else None,
+            )
+        )
     return out
 
 
 def _station_groups(items: list[BottleneckItem]) -> list[StationGroup]:
-    return [StationGroup(it.key[1], it.name, it.observations, it.eligible, it.status, it.evidence["waiting"],
-                         it.evidence["lines"], it.evidence["lineNames"])
-            for it in items if it.code == "station_pileup"]
+    return [
+        StationGroup(
+            it.key[1],
+            it.name,
+            it.observations,
+            it.eligible,
+            it.status,
+            it.evidence["waiting"],
+            it.evidence["lines"],
+            it.evidence["lineNames"],
+        )
+        for it in items
+        if it.code == "station_pileup"
+    ]
 
 
 def _depot_groups(latest: Snapshot) -> list[DepotGroup]:
@@ -589,14 +765,22 @@ def _depot_groups(latest: Snapshot) -> list[DepotGroup]:
     for depot_id in {v.get("depot") for v in inside}:
         vs = [v for v in inside if v.get("depot") == depot_id]
         unassigned = [v for v in vs if not _has_line(latest, v)]
-        out.append(DepotGroup(depot_id, names.get(depot_id) or None, len(vs), len(unassigned),
-                              _known_sum(unassigned, "value") if unassigned else 0))
+        out.append(
+            DepotGroup(
+                depot_id,
+                names.get(depot_id) or None,
+                len(vs),
+                len(unassigned),
+                _known_sum(unassigned, "value") if unassigned else 0,
+            )
+        )
     return sorted(out, key=lambda g: (-g.vehicles, g.name or "", str(g.depot)))
 
 
 # ---------------------------------------------------------------------------
 # trend and collector coverage
 # ---------------------------------------------------------------------------
+
 
 def _quarter_buckets(snaps: list[Snapshot]) -> list[Snapshot]:
     buckets: dict[Any, Snapshot] = {}
@@ -607,9 +791,15 @@ def _quarter_buckets(snaps: list[Snapshot]) -> list[Snapshot]:
 
 
 def _health(chart: list[_Sample]) -> list[HealthPoint]:
-    return [HealthPoint(sm.snap.game_time, sm.snap.date_label, bool(sm.stock_rows),
-                        {key: sum(1 for ob in sm.obs.values() if ob.code in codes) for key, codes in TREND_SERIES.items()})
-            for sm in chart]
+    return [
+        HealthPoint(
+            sm.snap.game_time,
+            sm.snap.date_label,
+            bool(sm.stock_rows),
+            {key: sum(1 for ob in sm.obs.values() if ob.code in codes) for key, codes in TREND_SERIES.items()},
+        )
+        for sm in chart
+    ]
 
 
 def _error_family(text: str) -> tuple[str, str]:
@@ -649,8 +839,11 @@ def _error_families(samples: list[_Sample]) -> list[ErrorFamily]:
     out = []
     for (family, tail), f in fam.items():
         lowered = family.lower()
-        out.append(ErrorFamily(family, tail, len(f["samples"]), n, len(f["latest"]),
-                               next((k for k in AFFECTS if k in lowered), None)))
+        out.append(
+            ErrorFamily(
+                family, tail, len(f["samples"]), n, len(f["latest"]), next((k for k in AFFECTS if k in lowered), None)
+            )
+        )
     return sorted(out, key=lambda e: (-e.samples, e.family, e.message))
 
 
@@ -660,14 +853,18 @@ def _terminal_resets(samples: list[_Sample]) -> list[TerminalReset]:
     for i in range(1, len(samples)):
         if max(counts[i - 1], counts[i]) >= TERMINAL_JUMP and min(counts[i - 1], counts[i]) == 0:
             a, b = samples[i - 1].snap, samples[i].snap
-            out.append(TerminalReset(SampleRef(a.game_time, a.date_label), SampleRef(b.game_time, b.date_label),
-                                     counts[i - 1], counts[i]))
+            out.append(
+                TerminalReset(
+                    SampleRef(a.game_time, a.date_label), SampleRef(b.game_time, b.date_label), counts[i - 1], counts[i]
+                )
+            )
     return out
 
 
 # ---------------------------------------------------------------------------
 # entry point
 # ---------------------------------------------------------------------------
+
 
 def evaluate(evidence: BottlenecksEvidence, *, context: EvaluationContext) -> BottlenecksView:
     policy = context.policies["bottlenecks"]
@@ -682,8 +879,9 @@ def evaluate(evidence: BottlenecksEvidence, *, context: EvaluationContext) -> Bo
     bucketed = len(history) > WINDOW
     if bucketed:
         by_time = {s.snap.game_time: s for s in samples}
-        chart = [by_time.get(s.game_time) or _observe(s, depots, context)
-                 for s in _quarter_buckets(history)[-CHART_POINTS:]]
+        chart = [
+            by_time.get(s.game_time) or _observe(s, depots, context) for s in _quarter_buckets(history)[-CHART_POINTS:]
+        ]
     else:
         chart = samples
     health = _health(chart) if len(chart) >= 2 else []
@@ -693,32 +891,61 @@ def evaluate(evidence: BottlenecksEvidence, *, context: EvaluationContext) -> Bo
     unserved = tuple(
         UnservedStock(r["name"], tuple(r["cargoNames"]), r["count"], r["capacity"], r["fill"])
         for r in latest.stock_rows
-        if r["kind"] == "industry" and r["served"] is False and r["fill"] >= context.thresholds.full_stock_ratio)
-    stocks = StockSummary(len(with_stocks), SampleRef(first_stock.game_time, first_stock.date_label) if first_stock else None,
-                          bool(latest.stock_rows), unserved)
+        if r["kind"] == "industry" and r["served"] is False and r["fill"] >= context.thresholds.full_stock_ratio
+    )
+    stocks = StockSummary(
+        len(with_stocks),
+        SampleRef(first_stock.game_time, first_stock.date_label) if first_stock else None,
+        bool(latest.stock_rows),
+        unserved,
+    )
     rises = _stock_rises(samples, context) if latest.stock_rows else []
 
     active = Counter(i.severity for i in items if i.status != "resolved")
     status = Counter(i.status for i in items)
-    summary = BottleneckSummary(active["high"], active["medium"], active["low"], status["persistent"],
-                                status["intermittent"], status["new"], status["resolved"])
+    summary = BottleneckSummary(
+        active["high"],
+        active["medium"],
+        active["low"],
+        status["persistent"],
+        status["intermittent"],
+        status["new"],
+        status["resolved"],
+    )
     families = _error_families(samples)
     insufficient = len(samples) < policy.persistence_streak
 
     unavailable = []
     if insufficient:
-        unavailable.append(Unavailable("insufficient-samples", f"{len(samples)} of {policy.persistence_streak}", "persistence"))
+        unavailable.append(
+            Unavailable("insufficient-samples", f"{len(samples)} of {policy.persistence_streak}", "persistence")
+        )
     if not latest.stock_rows:
         unavailable.append(Unavailable("latest-sample-without-stocks", None, "stocks"))
     if len(chart) < 2:
         unavailable.append(Unavailable("fewer-than-two-samples", None, "health-trend"))
-    warnings = tuple(w for w, cond in (("history-beyond-read-limit", evidence.eligible > evidence.read),
-                                       ("samples-merged", len(history) < evidence.read)) if cond)
+    warnings = tuple(
+        w
+        for w, cond in (
+            ("history-beyond-read-limit", evidence.eligible > evidence.read),
+            ("samples-merged", len(history) < evidence.read),
+        )
+        if cond
+    )
     coverage = ViewCoverage(
-        SampleRef(cur.game_time, cur.date_label), evidence.eligible, evidence.read, len(samples), evidence.hydrated,
-        LOAD_LIMIT, tuple(SampleRef(s.game_time, s.date_label) for s in window),
+        SampleRef(cur.game_time, cur.date_label),
+        evidence.eligible,
+        evidence.read,
+        len(samples),
+        evidence.hydrated,
+        LOAD_LIMIT,
+        tuple(SampleRef(s.game_time, s.date_label) for s in window),
         {"readLimit": LOAD_LIMIT, "persistenceWindow": WINDOW, "healthPoints": CHART_POINTS},
-        max(evidence.eligible - len(samples), 0), warnings, tuple(sorted({f.family for f in families})), tuple(unavailable))
+        max(evidence.eligible - len(samples), 0),
+        warnings,
+        tuple(sorted({f.family for f in families})),
+        tuple(unavailable),
+    )
 
     criteria = (
         Criterion("persistence_window", WINDOW, "samples", "Most recent merged samples used for persistence."),
@@ -728,12 +955,33 @@ def evaluate(evidence: BottlenecksEvidence, *, context: EvaluationContext) -> Bo
         Criterion("rise_min_points", RISE_MIN_POINTS, "samples", "Fewest recent samples for a stock-rise slope."),
         Criterion("rise_max_points", RISE_MAX_POINTS, "samples", "Most recent samples used for a stock-rise slope."),
         Criterion("terminal_days", TERMINAL_DAYS, "days", "daysAtTerminal level counted by the discontinuity screen."),
-        Criterion("terminal_jump", TERMINAL_JUMP, "vehicles", "Jump between zero and this many vehicles flags a discontinuity."),
+        Criterion(
+            "terminal_jump",
+            TERMINAL_JUMP,
+            "vehicles",
+            "Jump between zero and this many vehicles flags a discontinuity.",
+        ),
     )
     return BottlenecksView(
-        coverage, len(samples), len(history), SampleRef(window[0].game_time, window[0].date_label),
-        SampleRef(cur.game_time, cur.date_label), insufficient,
-        policy.rising_stock_min_fill >= context.thresholds.full_stock_ratio, len(cur.errors), summary, tuple(items),
-        stocks, tuple(rises), tuple(_occupancy(items, samples)), tuple(_station_groups(items)),
-        tuple(_depot_groups(cur)), bucketed, tuple(health), tuple(_data_sources(samples)), tuple(families),
-        tuple(_terminal_resets(samples)), criteria)
+        coverage,
+        len(samples),
+        len(history),
+        SampleRef(window[0].game_time, window[0].date_label),
+        SampleRef(cur.game_time, cur.date_label),
+        insufficient,
+        policy.rising_stock_min_fill >= context.thresholds.full_stock_ratio,
+        len(cur.errors),
+        summary,
+        tuple(items),
+        stocks,
+        tuple(rises),
+        tuple(_occupancy(items, samples)),
+        tuple(_station_groups(items)),
+        tuple(_depot_groups(cur)),
+        bucketed,
+        tuple(health),
+        tuple(_data_sources(samples)),
+        tuple(families),
+        tuple(_terminal_resets(samples)),
+        criteria,
+    )

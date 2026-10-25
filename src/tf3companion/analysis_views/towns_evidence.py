@@ -62,17 +62,17 @@ class OutputFact:
 @dataclass(frozen=True)
 class TownsEvidence:
     endpoint: SampleRef
-    samples: tuple[TownSample, ...]            # every eligible sample at or before the endpoint, oldest first
+    samples: tuple[TownSample, ...]  # every eligible sample at or before the endpoint, oldest first
     eligible: int
     read: int
     passenger_cargo: int
     stations: tuple[StationFact, ...]
     lines: tuple[LineFact, ...]
-    positions: tuple[tuple[int, tuple[float, float]], ...]   # stored town positions (empty when none are collected)
+    positions: tuple[tuple[int, tuple[float, float]], ...]  # stored town positions (empty when none are collected)
     cargo_names: tuple[tuple[int, str], ...]
     outputs: tuple[OutputFact, ...]
     collection_errors: tuple[str, ...] = ()
-    hydrated: int = 0                           # full snapshots loaded besides the endpoint
+    hydrated: int = 0  # full snapshots loaded besides the endpoint
 
 
 def _num(value: Any) -> float | None:
@@ -88,9 +88,14 @@ def _point(town: dict[str, Any]) -> TownPoint:
             supply.append((cargo, sup, limit))
     dev = town.get("developmentActive")
     return TownPoint(
-        id=town["id"], name=town.get("name") or f"Town #{town.get('id')}", capacities=caps,
-        usage=_num(town.get("lineUsage")), noise=_num(town.get("noise")), pollution=_num(town.get("pollution")),
-        development=dev if isinstance(dev, bool) else None, supply=tuple(supply),
+        id=town["id"],
+        name=town.get("name") or f"Town #{town.get('id')}",
+        capacities=caps,
+        usage=_num(town.get("lineUsage")),
+        noise=_num(town.get("noise")),
+        pollution=_num(town.get("pollution")),
+        development=dev if isinstance(dev, bool) else None,
+        supply=tuple(supply),
     )
 
 
@@ -132,7 +137,8 @@ def load(reader: EvidenceReader, context: EvaluationContext) -> TownsEvidence:
     stations = tuple(StationFact(s["id"], s["town"]) for s in endpoint.stations if isinstance(s.get("town"), int))
     lines = tuple(
         LineFact(
-            id=line["id"], name=line.get("name") or f"Line #{line['id']}",
+            id=line["id"],
+            name=line.get("name") or f"Line #{line['id']}",
             stop_groups=tuple(stop.get("stationGroup") for stop in _list(line.get("stops"))),
             capacity=tuple((c.get("cargo"), _num(c.get("capacity"))) for c in _list(line.get("capacity"))),
         )
@@ -141,11 +147,21 @@ def load(reader: EvidenceReader, context: EvaluationContext) -> TownsEvidence:
     positions = tuple((t["id"], pos) for t in endpoint.towns if (pos := _position(t)) is not None)
     outputs = tuple(
         OutputFact(out["cargo"], _num(out.get("producedYear")), _num(out.get("shippedYear")))
-        for ind in endpoint.industries for out in _list(ind.get("outputs")) if isinstance(out.get("cargo"), int)
+        for ind in endpoint.industries
+        for out in _list(ind.get("outputs"))
+        if isinstance(out.get("cargo"), int)
     )
     return TownsEvidence(
-        endpoint=reader.ref(endpoint), samples=tuple(samples), eligible=eligible, read=read,
-        passenger_cargo=_passenger_cargo_id(endpoint), stations=stations, lines=lines, positions=positions,
-        cargo_names=tuple(sorted(endpoint.cargo_names.items())), outputs=outputs,
-        collection_errors=tuple(str(e) for e in endpoint.errors), hydrated=reader.hydrated,
+        endpoint=reader.ref(endpoint),
+        samples=tuple(samples),
+        eligible=eligible,
+        read=read,
+        passenger_cargo=_passenger_cargo_id(endpoint),
+        stations=stations,
+        lines=lines,
+        positions=positions,
+        cargo_names=tuple(sorted(endpoint.cargo_names.items())),
+        outputs=outputs,
+        collection_errors=tuple(str(e) for e in endpoint.errors),
+        hydrated=reader.hydrated,
     )

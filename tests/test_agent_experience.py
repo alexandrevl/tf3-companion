@@ -1,4 +1,5 @@
 """Behavior regression tests for agent experience prompts, resources and instructions."""
+
 from __future__ import annotations
 
 import json
@@ -18,8 +19,15 @@ from tf3companion.agent_experience import (
     line_triage,
 )
 
-ANALYSIS_PROMPTS = {"monthly-review", "annual-review", "line-triage", "fleet-renewal", "cargo-opportunities", "decision-review",
-                    "apply-methodology"}
+ANALYSIS_PROMPTS = {
+    "monthly-review",
+    "annual-review",
+    "line-triage",
+    "fleet-renewal",
+    "cargo-opportunities",
+    "decision-review",
+    "apply-methodology",
+}
 
 
 def test_decision_review_validates_status_choices():
@@ -48,10 +56,19 @@ def test_onboarding_over_stdio_without_game_or_storage(tmp_path):
     """A first-time player's client gets setup guidance; nothing pretends analysis data exists or creates storage."""
     data = tmp_path / "data"
     (tmp_path / "home").mkdir()
-    env = {**os.environ, "HOME": str(tmp_path / "home"), "USERPROFILE": str(tmp_path / "home"),
-           "TF3C_USERDATA_DIR": str(tmp_path / "missing-game"), "TF3C_DATA_DIR": str(data)}
-    params = StdioServerParameters(command=sys.executable, args=["-c", "from tf3companion.cli import main; main(['mcp'])"],
-                                   env=env, cwd=str(tmp_path))
+    env = {
+        **os.environ,
+        "HOME": str(tmp_path / "home"),
+        "USERPROFILE": str(tmp_path / "home"),
+        "TF3C_USERDATA_DIR": str(tmp_path / "missing-game"),
+        "TF3C_DATA_DIR": str(data),
+    }
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-c", "from tf3companion.cli import main; main(['mcp'])"],
+        env=env,
+        cwd=str(tmp_path),
+    )
 
     async def session_run():
         async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
@@ -72,4 +89,3 @@ def test_onboarding_over_stdio_without_game_or_storage(tmp_path):
     assert report["ok"] is False
     assert any(c["name"] == "userdata" and c["status"] == "error" for c in report["checks"])
     assert not data.exists()
-

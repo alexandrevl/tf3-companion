@@ -1,4 +1,5 @@
 """Explicit mod installation and read-only diagnostics; no game or database required."""
+
 from __future__ import annotations
 
 import json
@@ -80,7 +81,9 @@ def install_mod(paths: Paths) -> dict:
             if revision is None:
                 raise ConfigError("Bundled bridge mod has invalid revision metadata; reinstall the package.")
             paths.staging_area.mkdir(parents=True, exist_ok=True)
-            with tempfile.TemporaryDirectory(prefix=".tf3c-install-", dir=paths.staging_area, ignore_cleanup_errors=True) as work:
+            with tempfile.TemporaryDirectory(
+                prefix=".tf3c-install-", dir=paths.staging_area, ignore_cleanup_errors=True
+            ) as work:
                 staged, previous = Path(work) / "new", Path(work) / "previous"
                 shutil.copytree(source, staged)
                 _safe_target(paths)
@@ -94,9 +97,16 @@ def install_mod(paths: Paths) -> dict:
                     raise
     except OSError as exc:
         raise ConfigError(f"Cannot install bridge mod at {target}: {exc}") from exc
-    return {"action": "install", "changed": True, "mod_path": str(target), "revision": revision,
-            "next_steps": ["Enable TF3 Companion Bridge in this save's mod list.",
-                           "Return to the main menu, reload the save, then save the game."]}
+    return {
+        "action": "install",
+        "changed": True,
+        "mod_path": str(target),
+        "revision": revision,
+        "next_steps": [
+            "Enable TF3 Companion Bridge in this save's mod list.",
+            "Return to the main menu, reload the save, then save the game.",
+        ],
+    }
 
 
 def uninstall_mod(paths: Paths) -> dict:
@@ -109,9 +119,16 @@ def uninstall_mod(paths: Paths) -> dict:
             shutil.rmtree(target)
     except OSError as exc:
         raise ConfigError(f"Cannot uninstall bridge mod at {target}: {exc}") from exc
-    return {"action": "uninstall", "changed": changed, "mod_path": str(target), "revision": revision,
-            "next_steps": ["Disable TF3 Companion Bridge in the save's mod list.",
-                           "Return to the main menu and reload the save; retained companion data is unchanged."]}
+    return {
+        "action": "uninstall",
+        "changed": changed,
+        "mod_path": str(target),
+        "revision": revision,
+        "next_steps": [
+            "Disable TF3 Companion Bridge in the save's mod list.",
+            "Return to the main menu and reload the save; retained companion data is unchanged.",
+        ],
+    }
 
 
 def doctor() -> dict:
@@ -122,27 +139,45 @@ def doctor() -> dict:
     def check(name, status, detail, fix=None):
         checks.append({"name": name, "status": status, "detail": detail, "fix": fix})
 
-    check("userdata", "ok" if discovery.userdata else "error",
-          str(discovery.userdata) if discovery.userdata else discovery.error,
-          None if discovery.userdata else "Set TF3C_USERDATA_DIR to the intended existing game local folder.")
+    check(
+        "userdata",
+        "ok" if discovery.userdata else "error",
+        str(discovery.userdata) if discovery.userdata else discovery.error,
+        None if discovery.userdata else "Set TF3C_USERDATA_DIR to the intended existing game local folder.",
+    )
     data = data_directory()
-    check("data_dir", "ok" if data.is_dir() else "warning", str(data),
-          None if data.is_dir() else "Storage is created when a data command is first used.")
-    check("save_isolation", "warning", "One companion store is shared across saves; automatic save isolation is not implemented.",
-          "Use separate TF3C_DATA_DIR locations for different saves.")
+    check(
+        "data_dir",
+        "ok" if data.is_dir() else "warning",
+        str(data),
+        None if data.is_dir() else "Storage is created when a data command is first used.",
+    )
+    check(
+        "save_isolation",
+        "warning",
+        "One companion store is shared across saves; automatic save isolation is not implemented.",
+        "Use separate TF3C_DATA_DIR locations for different saves.",
+    )
     try:
         with bundled_mod() as source:
             bundled_revision = _revision(source)
-        check("bundled_mod", "ok" if bundled_revision is not None else "error",
-              f"Bundled revision: {bundled_revision}",
-              None if bundled_revision is not None else "Reinstall the companion package.")
+        check(
+            "bundled_mod",
+            "ok" if bundled_revision is not None else "error",
+            f"Bundled revision: {bundled_revision}",
+            None if bundled_revision is not None else "Reinstall the companion package.",
+        )
     except (ConfigError, OSError) as exc:
         bundled_revision = None
         check("bundled_mod", "error", str(exc), "Reinstall the companion package.")
     knowledge = resources.files("tf3companion").joinpath("knowledge")
     available = knowledge.is_dir() and any(p.name.endswith(".md") for p in knowledge.iterdir())
-    check("knowledge", "ok" if available else "error", "Packaged knowledge available" if available else "Packaged knowledge missing",
-          None if available else "Reinstall the companion package.")
+    check(
+        "knowledge",
+        "ok" if available else "error",
+        "Packaged knowledge available" if available else "Packaged knowledge missing",
+        None if available else "Reinstall the companion package.",
+    )
     mod = {"path": None, "installed": False, "revision": None, "bundled_revision": bundled_revision}
     snapshots = {"count": 0, "latest": None, "age_seconds": None}
     game_log = {"path": None, "exists": False, "bridge_seen": False}
@@ -155,8 +190,12 @@ def doctor() -> dict:
             mod["installed"] = target.is_dir()
             mod["revision"] = _revision(target) if mod["installed"] else None
             healthy = mod["installed"] and mod["revision"] == bundled_revision and bundled_revision is not None
-            check("installed_mod", "ok" if healthy else "warning", f"Installed revision: {mod['revision']}; bundled: {bundled_revision}",
-                  None if healthy else "Run tf3c mod install, enable the mod and reload the save.")
+            check(
+                "installed_mod",
+                "ok" if healthy else "warning",
+                f"Installed revision: {mod['revision']}; bundled: {bundled_revision}",
+                None if healthy else "Run tf3c mod install, enable the mod and reload the save.",
+            )
         except (ConfigError, OSError) as exc:
             check("installed_mod", "error", str(exc), "Remove the unsafe link manually before installing the bridge.")
         try:
@@ -165,8 +204,12 @@ def doctor() -> dict:
             if files:
                 latest = max(files, key=lambda p: p.stat().st_mtime)
                 snapshots.update(latest=str(latest), age_seconds=max(0, time.time() - latest.stat().st_mtime))
-            check("snapshots", "ok" if files else "warning", f"Snapshot files: {len(files)}; newest age (seconds): {snapshots['age_seconds']}",
-                  None if files else "Enable the bridge, load the save and run tf3c refresh.")
+            check(
+                "snapshots",
+                "ok" if files else "warning",
+                f"Snapshot files: {len(files)}; newest age (seconds): {snapshots['age_seconds']}",
+                None if files else "Enable the bridge, load the save and run tf3c refresh.",
+            )
         except OSError as exc:
             check("snapshots", "error", str(exc), "Check permissions on the game userdata folder.")
         game_log["path"] = str(paths.game_log)
@@ -178,11 +221,24 @@ def doctor() -> dict:
                     stream.seek(max(0, stream.tell() - 262144))
                     recent = stream.read().decode("utf-8", errors="replace").splitlines()[-2000:]
                 game_log["bridge_seen"] = any("[tf3c]" in line for line in recent)
-            check("game_log", "ok" if game_log["bridge_seen"] else "warning", str(paths.game_log),
-                  None if game_log["bridge_seen"] else "Load the save with the bridge enabled and check tf3c log.")
+            check(
+                "game_log",
+                "ok" if game_log["bridge_seen"] else "warning",
+                str(paths.game_log),
+                None if game_log["bridge_seen"] else "Load the save with the bridge enabled and check tf3c log.",
+            )
         except OSError as exc:
             check("game_log", "warning", str(exc), "Check log permissions and mod activation.")
-    return {"ok": not any(c["status"] == "error" for c in checks), "platform": discovery.platform,
-            "steam_roots": list(map(str, discovery.steam_roots)), "userdata_candidates": list(map(str, discovery.candidates)),
-            "userdata": str(discovery.userdata) if discovery.userdata else None, "data_dir": str(data),
-            "checks": checks, "mod": mod, "snapshots": snapshots, "game_log": game_log, "active_save": None}
+    return {
+        "ok": not any(c["status"] == "error" for c in checks),
+        "platform": discovery.platform,
+        "steam_roots": list(map(str, discovery.steam_roots)),
+        "userdata_candidates": list(map(str, discovery.candidates)),
+        "userdata": str(discovery.userdata) if discovery.userdata else None,
+        "data_dir": str(data),
+        "checks": checks,
+        "mod": mod,
+        "snapshots": snapshots,
+        "game_log": game_log,
+        "active_save": None,
+    }

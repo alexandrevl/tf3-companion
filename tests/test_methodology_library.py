@@ -1,4 +1,5 @@
 """Library, CLI commands, per-save binding, resolution precedence."""
+
 from __future__ import annotations
 
 import json
@@ -20,8 +21,14 @@ LADDER = FIXTURES / "mode-ladder.tf3c-methodology.json"
 
 
 def doc(ident="sample", version="1.0.0", **extra):
-    return {"schema": "tf3c-methodology/1", "id": ident, "version": version, "name": f"Sample {version}",
-            "description": "A sample.", **extra}
+    return {
+        "schema": "tf3c-methodology/1",
+        "id": ident,
+        "version": version,
+        "name": f"Sample {version}",
+        "description": "A sample.",
+        **extra,
+    }
 
 
 def drop(data_dir: Path, name: str, data) -> Path:
@@ -33,6 +40,7 @@ def drop(data_dir: Path, name: str, data) -> Path:
 
 
 # ---- library ---------------------------------------------------------------------------------------
+
 
 def test_read_only_listing_shows_packaged_files_and_creates_no_folder(tmp_path):
     entries = Library(tmp_path / "data").entries()
@@ -47,7 +55,9 @@ def test_drop_in_file_is_listed_without_any_command(tmp_path):
     drop(tmp_path, "sample@1.0.0.tf3c-methodology.json", doc())
     rows = {e["identity"]: e for e in Resolver(tmp_path).listing()["methodologies"]}
     assert rows["sample@1.0.0"]["source"] == "user" and rows["sample@1.0.0"]["status"] == "valid"
-    assert rows["sample@1.0.0"]["name"] == "Sample 1.0.0" and rows["sample@1.0.0"]["file"].endswith(".tf3c-methodology.json")
+    assert rows["sample@1.0.0"]["name"] == "Sample 1.0.0" and rows["sample@1.0.0"]["file"].endswith(
+        ".tf3c-methodology.json"
+    )
 
 
 def test_invalid_file_is_isolated_and_other_files_remain_usable(tmp_path):
@@ -58,8 +68,14 @@ def test_invalid_file_is_isolated_and_other_files_remain_usable(tmp_path):
     library = Library(tmp_path)
     by_file = {Path(e.file).name: e for e in library.entries() if e.source == "user"}
     assert by_file["good.tf3c-methodology.json"].status == "valid"
-    assert by_file["bad.tf3c-methodology.json"].status == "invalid" and "rulez" in by_file["bad.tf3c-methodology.json"].error
-    assert by_file["broken.tf3c-methodology.json"].status == "invalid" and "invalid JSON" in by_file["broken.tf3c-methodology.json"].error
+    assert (
+        by_file["bad.tf3c-methodology.json"].status == "invalid"
+        and "rulez" in by_file["bad.tf3c-methodology.json"].error
+    )
+    assert (
+        by_file["broken.tf3c-methodology.json"].status == "invalid"
+        and "invalid JSON" in by_file["broken.tf3c-methodology.json"].error
+    )
     assert "notes.txt" not in by_file
     assert library.resolve("good").identity == "good@1.0.0"
     with pytest.raises(LibraryError, match="invalid file"):
@@ -97,6 +113,7 @@ def test_bare_id_resolves_to_the_highest_valid_version(tmp_path):
 
 
 # ---- import / export ---------------------------------------------------------------------------------------
+
 
 def test_import_copies_under_a_name_derived_from_identity_and_round_trips_the_hash(tmp_path):
     here, there = tmp_path / "here", tmp_path / "there"
@@ -141,6 +158,7 @@ def test_import_cannot_shadow_a_packaged_identity(tmp_path):
 
 # ---- CLI --------------------------------------------------------------------------------------------------------------
 
+
 @pytest.fixture
 def cli_env(tmp_path, monkeypatch):
     data = tmp_path / "data"
@@ -177,8 +195,20 @@ def test_cli_validate_reports_errors_and_unsupported_rules(cli_env, capsys, tmp_
 
 def test_cli_typo_field_is_reported_as_unsupported_strictly(cli_env, capsys, tmp_path):
     typo = tmp_path / "typo.json"
-    typo.write_text(json.dumps(doc(markers={"ok": {"label": "ok"}}, rules=[{"id": "r", "entity": "line", "outcomes": [
-        {"when": {"field": "line.profit_yeer", "op": "lt", "value": 0}, "marker": "ok"}]}])))
+    typo.write_text(
+        json.dumps(
+            doc(
+                markers={"ok": {"label": "ok"}},
+                rules=[
+                    {
+                        "id": "r",
+                        "entity": "line",
+                        "outcomes": [{"when": {"field": "line.profit_yeer", "op": "lt", "value": 0}, "marker": "ok"}],
+                    }
+                ],
+            )
+        )
+    )
     assert run_cli(capsys, "methodology", "validate", str(typo))[0] == 0
     code, out, _ = run_cli(capsys, "methodology", "validate", str(typo), "--strict")
     assert code == 1 and "did you mean 'line.profit_year'" in json.loads(out)["unsupported"][0]["reason"]
@@ -219,10 +249,15 @@ def test_cli_export_import_hash_round_trip_between_machines(cli_env, capsys, tmp
     code, out, _ = run_cli(capsys, "methodology", "import", str(exported))
     assert code == 0
     other = Library(tmp_path / "other-machine").resolve("local-feeder-intercity-trunk")
-    assert json.loads(out)["hash"] == other.short_hash == Library(cli_env).resolve("local-feeder-intercity-trunk").short_hash
+    assert (
+        json.loads(out)["hash"]
+        == other.short_hash
+        == Library(cli_env).resolve("local-feeder-intercity-trunk").short_hash
+    )
 
 
 # ---- per-save binding and resolution -----------------------------------------------------------------------------------
+
 
 def test_two_scopes_keep_different_bindings(tmp_path):
     data = tmp_path / "data"
@@ -305,13 +340,30 @@ def test_validate_file_without_a_snapshot_lists_needed_data():
 
 def test_cli_validate_effective_params_reports_override_diagnostics_and_exit_codes(cli_env, capsys, tmp_path):
     draft = tmp_path / "params.json"
-    draft.write_text(json.dumps(doc(parameters={"limit": {"value": 3}, "pattern": {"value": "^T"}},
-                                    markers={"m": {"label": "M"}}, rules=[{"id": "named", "entity": "line", "outcomes": [
-        {"when": {"field": "line.name", "op": "matches", "value": {"param": "pattern"}}, "marker": "m"}]}])))
+    draft.write_text(
+        json.dumps(
+            doc(
+                parameters={"limit": {"value": 3}, "pattern": {"value": "^T"}},
+                markers={"m": {"label": "M"}},
+                rules=[
+                    {
+                        "id": "named",
+                        "entity": "line",
+                        "outcomes": [
+                            {
+                                "when": {"field": "line.name", "op": "matches", "value": {"param": "pattern"}},
+                                "marker": "m",
+                            }
+                        ],
+                    }
+                ],
+            )
+        )
+    )
     code, out, _ = run_cli(capsys, "methodology", "validate", str(draft), "--strict", "--param", "limit=5")
     result = json.loads(out)
     assert code == 0 and result["valid"] and result["parameterOverrides"] == {"limit": 5}
-    for bad in ("unknown=1", "limit=\"text\"", "limit=true"):
+    for bad in ("unknown=1", 'limit="text"', "limit=true"):
         code, out, _ = run_cli(capsys, "methodology", "validate", str(draft), "--param", bad)
         result = json.loads(out)  # plain mode keeps structural validity but exposes ineligibility
         assert code == 0 and result["valid"] and result["structurallyValid"] and not result["activationEligible"]
@@ -329,9 +381,24 @@ def test_cli_validate_effective_params_reports_override_diagnostics_and_exit_cod
 
 def test_cli_validate_multi_error_draft_returns_every_independent_diagnostic(cli_env, capsys, tmp_path):
     draft = tmp_path / "many.json"
-    draft.write_text(json.dumps(doc(markers={"m": {"label": "M"}}, parameters={"p": {"value": []}}, surprise=1,
-                                    rules=[{"id": "r", "entity": "line", "outcomes": [
-                                        {"when": {"field": "line.profit_year", "op": "lt", "value": "x"}, "marker": "nope"}]}])))
+    draft.write_text(
+        json.dumps(
+            doc(
+                markers={"m": {"label": "M"}},
+                parameters={"p": {"value": []}},
+                surprise=1,
+                rules=[
+                    {
+                        "id": "r",
+                        "entity": "line",
+                        "outcomes": [
+                            {"when": {"field": "line.profit_year", "op": "lt", "value": "x"}, "marker": "nope"}
+                        ],
+                    }
+                ],
+            )
+        )
+    )
     code, out, _ = run_cli(capsys, "methodology", "validate", str(draft))
     result = json.loads(out)
     paths = {d["path"] for d in result["diagnostics"]}

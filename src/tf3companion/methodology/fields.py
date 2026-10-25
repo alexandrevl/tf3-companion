@@ -51,17 +51,29 @@ _REGISTRY: dict[str, FieldSpec] = {}
 _INHERITING = ("vehicle", "stop")  # entities that expose `<entity>.line.<line field>`
 
 
-def _register(name: str, type_: str, sources: tuple[str, ...], description: str, getter: Getter, *,
-              caveat: str = "", derived: bool = False, requires: tuple[str, ...] = (),
-              collected: bool = True, label_kind: str | None = None) -> None:
+def _register(
+    name: str,
+    type_: str,
+    sources: tuple[str, ...],
+    description: str,
+    getter: Getter,
+    *,
+    caveat: str = "",
+    derived: bool = False,
+    requires: tuple[str, ...] = (),
+    collected: bool = True,
+    label_kind: str | None = None,
+) -> None:
     entity = name.split(".", 1)[0]
     assert entity in ENTITIES and type_ in TYPES and sources and description, name
-    _REGISTRY[name] = FieldSpec(name, entity, type_, sources, caveat, description, getter, derived,
-                                requires, collected, label_kind)
+    _REGISTRY[name] = FieldSpec(
+        name, entity, type_, sources, caveat, description, getter, derived, requires, collected, label_kind
+    )
 
 
 # ---------------------------------------------------------------------------
 # Facts and records
+
 
 class Facts:
     """Per-snapshot lookups shared by every record, built once."""
@@ -146,8 +158,11 @@ class Facts:
         if entity == "vehicle":
             return [Record(entity, v, self, line=snap.lines_by_id.get(v.get("line"))) for v in snap.vehicles]
         if entity == "stop":
-            return [Record(entity, stop if isinstance(stop, dict) else {}, self, line=line)
-                    for line in snap.lines for stop in line.get("stops") or []]
+            return [
+                Record(entity, stop if isinstance(stop, dict) else {}, self, line=line)
+                for line in snap.lines
+                for stop in line.get("stops") or []
+            ]
         if entity == "industry":
             return [Record(entity, i, self) for i in snap.industries]
         if entity == "stock":
@@ -213,6 +228,7 @@ def _town_key(station: dict[str, Any] | None) -> Any:
 
 # ---------------------------------------------------------------------------
 # Derived value helpers
+
 
 def _cargo_ids(line: dict[str, Any]) -> list[int]:
     return list(dict.fromkeys(c["cargo"] - LINE_CAPACITY_CARGO_OFFSET for c in positive_line_capacity(line)))
@@ -285,75 +301,190 @@ def _present(value: Any) -> Any:
 # ---------------------------------------------------------------------------
 # line
 
+
 def _line_unrounded_load(rec: Record) -> float | None:
     return analysis.line_load(rec.raw)
 
 
 _register("line.id", NUMBER, ("lines[].id",), "Entity id of the line.", lambda r: r.raw.get("id"))
-_register("line.name", STRING, ("lines[].name",), "Line name as typed in the game.", lambda r: _present(r.raw.get("name")))
-_register("line.carrier", STRING, ("vehicles[].carrier",),
-          "Transport mode of the line: ROAD, RAIL, TRAM, WATER or AIR (most common among its vehicles).",
-          lambda r: r.facts.line_row(r.raw)["carrier"], caveat="Missing for lines without vehicles.")
-_register("line.vehicle_count", NUMBER, ("lines[].vehicles",), "Number of vehicles assigned to the line.",
-          lambda r: len(r.raw.get("vehicles") or []))
-_register("line.stop_count", NUMBER, ("lines[].stops",), "Number of stops on the line.",
-          lambda r: len(r.raw.get("stops") or []))
-_register("line.stop_towns", LIST_NUMBER, ("lines[].stops[].stationGroup", "stations[].townName"),
-          "Distinct towns of the line's stops, from each stop's station group (never from name codes).",
-          lambda r: _present(list(dict.fromkeys(_stop_town_keys(r)))), derived=True, label_kind="town",
-          caveat="Stops whose station group is absent from stations[] contribute no town.")
-_register("line.first_stop_town", NUMBER, ("lines[].stops[].stationGroup", "stations[].townName"),
-          "Town of the line's first stop.",
-          lambda r: _town_key(r.facts.stop_station((r.raw.get("stops") or [None])[0])), derived=True, label_kind="town",
-          caveat="Missing when the first stop's station group is absent from stations[].")
-_register("line.town_count", NUMBER, ("lines[].stops[].stationGroup", "stations[].townName"),
-          "Number of distinct towns the line's stops belong to.",
-          lambda r: len(set(_stop_town_keys(r))) or None, derived=True,
-          caveat="Missing when no stop resolves to a town.")
-_register("line.profit_year", NUMBER, ("lines[].profitYear",), "Rolling game-year profit of the line.",
-          lambda r: r.raw.get("profitYear"),
-          caveat="Rolling game year, not calendar income; partial for lines younger than a year.")
-_register("line.loss_year", NUMBER, ("lines[].profitYear",), "Loss over the rolling game year: max(0, -profit_year).",
-          lambda r: None if r.raw.get("profitYear") is None else max(0, -r.raw["profitYear"]), derived=True,
-          caveat="Rolling game year, not calendar income; partial for lines younger than a year.")
-_register("line.transported_year", NUMBER, ("lines[].transportedYear",), "Items transported over the rolling game year.",
-          lambda r: r.raw.get("transportedYear"), caveat="The accounting interpretation of transportedYear is unverified.")
-_register("line.rate", NUMBER, ("lines[].rate",), "Line throughput rate reported by the game.", lambda r: r.raw.get("rate"))
-_register("line.load", NUMBER, ("lines[].capacity[]",), "Occupancy of the line's vehicles, 0 to 1.",
-          _line_unrounded_load, caveat="Instantaneous reading at snapshot time, not an average.")
-_register("line.age_years", NUMBER, ("vehicles[].purchaseTime", "meta.date", "(dated history and scope)"),
-          "Oldest currently assigned vehicle age proxy, in calendar GAME-YEAR.",
-          lambda r: analysis.line_age_years(r.facts.snap, r.raw, clock=r.facts.clock),
-          caveat="Not line creation or first-observed age. Exact anchors or bounded interpolation only; "
-                 "365.25 calendar days per GAME-YEAR; unsupported purchases are unknown.")
-_register("line.is_passenger_only", BOOL, ("lines[].capacity[]",),
-          "True when every positive-capacity entry of the line is passengers (cargo id 0).",
-          lambda r: (lambda ids: None if not ids else all(i == PASSENGER_CARGO_ID for i in ids))(_cargo_ids(r.raw)),
-          derived=True, caveat="capacity[].cargo is the cargo id plus one. Missing when the line has no positive capacity "
-                               "(for example no vehicles).")
-_register("line.cargo_ids", LIST_NUMBER, ("lines[].capacity[]",), "Cargo ids with positive capacity on the line.",
-          lambda r: _present(_cargo_ids(r.raw)), derived=True, caveat="capacity[].cargo minus one.")
-_register("line.cargo_names", LIST_STRING, ("lines[].capacity[]",),
-          "Cargo names with positive capacity, as the game shows them.",
-          lambda r: _present([_cargo_name(r.facts.snap, i) for i in _cargo_ids(r.raw)]), derived=True,
-          caveat="Names follow the game language; use line.cargo_keys for language-neutral matching.")
-_register("line.cargo_keys", LIST_STRING, ("lines[].capacity[]", "cargos[].res"),
-          "Language-neutral cargo keys (segment of the cargo resource path, for example `grain`).",
-          lambda r: _present([k for i in _cargo_ids(r.raw) if (k := _cargo_key(r.facts.snap, i))]), derived=True)
-_register("line.issue_types", LIST_STRING, ("lines[].issues[]",), "Configuration issue types reported for the line.",
-          lambda r: _present([i.get("type") for i in r.raw.get("issues") or []
-                              if isinstance(i, dict) and i.get("type") not in (None, "None")]))
-_register("line.route_km", NUMBER, (POSITIONS, "lines[].stops[].stationGroup"),
-          "Straight-line length of the line through its stops, in kilometres.",
-          lambda r: (lambda legs: None if legs is None else sum(legs))(_route_legs_km(r)),
-          derived=True, requires=(POSITIONS,), collected=False,
-          caveat="Needs station positions, which the collector does not emit yet. Chain of straight legs, not track length.")
-_register("line.stop_distances_km", LIST_NUMBER, (POSITIONS, "lines[].stops[].stationGroup"),
-          "Straight-line distance of each leg between consecutive stops, in kilometres.",
-          _route_legs_km, derived=True, requires=(POSITIONS,), collected=False,
-          caveat="Needs station positions, which the collector does not emit yet.")
-_register("line.role", STRING, ("(methodology roles)",), "Role this methodology assigned to the line, or `unclassified`.",
-          lambda r: r.role or r.facts.line_roles.get(r.raw.get("id"), UNCLASSIFIED), derived=True)
+_register(
+    "line.name", STRING, ("lines[].name",), "Line name as typed in the game.", lambda r: _present(r.raw.get("name"))
+)
+_register(
+    "line.carrier",
+    STRING,
+    ("vehicles[].carrier",),
+    "Transport mode of the line: ROAD, RAIL, TRAM, WATER or AIR (most common among its vehicles).",
+    lambda r: r.facts.line_row(r.raw)["carrier"],
+    caveat="Missing for lines without vehicles.",
+)
+_register(
+    "line.vehicle_count",
+    NUMBER,
+    ("lines[].vehicles",),
+    "Number of vehicles assigned to the line.",
+    lambda r: len(r.raw.get("vehicles") or []),
+)
+_register(
+    "line.stop_count",
+    NUMBER,
+    ("lines[].stops",),
+    "Number of stops on the line.",
+    lambda r: len(r.raw.get("stops") or []),
+)
+_register(
+    "line.stop_towns",
+    LIST_NUMBER,
+    ("lines[].stops[].stationGroup", "stations[].townName"),
+    "Distinct towns of the line's stops, from each stop's station group (never from name codes).",
+    lambda r: _present(list(dict.fromkeys(_stop_town_keys(r)))),
+    derived=True,
+    label_kind="town",
+    caveat="Stops whose station group is absent from stations[] contribute no town.",
+)
+_register(
+    "line.first_stop_town",
+    NUMBER,
+    ("lines[].stops[].stationGroup", "stations[].townName"),
+    "Town of the line's first stop.",
+    lambda r: _town_key(r.facts.stop_station((r.raw.get("stops") or [None])[0])),
+    derived=True,
+    label_kind="town",
+    caveat="Missing when the first stop's station group is absent from stations[].",
+)
+_register(
+    "line.town_count",
+    NUMBER,
+    ("lines[].stops[].stationGroup", "stations[].townName"),
+    "Number of distinct towns the line's stops belong to.",
+    lambda r: len(set(_stop_town_keys(r))) or None,
+    derived=True,
+    caveat="Missing when no stop resolves to a town.",
+)
+_register(
+    "line.profit_year",
+    NUMBER,
+    ("lines[].profitYear",),
+    "Rolling game-year profit of the line.",
+    lambda r: r.raw.get("profitYear"),
+    caveat="Rolling game year, not calendar income; partial for lines younger than a year.",
+)
+_register(
+    "line.loss_year",
+    NUMBER,
+    ("lines[].profitYear",),
+    "Loss over the rolling game year: max(0, -profit_year).",
+    lambda r: None if r.raw.get("profitYear") is None else max(0, -r.raw["profitYear"]),
+    derived=True,
+    caveat="Rolling game year, not calendar income; partial for lines younger than a year.",
+)
+_register(
+    "line.transported_year",
+    NUMBER,
+    ("lines[].transportedYear",),
+    "Items transported over the rolling game year.",
+    lambda r: r.raw.get("transportedYear"),
+    caveat="The accounting interpretation of transportedYear is unverified.",
+)
+_register(
+    "line.rate", NUMBER, ("lines[].rate",), "Line throughput rate reported by the game.", lambda r: r.raw.get("rate")
+)
+_register(
+    "line.load",
+    NUMBER,
+    ("lines[].capacity[]",),
+    "Occupancy of the line's vehicles, 0 to 1.",
+    _line_unrounded_load,
+    caveat="Instantaneous reading at snapshot time, not an average.",
+)
+_register(
+    "line.age_years",
+    NUMBER,
+    ("vehicles[].purchaseTime", "meta.date", "(dated history and scope)"),
+    "Oldest currently assigned vehicle age proxy, in calendar GAME-YEAR.",
+    lambda r: analysis.line_age_years(r.facts.snap, r.raw, clock=r.facts.clock),
+    caveat="Not line creation or first-observed age. Exact anchors or bounded interpolation only; "
+    "365.25 calendar days per GAME-YEAR; unsupported purchases are unknown.",
+)
+_register(
+    "line.is_passenger_only",
+    BOOL,
+    ("lines[].capacity[]",),
+    "True when every positive-capacity entry of the line is passengers (cargo id 0).",
+    lambda r: (lambda ids: None if not ids else all(i == PASSENGER_CARGO_ID for i in ids))(_cargo_ids(r.raw)),
+    derived=True,
+    caveat="capacity[].cargo is the cargo id plus one. Missing when the line has no positive capacity "
+    "(for example no vehicles).",
+)
+_register(
+    "line.cargo_ids",
+    LIST_NUMBER,
+    ("lines[].capacity[]",),
+    "Cargo ids with positive capacity on the line.",
+    lambda r: _present(_cargo_ids(r.raw)),
+    derived=True,
+    caveat="capacity[].cargo minus one.",
+)
+_register(
+    "line.cargo_names",
+    LIST_STRING,
+    ("lines[].capacity[]",),
+    "Cargo names with positive capacity, as the game shows them.",
+    lambda r: _present([_cargo_name(r.facts.snap, i) for i in _cargo_ids(r.raw)]),
+    derived=True,
+    caveat="Names follow the game language; use line.cargo_keys for language-neutral matching.",
+)
+_register(
+    "line.cargo_keys",
+    LIST_STRING,
+    ("lines[].capacity[]", "cargos[].res"),
+    "Language-neutral cargo keys (segment of the cargo resource path, for example `grain`).",
+    lambda r: _present([k for i in _cargo_ids(r.raw) if (k := _cargo_key(r.facts.snap, i))]),
+    derived=True,
+)
+_register(
+    "line.issue_types",
+    LIST_STRING,
+    ("lines[].issues[]",),
+    "Configuration issue types reported for the line.",
+    lambda r: _present(
+        [
+            i.get("type")
+            for i in r.raw.get("issues") or []
+            if isinstance(i, dict) and i.get("type") not in (None, "None")
+        ]
+    ),
+)
+_register(
+    "line.route_km",
+    NUMBER,
+    (POSITIONS, "lines[].stops[].stationGroup"),
+    "Straight-line length of the line through its stops, in kilometres.",
+    lambda r: (lambda legs: None if legs is None else sum(legs))(_route_legs_km(r)),
+    derived=True,
+    requires=(POSITIONS,),
+    collected=False,
+    caveat="Needs station positions, which the collector does not emit yet. Chain of straight legs, not track length.",
+)
+_register(
+    "line.stop_distances_km",
+    LIST_NUMBER,
+    (POSITIONS, "lines[].stops[].stationGroup"),
+    "Straight-line distance of each leg between consecutive stops, in kilometres.",
+    _route_legs_km,
+    derived=True,
+    requires=(POSITIONS,),
+    collected=False,
+    caveat="Needs station positions, which the collector does not emit yet.",
+)
+_register(
+    "line.role",
+    STRING,
+    ("(methodology roles)",),
+    "Role this methodology assigned to the line, or `unclassified`.",
+    lambda r: r.role or r.facts.line_roles.get(r.raw.get("id"), UNCLASSIFIED),
+    derived=True,
+)
 
 # ---------------------------------------------------------------------------
 # vehicle
@@ -370,41 +501,110 @@ def _vehicle_family(rec: Record) -> str | None:
 
 _register("vehicle.id", NUMBER, ("vehicles[].id",), "Entity id of the vehicle.", lambda r: r.raw.get("id"))
 _register("vehicle.name", STRING, ("vehicles[].name",), "Vehicle name.", lambda r: _present(r.raw.get("name")))
-_register("vehicle.carrier", STRING, ("vehicles[].carrier",), "Transport mode of the vehicle.", lambda r: r.raw.get("carrier"))
-_register("vehicle.maintenance_state", NUMBER, ("vehicles[].maintenanceState",),
-          "Maintenance condition, 0 to 1 (1 = excellent).", lambda r: r.raw.get("maintenanceState"))
-_register("vehicle.model_family", STRING, ("vehicles[].models", "models[].res"),
-          "Vehicle family from the model resource path. Observed in a real snapshot: `bus`, `truck`, `plane`, `helicopter`, `ship`.",
-          _vehicle_family, derived=True)
-_register("vehicle.age_years", NUMBER, ("vehicles[].purchaseTime", "meta.date", "(dated history and scope)"), "Vehicle age in calendar GAME-YEAR.",
-          lambda r: r.facts.snap.age_years(r.raw.get("purchaseTime"), clock=r.facts.clock),
-          caveat="Exact anchors or bounded interpolation only; unsupported old purchases are unknown; no nominal fallback.")
-_register("vehicle.profit_year", NUMBER, ("vehicles[].profitYear",), "Rolling game-year profit of the vehicle.",
-          lambda r: r.raw.get("profitYear"), caveat="Rolling game year, not calendar income.")
-_register("vehicle.state", STRING, ("vehicles[].state",), "Vehicle state reported by the game.", lambda r: r.raw.get("state"))
-_register("vehicle.days_in_depot", NUMBER, ("vehicles[].daysInDepot",), "Days the vehicle has been in a depot.",
-          lambda r: r.raw.get("daysInDepot"))
+_register(
+    "vehicle.carrier", STRING, ("vehicles[].carrier",), "Transport mode of the vehicle.", lambda r: r.raw.get("carrier")
+)
+_register(
+    "vehicle.maintenance_state",
+    NUMBER,
+    ("vehicles[].maintenanceState",),
+    "Maintenance condition, 0 to 1 (1 = excellent).",
+    lambda r: r.raw.get("maintenanceState"),
+)
+_register(
+    "vehicle.model_family",
+    STRING,
+    ("vehicles[].models", "models[].res"),
+    "Vehicle family from the model resource path. Observed in a real snapshot: `bus`, `truck`, `plane`, `helicopter`, `ship`.",
+    _vehicle_family,
+    derived=True,
+)
+_register(
+    "vehicle.age_years",
+    NUMBER,
+    ("vehicles[].purchaseTime", "meta.date", "(dated history and scope)"),
+    "Vehicle age in calendar GAME-YEAR.",
+    lambda r: r.facts.snap.age_years(r.raw.get("purchaseTime"), clock=r.facts.clock),
+    caveat="Exact anchors or bounded interpolation only; unsupported old purchases are unknown; no nominal fallback.",
+)
+_register(
+    "vehicle.profit_year",
+    NUMBER,
+    ("vehicles[].profitYear",),
+    "Rolling game-year profit of the vehicle.",
+    lambda r: r.raw.get("profitYear"),
+    caveat="Rolling game year, not calendar income.",
+)
+_register(
+    "vehicle.state", STRING, ("vehicles[].state",), "Vehicle state reported by the game.", lambda r: r.raw.get("state")
+)
+_register(
+    "vehicle.days_in_depot",
+    NUMBER,
+    ("vehicles[].daysInDepot",),
+    "Days the vehicle has been in a depot.",
+    lambda r: r.raw.get("daysInDepot"),
+)
 _register("vehicle.value", NUMBER, ("vehicles[].value",), "Recorded resale value.", lambda r: r.raw.get("value"))
-_register("vehicle.line_id", NUMBER, ("vehicles[].line",), "Id of the line the vehicle is assigned to.",
-          lambda r: r.raw.get("line") or None)
-_register("vehicle.role", STRING, ("(methodology roles)",), "Role this methodology assigned to the vehicle.",
-          lambda r: r.role or UNCLASSIFIED, derived=True)
+_register(
+    "vehicle.line_id",
+    NUMBER,
+    ("vehicles[].line",),
+    "Id of the line the vehicle is assigned to.",
+    lambda r: r.raw.get("line") or None,
+)
+_register(
+    "vehicle.role",
+    STRING,
+    ("(methodology roles)",),
+    "Role this methodology assigned to the vehicle.",
+    lambda r: r.role or UNCLASSIFIED,
+    derived=True,
+)
 
 # ---------------------------------------------------------------------------
 # stop (a line's stop; used by aggregate rules)
 
-_register("stop.station", NUMBER, ("lines[].stops[].stationGroup",), "Station group id of the stop.",
-          lambda r: r.raw.get("stationGroup"), label_kind="station")
-_register("stop.station_name", STRING, ("stations[].name",), "Station group name.",
-          lambda r: _present((r.facts.stop_station(r.raw) or {}).get("name") or r.raw.get("name")))
-_register("stop.terminal", NUMBER, ("lines[].stops[].terminal",), "Terminal (platform or gate) the stop uses.",
-          lambda r: r.raw.get("terminal"),
-          caveat="Only the terminals used by the player's lines are known; the station's total terminals are not collected.")
-_register("stop.town", NUMBER, ("lines[].stops[].stationGroup", "stations[].townName"),
-          "Town of the stop's station group.", lambda r: _town_key(r.facts.stop_station(r.raw)), derived=True,
-          label_kind="town", caveat="Missing when the station group is absent from stations[].")
-_register("stop.line_id", NUMBER, ("lines[].id",), "Id of the line the stop belongs to.",
-          lambda r: None if r.line is None else r.line.get("id"))
+_register(
+    "stop.station",
+    NUMBER,
+    ("lines[].stops[].stationGroup",),
+    "Station group id of the stop.",
+    lambda r: r.raw.get("stationGroup"),
+    label_kind="station",
+)
+_register(
+    "stop.station_name",
+    STRING,
+    ("stations[].name",),
+    "Station group name.",
+    lambda r: _present((r.facts.stop_station(r.raw) or {}).get("name") or r.raw.get("name")),
+)
+_register(
+    "stop.terminal",
+    NUMBER,
+    ("lines[].stops[].terminal",),
+    "Terminal (platform or gate) the stop uses.",
+    lambda r: r.raw.get("terminal"),
+    caveat="Only the terminals used by the player's lines are known; the station's total terminals are not collected.",
+)
+_register(
+    "stop.town",
+    NUMBER,
+    ("lines[].stops[].stationGroup", "stations[].townName"),
+    "Town of the stop's station group.",
+    lambda r: _town_key(r.facts.stop_station(r.raw)),
+    derived=True,
+    label_kind="town",
+    caveat="Missing when the station group is absent from stations[].",
+)
+_register(
+    "stop.line_id",
+    NUMBER,
+    ("lines[].id",),
+    "Id of the line the stop belongs to.",
+    lambda r: None if r.line is None else r.line.get("id"),
+)
 
 # ---------------------------------------------------------------------------
 # industry
@@ -419,41 +619,91 @@ def _industry_ratio(rec: Record, flows: str, num: str, den: str) -> float | None
 
 _register("industry.id", NUMBER, ("industries[].id",), "Entity id of the industry.", lambda r: r.raw.get("id"))
 _register("industry.name", STRING, ("industries[].name",), "Industry name.", lambda r: _present(r.raw.get("name")))
-_register("industry.type", STRING, ("industries[].type",),
-          "Industry resource path, for example `::/industries/oil_refinery/oil_refinery.con`.",
-          lambda r: r.raw.get("type"))
+_register(
+    "industry.type",
+    STRING,
+    ("industries[].type",),
+    "Industry resource path, for example `::/industries/oil_refinery/oil_refinery.con`.",
+    lambda r: r.raw.get("type"),
+)
 _register("industry.level", NUMBER, ("industries[].level",), "Current production level.", lambda r: r.raw.get("level"))
-_register("industry.production_rating", NUMBER, ("industries[].productionRating",), "Production rating reported by the game.",
-          lambda r: r.raw.get("productionRating"))
-_register("industry.shipped_ratio", NUMBER, ("industries[].outputs[].producedYear", "industries[].outputs[].shippedYear"),
-          "Shipped over produced, summed over all outputs, per rolling game year.",
-          lambda r: _industry_ratio(r, "outputs", "shippedYear", "producedYear"), derived=True,
-          caveat="Missing when the industry produces nothing. Rolling game year.")
-_register("industry.input_delivery_ratio", NUMBER,
-          ("industries[].inputs[].deliveredYear", "industries[].inputs[].maxConsumptionYear"),
-          "Delivered over maximum consumption, summed over all inputs, per rolling game year.",
-          lambda r: _industry_ratio(r, "inputs", "deliveredYear", "maxConsumptionYear"), derived=True,
-          caveat="Missing for industries without inputs. Rolling game year.")
-_register("industry.closing", BOOL, ("industries[].closureTimeStamp", "problems.closingIndustries"),
-          "Whether the industry is scheduled to close.",
-          lambda r: analysis.industry_row(r.facts.snap, r.raw)["closing"])
-_register("industry.role", STRING, ("(methodology roles)",), "Role this methodology assigned to the industry.",
-          lambda r: r.role or UNCLASSIFIED, derived=True)
+_register(
+    "industry.production_rating",
+    NUMBER,
+    ("industries[].productionRating",),
+    "Production rating reported by the game.",
+    lambda r: r.raw.get("productionRating"),
+)
+_register(
+    "industry.shipped_ratio",
+    NUMBER,
+    ("industries[].outputs[].producedYear", "industries[].outputs[].shippedYear"),
+    "Shipped over produced, summed over all outputs, per rolling game year.",
+    lambda r: _industry_ratio(r, "outputs", "shippedYear", "producedYear"),
+    derived=True,
+    caveat="Missing when the industry produces nothing. Rolling game year.",
+)
+_register(
+    "industry.input_delivery_ratio",
+    NUMBER,
+    ("industries[].inputs[].deliveredYear", "industries[].inputs[].maxConsumptionYear"),
+    "Delivered over maximum consumption, summed over all inputs, per rolling game year.",
+    lambda r: _industry_ratio(r, "inputs", "deliveredYear", "maxConsumptionYear"),
+    derived=True,
+    caveat="Missing for industries without inputs. Rolling game year.",
+)
+_register(
+    "industry.closing",
+    BOOL,
+    ("industries[].closureTimeStamp", "problems.closingIndustries"),
+    "Whether the industry is scheduled to close.",
+    lambda r: analysis.industry_row(r.facts.snap, r.raw)["closing"],
+)
+_register(
+    "industry.role",
+    STRING,
+    ("(methodology roles)",),
+    "Role this methodology assigned to the industry.",
+    lambda r: r.role or UNCLASSIFIED,
+    derived=True,
+)
 
 # ---------------------------------------------------------------------------
 # stock
 
-_register("stock.kind", STRING, ("stocks[].kind",), "Stock owner kind: station, industry or warehouse.",
-          lambda r: r.raw.get("kind"))
-_register("stock.owner_name", STRING, ("stocks[].ownerName",), "Name of the stock's owner.",
-          lambda r: _present(r.raw.get("ownerName")))
+_register(
+    "stock.kind",
+    STRING,
+    ("stocks[].kind",),
+    "Stock owner kind: station, industry or warehouse.",
+    lambda r: r.raw.get("kind"),
+)
+_register(
+    "stock.owner_name",
+    STRING,
+    ("stocks[].ownerName",),
+    "Name of the stock's owner.",
+    lambda r: _present(r.raw.get("ownerName")),
+)
 _register("stock.count", NUMBER, ("stocks[].count",), "Units in the stock.", lambda r: r.raw.get("count"))
 _register("stock.capacity", NUMBER, ("stocks[].capacity",), "Stock capacity in units.", lambda r: r.raw.get("capacity"))
-_register("stock.fill_ratio", NUMBER, ("stocks[].count", "stocks[].capacity"), "Stock fill, count over capacity, 0 to 1.",
-          lambda r: _ratio(r.raw.get("count"), r.raw.get("capacity")), derived=True,
-          caveat="Instantaneous reading. Full destination stocks can prevent unloading.")
-_register("stock.role", STRING, ("(methodology roles)",), "Role this methodology assigned to the stock.",
-          lambda r: r.role or UNCLASSIFIED, derived=True)
+_register(
+    "stock.fill_ratio",
+    NUMBER,
+    ("stocks[].count", "stocks[].capacity"),
+    "Stock fill, count over capacity, 0 to 1.",
+    lambda r: _ratio(r.raw.get("count"), r.raw.get("capacity")),
+    derived=True,
+    caveat="Instantaneous reading. Full destination stocks can prevent unloading.",
+)
+_register(
+    "stock.role",
+    STRING,
+    ("(methodology roles)",),
+    "Role this methodology assigned to the stock.",
+    lambda r: r.role or UNCLASSIFIED,
+    derived=True,
+)
 
 # ---------------------------------------------------------------------------
 # town
@@ -478,22 +728,46 @@ def _town_pairs(rec: Record) -> list[float] | None:
 
 _register("town.id", NUMBER, ("towns[].id",), "Entity id of the town.", lambda r: r.raw.get("id"))
 _register("town.name", STRING, ("towns[].name",), "Town name.", lambda r: _present(r.raw.get("name")))
-_register("town.capacity_sum", NUMBER, ("towns[].capacities",),
-          "Sum of residential, commercial and industrial capacities.",
-          lambda r: sum(r.raw["capacities"]) if r.raw.get("capacities") else None, derived=True,
-          caveat="A proxy for population [INFERENCE].")
-_register("town.line_usage", NUMBER, ("towns[].lineUsage",), "Share of the town using the player's lines.",
-          lambda r: r.raw.get("lineUsage"))
-_register("town.pair_distance_km", LIST_NUMBER, (POSITIONS, "lines[].stops[].stationGroup"),
-          "Straight-line distances from this town to the other towns its lines connect, in kilometres.",
-          _town_pairs, derived=True, requires=(POSITIONS,), collected=False,
-          caveat="Needs station positions, which the collector does not emit yet. Centre = mean of the town's stations.")
-_register("town.role", STRING, ("(methodology roles)",), "Role this methodology assigned to the town.",
-          lambda r: r.role or UNCLASSIFIED, derived=True)
+_register(
+    "town.capacity_sum",
+    NUMBER,
+    ("towns[].capacities",),
+    "Sum of residential, commercial and industrial capacities.",
+    lambda r: sum(r.raw["capacities"]) if r.raw.get("capacities") else None,
+    derived=True,
+    caveat="A proxy for population [INFERENCE].",
+)
+_register(
+    "town.line_usage",
+    NUMBER,
+    ("towns[].lineUsage",),
+    "Share of the town using the player's lines.",
+    lambda r: r.raw.get("lineUsage"),
+)
+_register(
+    "town.pair_distance_km",
+    LIST_NUMBER,
+    (POSITIONS, "lines[].stops[].stationGroup"),
+    "Straight-line distances from this town to the other towns its lines connect, in kilometres.",
+    _town_pairs,
+    derived=True,
+    requires=(POSITIONS,),
+    collected=False,
+    caveat="Needs station positions, which the collector does not emit yet. Centre = mean of the town's stations.",
+)
+_register(
+    "town.role",
+    STRING,
+    ("(methodology roles)",),
+    "Role this methodology assigned to the town.",
+    lambda r: r.role or UNCLASSIFIED,
+    derived=True,
+)
 
 
 # ---------------------------------------------------------------------------
 # Inherited line fields and dynamic name captures
+
 
 def _inherit(prefix: str, spec: FieldSpec) -> FieldSpec:
     base = spec.getter
@@ -503,8 +777,19 @@ def _inherit(prefix: str, spec: FieldSpec) -> FieldSpec:
         return None if line is None else _base(line)
 
     suffix = spec.name.split(".", 1)[1]
-    return FieldSpec(f"{prefix}.line.{suffix}", prefix, spec.type, spec.sources, spec.caveat, spec.description,
-                     getter, spec.derived, spec.requires, spec.collected, spec.label_kind)
+    return FieldSpec(
+        f"{prefix}.line.{suffix}",
+        prefix,
+        spec.type,
+        spec.sources,
+        spec.caveat,
+        spec.description,
+        getter,
+        spec.derived,
+        spec.requires,
+        spec.collected,
+        spec.label_kind,
+    )
 
 
 for _entity in _INHERITING:
@@ -535,8 +820,16 @@ def lookup(name: str) -> FieldSpec | None:
         found = None if line is None else line.facts.captures(line.raw)
         return None if found is None else found.get(_capture)
 
-    return FieldSpec(name, prefix.split(".", 1)[0], STRING, ("lines[].name",), "Capture from the first matching name pattern.",
-                     f"Name capture `{capture}` (missing when no name pattern matches).", getter, derived=True)
+    return FieldSpec(
+        name,
+        prefix.split(".", 1)[0],
+        STRING,
+        ("lines[].name",),
+        "Capture from the first matching name pattern.",
+        f"Name capture `{capture}` (missing when no name pattern matches).",
+        getter,
+        derived=True,
+    )
 
 
 def all_fields() -> list[FieldSpec]:
@@ -560,6 +853,7 @@ def suggest(name: str) -> str | None:
 
 # ---------------------------------------------------------------------------
 # Snapshot data availability
+
 
 def _walk(value: Any, parts: list[str]) -> tuple[bool, bool]:
     """(containers_seen, value_found) for a dotted/array path below `value`."""

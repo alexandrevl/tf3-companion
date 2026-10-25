@@ -36,14 +36,22 @@ def test_mature_years_override_changes_lines_history(tmp_path):
 
 def test_full_stock_ratio_override_changes_industries(tmp_path):
     def full_row(doc):
-        summary = next(b for b in doc.blocks if isinstance(b, reports.Table)
-                       and any(str(r[0]).startswith("Full output stocks") for r in b.rows))
+        summary = next(
+            b
+            for b in doc.blocks
+            if isinstance(b, reports.Table) and any(str(r[0]).startswith("Full output stocks") for r in b.rows)
+        )
         return next(r for r in summary.rows if str(r[0]).startswith("Full output stocks"))
 
     with closing(Store(tmp_path / "ind.db")) as store:
         for tick, month in [(1000, 1), (2000, 2)]:
-            add(store, tick, (1980, month, 1), [industry()],
-                [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 80, "capacity": 100}])
+            add(
+                store,
+                tick,
+                (1980, month, 1),
+                [industry()],
+                [{"kind": "industry", "owner": 10, "stockId": 1, "cargos": [3], "count": 80, "capacity": 100}],
+            )
         default_row = full_row(document(store, "industries"))
         lowered_row = full_row(document(store, "industries", Thresholds(full_stock_ratio=0.75)))
     assert default_row[0] == "Full output stocks ≥90% (all)" and default_row[1:3] == [0, 0]

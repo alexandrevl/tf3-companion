@@ -19,8 +19,8 @@ from .reader import EvidenceReader
 @dataclass(frozen=True)
 class LineSeries:
     line_id: int
-    name: str | None                    # newest non-empty stored name
-    points: tuple[LinePoint, ...]       # one point per retained sample date, oldest first
+    name: str | None  # newest non-empty stored name
+    points: tuple[LinePoint, ...]  # one point per retained sample date, oldest first
 
 
 @dataclass(frozen=True)
@@ -31,14 +31,14 @@ class CurrentLine:
     has_vehicles: bool
     carrier: str | None
     issues: tuple[str, ...]
-    oldest_purchase: int | None         # oldest purchase tick among the line's currently assigned vehicles
+    oldest_purchase: int | None  # oldest purchase tick among the line's currently assigned vehicles
 
 
 @dataclass(frozen=True)
 class OccupancySample:
     tick: int
     date: str
-    loads: tuple[tuple[int, float], ...]    # (line id, instantaneous used/capacity ratio) where defined
+    loads: tuple[tuple[int, float], ...]  # (line id, instantaneous used/capacity ratio) where defined
 
 
 @dataclass(frozen=True)
@@ -71,8 +71,16 @@ def load(reader: EvidenceReader, context: EvaluationContext) -> LinesHistoryEvid
             read += 1
             if row["game_time"] not in kept:
                 continue
-            points.append(LinePoint(row["game_time"], kept[row["game_time"]], row["profit_year"],
-                                    row["transported_year"], row["rate"], row["vehicles"]))
+            points.append(
+                LinePoint(
+                    row["game_time"],
+                    kept[row["game_time"]],
+                    row["profit_year"],
+                    row["transported_year"],
+                    row["rate"],
+                    row["vehicles"],
+                )
+            )
             if row["name"]:
                 name = row["name"]
         if points:
@@ -81,20 +89,36 @@ def load(reader: EvidenceReader, context: EvaluationContext) -> LinesHistoryEvid
     current = []
     for raw in endpoint.lines:
         bought = [v["purchaseTime"] for v in endpoint.line_vehicles(raw) if v.get("purchaseTime") is not None]
-        current.append(CurrentLine(
-            raw["id"], bool(raw.get("vehicles")), analysis.line_carrier(endpoint, raw),
-            tuple(sorted({str(i.get("type")) for i in raw.get("issues") or [] if i.get("type")})),
-            min(bought) if bought else None))
+        current.append(
+            CurrentLine(
+                raw["id"],
+                bool(raw.get("vehicles")),
+                analysis.line_carrier(endpoint, raw),
+                tuple(sorted({str(i.get("type")) for i in raw.get("issues") or [] if i.get("type")})),
+                min(bought) if bought else None,
+            )
+        )
 
     occupancy = []
     for tick in spread([s.tick for s in samples], OCCUPANCY_SAMPLES):
         snap = reader.hydrate(tick)
         if snap is None:
             continue
-        occupancy.append(OccupancySample(
-            snap.game_time, snap.date_label,
-            tuple((raw["id"], load) for raw in snap.lines if (load := analysis.line_load(raw)) is not None)))
+        occupancy.append(
+            OccupancySample(
+                snap.game_time,
+                snap.date_label,
+                tuple((raw["id"], load) for raw in snap.lines if (load := analysis.line_load(raw)) is not None),
+            )
+        )
 
     return LinesHistoryEvidence(
-        endpoint=reader.ref(endpoint), samples=samples, series=tuple(series), current=tuple(current),
-        occupancy=tuple(occupancy), eligible=reader.count_samples(), read=read, hydrated=reader.hydrated)
+        endpoint=reader.ref(endpoint),
+        samples=samples,
+        series=tuple(series),
+        current=tuple(current),
+        occupancy=tuple(occupancy),
+        eligible=reader.count_samples(),
+        read=read,
+        hydrated=reader.hydrated,
+    )

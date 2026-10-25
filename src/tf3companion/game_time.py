@@ -1,4 +1,5 @@
 """Evidence-bound calendar time. No nominal tick duration is a calendar fallback."""
+
 from __future__ import annotations
 
 import hashlib
@@ -36,8 +37,13 @@ class TimeMeasure:
     unit: str = "GAME-YEAR"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"value": self.value, "unit": self.unit, "method": self.method,
-                "reason": self.reason, "anchors": list(self.anchors)}
+        return {
+            "value": self.value,
+            "unit": self.unit,
+            "method": self.method,
+            "reason": self.reason,
+            "anchors": list(self.anchors),
+        }
 
 
 @dataclass(frozen=True)
@@ -48,8 +54,7 @@ class CalendarEstimate:
     anchors: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {"ordinal": self.ordinal, "method": self.method, "reason": self.reason,
-                "anchors": list(self.anchors)}
+        return {"ordinal": self.ordinal, "method": self.method, "reason": self.reason, "anchors": list(self.anchors)}
 
 
 @dataclass(frozen=True)
@@ -105,10 +110,13 @@ class GameCalendarClock:
 
     def bounded(self, tick: float) -> GameCalendarClock:
         """Reuse compact evidence at/before a historical endpoint, never future anchors."""
-        return GameCalendarClock(tuple(a for a in self.anchors if a[0] <= tick),
-                                 {**self.context, "selectedTick": tick},
-                                 self.ambiguous, self.invalid_dates,
-                                 tuple(a for a in self.unavailable_ticks if a[0] <= tick))
+        return GameCalendarClock(
+            tuple(a for a in self.anchors if a[0] <= tick),
+            {**self.context, "selectedTick": tick},
+            self.ambiguous,
+            self.invalid_dates,
+            tuple(a for a in self.unavailable_ticks if a[0] <= tick),
+        )
 
     @property
     def time_basis(self) -> dict[str, Any]:
@@ -123,9 +131,14 @@ class GameCalendarClock:
         rates = {(b[0] - a[0]) / (b[1] - a[1]) for a, b in zip(self.anchors, self.anchors[1:]) if b[1] > a[1]}
         if len(rates) > 1:
             warnings.append("Observed tick/calendar rates vary; interpolation is a local estimate.")
-        return {"version": VERSION, "daysPerYear": DAYS_PER_YEAR, **scope,
-                "anchorHash": digest, "anchorBounds": [self._ref(a) for a in (self.anchors[:1] + self.anchors[-1:])],
-                "warnings": warnings}
+        return {
+            "version": VERSION,
+            "daysPerYear": DAYS_PER_YEAR,
+            **scope,
+            "anchorHash": digest,
+            "anchorBounds": [self._ref(a) for a in (self.anchors[:1] + self.anchors[-1:])],
+            "warnings": warnings,
+        }
 
     @staticmethod
     def _ref(anchor: tuple[float, int]) -> dict[str, Any]:
@@ -145,15 +158,18 @@ class GameCalendarClock:
             if tick == anchor[0]:
                 return CalendarEstimate(float(anchor[1]), "calendar-dates", anchors=(self._ref(anchor),))
         if not self.anchors:
-            return CalendarEstimate(None, reason="invalid-calendar-date" if self.invalid_dates else "missing-calendar-date")
+            return CalendarEstimate(
+                None, reason="invalid-calendar-date" if self.invalid_dates else "missing-calendar-date"
+            )
         if tick < self.anchors[0][0] or tick > self.anchors[-1][0]:
             return CalendarEstimate(None, reason="outside-observed-calendar")
         from bisect import bisect_left, bisect_right
+
         ticks = tuple(a[0] for a in self.anchors)
         days = tuple(a[1] for a in self.anchors)
         right = bisect_right(ticks, tick)
         best = None
-        for a in self.anchors[:bisect_left(ticks, tick)]:
+        for a in self.anchors[: bisect_left(ticks, tick)]:
             index = max(right, bisect_left(days, a[1] + 7))
             if index >= len(self.anchors):
                 continue
@@ -166,8 +182,9 @@ class GameCalendarClock:
         a, b = best[3:]
         ordinal = a[1] + (tick - a[0]) * (b[1] - a[1]) / (b[0] - a[0])
         span = b[1] - a[1]
-        refs = tuple({**self._ref(anchor), "pairSpanDays": span,
-                      "pairTicksPerDay": (b[0] - a[0]) / span} for anchor in (a, b))
+        refs = tuple(
+            {**self._ref(anchor), "pairSpanDays": span, "pairTicksPerDay": (b[0] - a[0]) / span} for anchor in (a, b)
+        )
         return CalendarEstimate(ordinal, "calendar-interpolation", anchors=refs)
 
     def elapsed_between_ticks(self, start: float | None, end: float | None) -> TimeMeasure:
@@ -185,7 +202,10 @@ class GameCalendarClock:
             return TimeMeasure(None, reason="ambiguous-timeline")
         a, b = calendar_ordinal(start), calendar_ordinal(end)
         if a is None or b is None:
-            return TimeMeasure(None, reason="invalid-calendar-date" if start is not None and end is not None else "missing-calendar-date")
+            return TimeMeasure(
+                None,
+                reason="invalid-calendar-date" if start is not None and end is not None else "missing-calendar-date",
+            )
         if b < a:
             return TimeMeasure(None, reason="ambiguous-timeline")
         return TimeMeasure((b - a) / DAYS_PER_YEAR, "calendar-dates")

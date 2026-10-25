@@ -21,7 +21,11 @@ def test_ingest_is_idempotent_and_prunes_old_files(paths):
     assert len(first.ingested) == 4
     assert list(first.failed) == ["tf3c_snap_000000000999999.lua"]
     assert len(first.pruned) == 2
-    assert sorted(p.name for p in folder.iterdir()) == ["tf3c_snap_000000000003000.lua", "tf3c_snap_000000000004000.lua", "tf3c_snap_000000000999999.lua"]
+    assert sorted(p.name for p in folder.iterdir()) == [
+        "tf3c_snap_000000000003000.lua",
+        "tf3c_snap_000000000004000.lua",
+        "tf3c_snap_000000000999999.lua",
+    ]
     second = store.ingest_folders([folder], keep_files=2)
     assert second.ingested == [] and len(second.skipped) == 2
     assert store.snapshot_count() == 4
@@ -31,7 +35,9 @@ def test_ingest_is_idempotent_and_prunes_old_files(paths):
 def test_ingest_reimports_rewritten_files_and_ignores_other_exports(paths):
     write_snapshot(paths.snapshot_folder, base_snapshot(game_time=5 * YEAR))
     (paths.snapshot_folder / "my_export.lua").write_text("function data() return {} end", encoding="utf-8")
-    (paths.snapshot_folder / "tf3_bridge_snap_000000000006000.lua").write_text("function data() return {} end", encoding="utf-8")
+    (paths.snapshot_folder / "tf3_bridge_snap_000000000006000.lua").write_text(
+        "function data() return {} end", encoding="utf-8"
+    )
     store = Store(paths.database)
     assert store.ingest_folders([paths.snapshot_folder]).ingested == ["tf3c_snap_000000000005000.lua"]
     data = base_snapshot(game_time=5 * YEAR)
@@ -83,6 +89,7 @@ def test_service_requires_a_snapshot(paths):
 
 def test_refresh_writes_request_and_waits_for_matching_snapshot(paths):
     companion = Companion(paths)
+
     def fake_game():
         deadline = time.monotonic() + 5
         while not paths.request_file.exists() and time.monotonic() < deadline:
@@ -92,6 +99,7 @@ def test_refresh_writes_request_and_waits_for_matching_snapshot(paths):
         data["meta"]["reason"] = "request"
         data["meta"]["requestId"] = request["id"]
         write_snapshot(paths.snapshot_folder, data)
+
     game = threading.Thread(target=fake_game)
     game.start()
     result = companion.refresh(timeout_s=5, poll_s=0.05)
@@ -137,6 +145,7 @@ def test_environment_overrides_create_database_outside_package(tmp_path, monkeyp
 def test_newer_schema_fails_without_blocking_supported_snapshot(paths):
     newer = base_snapshot(game_time=11 * YEAR)
     from tf3companion.snapshot import READABLE_SCHEMA
+
     newer["meta"]["schemaVersion"] = READABLE_SCHEMA + 1
     failed = write_snapshot(paths.snapshot_folder, newer)
     write_snapshot(paths.snapshot_folder, base_snapshot())

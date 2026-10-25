@@ -18,13 +18,13 @@ from .models import EvaluationContext, SampleRef, Unavailable, ViewCoverage
 if TYPE_CHECKING:
     from .lines_history_evidence import LinesHistoryEvidence
 
-MIN_POINTS = 5            # profit samples needed inside the evaluation window
-MAX_K = 6                 # samples per early/recent group (K = min(MAX_K, max(2, n // 3)))
+MIN_POINTS = 5  # profit samples needed inside the evaluation window
+MAX_K = 6  # samples per early/recent group (K = min(MAX_K, max(2, n // 3)))
 LONG_HISTORY_YEARS = 1.5  # with at least this much history, evaluate only the last year
-EVENT_MIN_POINTS = 5      # profit samples needed before a line's own MAD is used for fleet-change verdicts
-EVENT_SIDE_SAMPLES = 3    # newest samples used on each side of a vehicle-count change
-OCCUPANCY_SAMPLES = 12    # full snapshots sampled for instantaneous occupancy
-FULL_OCCUPANCY = 0.8      # mean occupancy at which a rising line counts as full
+EVENT_MIN_POINTS = 5  # profit samples needed before a line's own MAD is used for fleet-change verdicts
+EVENT_SIDE_SAMPLES = 3  # newest samples used on each side of a vehicle-count change
+OCCUPANCY_SAMPLES = 12  # full snapshots sampled for instantaneous occupancy
+FULL_OCCUPANCY = 0.8  # mean occupancy at which a rising line counts as full
 
 CLASSES = ("deteriorating", "improving", "stable", "too new", "insufficient data")
 
@@ -64,13 +64,15 @@ class LineTrajectory:
     line_id: int
     name: str
     points: tuple[LinePoint, ...]
-    current: bool                       # present in the endpoint snapshot and sampled at the endpoint
+    current: bool  # present in the endpoint snapshot and sampled at the endpoint
     carrier: str | None
     issues: tuple[str, ...]
     trend_class: str
-    reason: str                         # stable code: classified | removed | no-vehicles | maturity-unavailable | too-new | insufficient-samples
-    maturity: TimeMeasure | None        # age of the oldest currently assigned vehicle (a proxy, not line age)
-    window_samples: int                 # non-missing profit samples inside the evaluation window
+    reason: (
+        str  # stable code: classified | removed | no-vehicles | maturity-unavailable | too-new | insufficient-samples
+    )
+    maturity: TimeMeasure | None  # age of the oldest currently assigned vehicle (a proxy, not line age)
+    window_samples: int  # non-missing profit samples inside the evaluation window
     window_points: tuple[LinePoint, ...]  # those samples (empty for removed lines)
     k: int
     early: float | None
@@ -85,12 +87,12 @@ class LineTrajectory:
     transported_recent: float | None
     rate_early: float | None
     rate_recent: float | None
-    vehicles_first: int | None          # first/last known vehicle count over all samples
+    vehicles_first: int | None  # first/last known vehicle count over all samples
     vehicles_last: int | None
-    window_vehicles_first: int | None   # same, restricted to samples since the window start
+    window_vehicles_first: int | None  # same, restricted to samples since the window start
     window_vehicles_last: int | None
-    highest: LinePoint | None           # highest known profit sample (earliest on ties)
-    lowest: LinePoint | None            # lowest known profit sample (earliest on ties)
+    highest: LinePoint | None  # highest known profit sample (earliest on ties)
+    lowest: LinePoint | None  # lowest known profit sample (earliest on ties)
     occupancy: tuple[OccupancyPoint, ...]
     occupancy_mean: float | None
     occupancy_latest: float | None
@@ -101,7 +103,7 @@ class VehicleChangeEvent:
     line_id: int
     name: str
     tick: int
-    date: str                           # first sample showing the new count, not the purchase date
+    date: str  # first sample showing the new count, not the purchase date
     vehicles_before: int
     vehicles_after: int
     profit_before: float | None
@@ -109,7 +111,7 @@ class VehicleChangeEvent:
     delta: float | None
     threshold: float | None
     samples_after: int
-    verdict: str                        # profit-fell | profit-rose | within-noise | line-start | too-soon-after | too-soon-before
+    verdict: str  # profit-fell | profit-rose | within-noise | line-start | too-soon-after | too-soon-before
     profit_per_vehicle_before: float | None
     profit_per_vehicle_after: float | None
 
@@ -126,15 +128,15 @@ class LineChange:
     vehicles_last: int | None
     profit_first: int | None
     profit_last: int | None
-    trend_class: str | None             # None for removed lines
+    trend_class: str | None  # None for removed lines
 
 
 @dataclass(frozen=True)
 class ManualFollowUp:
     line_id: int
     name: str
-    code: str                           # declining-with-added-vehicles | declining-without-added-vehicles | rising-and-full | persistent-loss
-    action: str                         # review-added-vehicle | inspect-supply-and-issues | test-more-capacity | rework-or-close
+    code: str  # declining-with-added-vehicles | declining-without-added-vehicles | rising-and-full | persistent-loss
+    action: str  # review-added-vehicle | inspect-supply-and-issues | test-more-capacity | rework-or-close
     trend_class: str
     early: float | None
     recent: float | None
@@ -159,30 +161,30 @@ class ClassSummary:
 @dataclass(frozen=True)
 class ClassOrder:
     trend_class: str
-    line_ids: tuple[int, ...]           # current lines of the class: deteriorating by change, improving by -change, else by id
+    line_ids: tuple[int, ...]  # current lines of the class: deteriorating by change, improving by -change, else by id
 
 
 @dataclass(frozen=True)
 class LinesHistoryView:
-    samples: tuple[SampleRef, ...]      # one retained sample per distinct date, oldest first
-    span: TimeMeasure                   # elapsed game time between first and last retained sample
-    short_span: bool                    # span known and below the maturity threshold
-    too_few_samples: bool               # fewer distinct dates than MIN_POINTS
-    window_kind: str                    # last-year | entire-history
+    samples: tuple[SampleRef, ...]  # one retained sample per distinct date, oldest first
+    span: TimeMeasure  # elapsed game time between first and last retained sample
+    short_span: bool  # span known and below the maturity threshold
+    too_few_samples: bool  # fewer distinct dates than MIN_POINTS
+    window_kind: str  # last-year | entire-history
     window_start: SampleRef | None
-    median_current_profit: float | None # median |latest profit| across current lines
-    floor: float                        # median-current floor term of the threshold
+    median_current_profit: float | None  # median |latest profit| across current lines
+    floor: float  # median-current floor term of the threshold
     criteria: tuple[Criterion, ...]
     trajectories: tuple[LineTrajectory, ...]
     class_summary: tuple[ClassSummary, ...]
     class_order: tuple[ClassOrder, ...]
-    profit_ranking: tuple[int, ...]     # current lines with a latest profit, best first
-    compact_order: tuple[int, ...]      # current lines by class priority then size of change
-    vehicle_changes: tuple[VehicleChangeEvent, ...]   # ranked: fell, rose, within noise, too soon, line start
+    profit_ranking: tuple[int, ...]  # current lines with a latest profit, best first
+    compact_order: tuple[int, ...]  # current lines by class priority then size of change
+    vehicle_changes: tuple[VehicleChangeEvent, ...]  # ranked: fell, rose, within noise, too soon, line start
     additions: int
     reductions: int
     changed_lines: int
-    changes_comparable: bool            # at least two retained samples
+    changes_comparable: bool  # at least two retained samples
     created: tuple[LineChange, ...]
     removed: tuple[LineChange, ...]
     follow_ups: tuple[ManualFollowUp, ...]
@@ -243,8 +245,12 @@ def evaluate(evidence: "LinesHistoryEvidence", *, context: EvaluationContext) ->
 
     span = clock.elapsed_between_ticks(first_gt, last_gt)
     long_hist = span.value is not None and span.value >= LONG_HISTORY_YEARS
-    candidates = [p.tick for s in evidence.series for p in s.points
-                  if (elapsed := clock.elapsed_between_ticks(p.tick, last_gt).value) is not None and elapsed <= 1]
+    candidates = [
+        p.tick
+        for s in evidence.series
+        for p in s.points
+        if (elapsed := clock.elapsed_between_ticks(p.tick, last_gt).value) is not None and elapsed <= 1
+    ]
     window_tick = min(candidates) if long_hist and candidates else first_gt
     dates = sorted({(p.tick, p.date) for s in evidence.series for p in s.points})
     window_date = _date_of(dates, window_tick)
@@ -264,7 +270,9 @@ def evaluate(evidence: "LinesHistoryEvidence", *, context: EvaluationContext) ->
             occupancy.setdefault(lid, []).append(OccupancyPoint(sample.tick, sample.date, load))
 
     in_current = {s.line_id: s.line_id in current and s.points[-1].tick == last_gt for s in evidence.series}
-    present = [abs(s.points[-1].profit) for s in evidence.series if in_current[s.line_id] and s.points[-1].profit is not None]
+    present = [
+        abs(s.points[-1].profit) for s in evidence.series if in_current[s.line_id] and s.points[-1].profit is not None
+    ]
     median_present = float(median(present)) if present else None
     floor = policy.floor_share * (median(present) if present else 0)
 
@@ -310,21 +318,47 @@ def evaluate(evidence: "LinesHistoryEvidence", *, context: EvaluationContext) ->
         win_since = window[0].tick if window else None
         vfirst, vlast = _vehicle_range(pts)
         wfirst, wlast = _vehicle_range(pts, win_since)
-        trajectories.append(LineTrajectory(
-            line_id=lid, name=names[lid], points=pts, current=is_current,
-            carrier=cur.carrier if is_current else None, issues=cur.issues if is_current else (),
-            trend_class=cls, reason=reason, maturity=maturity, window_samples=len(window), window_points=tuple(window), k=k,
-            early=early, recent=recent, delta=delta, mad=mad, relative_term=rel, noise_term=noise,
-            floor_term=floor if classified else None, threshold=threshold,
-            transported_early=_med([p.transported for p in first_k if p.transported is not None]) if classified else None,
-            transported_recent=_med([p.transported for p in last_k if p.transported is not None]) if classified else None,
-            rate_early=_med([p.rate for p in first_k if p.rate is not None]) if classified else None,
-            rate_recent=_med([p.rate for p in last_k if p.rate is not None]) if classified else None,
-            vehicles_first=vfirst, vehicles_last=vlast, window_vehicles_first=wfirst, window_vehicles_last=wlast,
-            highest=max(known, key=lambda p: (p.profit, -p.tick)) if known else None,
-            lowest=min(known, key=lambda p: (p.profit, p.tick)) if known else None,
-            occupancy=occ, occupancy_mean=sum(loads) / len(loads) if loads else None,
-            occupancy_latest=loads[-1] if loads else None))
+        trajectories.append(
+            LineTrajectory(
+                line_id=lid,
+                name=names[lid],
+                points=pts,
+                current=is_current,
+                carrier=cur.carrier if is_current else None,
+                issues=cur.issues if is_current else (),
+                trend_class=cls,
+                reason=reason,
+                maturity=maturity,
+                window_samples=len(window),
+                window_points=tuple(window),
+                k=k,
+                early=early,
+                recent=recent,
+                delta=delta,
+                mad=mad,
+                relative_term=rel,
+                noise_term=noise,
+                floor_term=floor if classified else None,
+                threshold=threshold,
+                transported_early=_med([p.transported for p in first_k if p.transported is not None])
+                if classified
+                else None,
+                transported_recent=_med([p.transported for p in last_k if p.transported is not None])
+                if classified
+                else None,
+                rate_early=_med([p.rate for p in first_k if p.rate is not None]) if classified else None,
+                rate_recent=_med([p.rate for p in last_k if p.rate is not None]) if classified else None,
+                vehicles_first=vfirst,
+                vehicles_last=vlast,
+                window_vehicles_first=wfirst,
+                window_vehicles_last=wlast,
+                highest=max(known, key=lambda p: (p.profit, -p.tick)) if known else None,
+                lowest=min(known, key=lambda p: (p.profit, p.tick)) if known else None,
+                occupancy=occ,
+                occupancy_mean=sum(loads) / len(loads) if loads else None,
+                occupancy_latest=loads[-1] if loads else None,
+            )
+        )
 
     cur_lines = [t for t in trajectories if t.current]
     summary = []
@@ -336,7 +370,10 @@ def evaluate(evidence: "LinesHistoryEvidence", *, context: EvaluationContext) ->
         sel = [t for t in cur_lines if t.trend_class == c]
         sel.sort(key=lambda t: t.delta or 0, reverse=(c == "improving"))
         class_order.append(ClassOrder(c, tuple(t.line_id for t in sel)))
-    ranked = sorted((t for t in cur_lines if t.points[-1].profit is not None), key=lambda t: (-t.points[-1].profit, t.name, t.line_id))
+    ranked = sorted(
+        (t for t in cur_lines if t.points[-1].profit is not None),
+        key=lambda t: (-t.points[-1].profit, t.name, t.line_id),
+    )
     pri = {c: i for i, c in enumerate(CLASSES)}
 
     def compact_key(t: LineTrajectory):
@@ -347,6 +384,7 @@ def evaluate(evidence: "LinesHistoryEvidence", *, context: EvaluationContext) ->
         else:
             second = -(t.points[-1].profit or 0)
         return pri[t.trend_class], second, t.name, t.line_id
+
     compact = sorted(cur_lines, key=compact_key)
 
     events = _vehicle_events(trajectories, floor, policy)
@@ -358,44 +396,106 @@ def evaluate(evidence: "LinesHistoryEvidence", *, context: EvaluationContext) ->
     comparable = len(samples) >= 2
     if comparable:
         ticks = [s.tick for s in samples]
-        for t in sorted((t for t in trajectories if t.points[0].tick > first_gt), key=lambda t: (t.points[0].tick, t.name, t.line_id)):
+        for t in sorted(
+            (t for t in trajectories if t.points[0].tick > first_gt),
+            key=lambda t: (t.points[0].tick, t.name, t.line_id),
+        ):
             i = ticks.index(t.points[0].tick)
-            created.append(LineChange(t.line_id, t.name, samples[i - 1], samples[i], t.points[0].vehicles, t.points[-1].vehicles,
-                                      t.points[0].profit, t.points[-1].profit, t.trend_class if t.current else None))
-        for t in sorted((t for t in trajectories if t.points[-1].tick < last_gt), key=lambda t: (t.points[-1].tick, t.name, t.line_id)):
+            created.append(
+                LineChange(
+                    t.line_id,
+                    t.name,
+                    samples[i - 1],
+                    samples[i],
+                    t.points[0].vehicles,
+                    t.points[-1].vehicles,
+                    t.points[0].profit,
+                    t.points[-1].profit,
+                    t.trend_class if t.current else None,
+                )
+            )
+        for t in sorted(
+            (t for t in trajectories if t.points[-1].tick < last_gt),
+            key=lambda t: (t.points[-1].tick, t.name, t.line_id),
+        ):
             i = ticks.index(t.points[-1].tick)
-            removed.append(LineChange(t.line_id, t.name, samples[i], samples[i + 1], t.points[0].vehicles, t.points[-1].vehicles,
-                                      t.points[0].profit, t.points[-1].profit, None))
+            removed.append(
+                LineChange(
+                    t.line_id,
+                    t.name,
+                    samples[i],
+                    samples[i + 1],
+                    t.points[0].vehicles,
+                    t.points[-1].vehicles,
+                    t.points[0].profit,
+                    t.points[-1].profit,
+                    None,
+                )
+            )
 
     follow = _follow_ups(cur_lines)
 
-    unavailable = (Unavailable("calendar-span-unavailable", "elapsed game time between the first and last sample is unknown"),) if span.value is None else ()
+    unavailable = (
+        (Unavailable("calendar-span-unavailable", "elapsed game time between the first and last sample is unknown"),)
+        if span.value is None
+        else ()
+    )
     coverage = ViewCoverage(
-        endpoint=evidence.endpoint, eligible=evidence.eligible, read=evidence.read, used=len(samples),
-        hydrated=evidence.hydrated, hydration_limit=OCCUPANCY_SAMPLES,
+        endpoint=evidence.endpoint,
+        eligible=evidence.eligible,
+        read=evidence.read,
+        used=len(samples),
+        hydrated=evidence.hydrated,
+        hydration_limit=OCCUPANCY_SAMPLES,
         sampled=tuple(SampleRef(o.tick, o.date) for o in evidence.occupancy),
         limits={"occupancySnapshots": OCCUPANCY_SAMPLES, "retainedSamplesPerDate": 1},
-        unavailable=unavailable)
+        unavailable=unavailable,
+    )
     criteria = (
         Criterion("minProfitSamples", MIN_POINTS, "samples", "profit samples needed inside the evaluation window"),
         Criterion("maxGroupSize", MAX_K, "samples", "samples per early/recent group = min(max, max(2, n // 3))"),
-        Criterion("longHistoryYears", LONG_HISTORY_YEARS, "game-years", "with at least this history only the last game-year is evaluated"),
-        Criterion("eventSideSamples", EVENT_SIDE_SAMPLES, "samples", "newest samples used on each side of a vehicle-count change"),
-        Criterion("occupancySnapshots", OCCUPANCY_SAMPLES, "snapshots", "full snapshots sampled for instantaneous occupancy"),
+        Criterion(
+            "longHistoryYears",
+            LONG_HISTORY_YEARS,
+            "game-years",
+            "with at least this history only the last game-year is evaluated",
+        ),
+        Criterion(
+            "eventSideSamples",
+            EVENT_SIDE_SAMPLES,
+            "samples",
+            "newest samples used on each side of a vehicle-count change",
+        ),
+        Criterion(
+            "occupancySnapshots", OCCUPANCY_SAMPLES, "snapshots", "full snapshots sampled for instantaneous occupancy"
+        ),
         Criterion("fullOccupancy", FULL_OCCUPANCY, "ratio", "mean occupancy at which a rising line is treated as full"),
     )
     return LinesHistoryView(
-        samples=samples, span=span,
+        samples=samples,
+        span=span,
         short_span=span.value is not None and span.value < mature,
         too_few_samples=len(samples) < MIN_POINTS,
         window_kind="last-year" if long_hist else "entire-history",
         window_start=SampleRef(window_tick, window_date) if samples else None,
-        median_current_profit=median_present, floor=float(floor), criteria=criteria,
-        trajectories=tuple(trajectories), class_summary=tuple(summary), class_order=tuple(class_order),
-        profit_ranking=tuple(t.line_id for t in ranked), compact_order=tuple(t.line_id for t in compact),
-        vehicle_changes=events, additions=additions, reductions=len(events) - additions, changed_lines=changed,
-        changes_comparable=comparable, created=tuple(created), removed=tuple(removed),
-        follow_ups=follow, coverage=coverage)
+        median_current_profit=median_present,
+        floor=float(floor),
+        criteria=criteria,
+        trajectories=tuple(trajectories),
+        class_summary=tuple(summary),
+        class_order=tuple(class_order),
+        profit_ranking=tuple(t.line_id for t in ranked),
+        compact_order=tuple(t.line_id for t in compact),
+        vehicle_changes=events,
+        additions=additions,
+        reductions=len(events) - additions,
+        changed_lines=changed,
+        changes_comparable=comparable,
+        created=tuple(created),
+        removed=tuple(removed),
+        follow_ups=follow,
+        coverage=coverage,
+    )
 
 
 _VERDICT_ORDER = {"profit-fell": 0, "profit-rose": 1, "within-noise": 2, "line-start": 4}
@@ -405,13 +505,20 @@ def _vehicle_events(lines: list[LineTrajectory], floor: float, policy) -> tuple[
     events: list[VehicleChangeEvent] = []
     for ln in lines:
         pts = ln.points
-        idx = [i for i in range(1, len(pts)) if pts[i].vehicles is not None and pts[i - 1].vehicles is not None
-               and pts[i].vehicles != pts[i - 1].vehicles]
+        idx = [
+            i
+            for i in range(1, len(pts))
+            if pts[i].vehicles is not None
+            and pts[i - 1].vehicles is not None
+            and pts[i].vehicles != pts[i - 1].vehicles
+        ]
         ppts = [p for p in pts if p.profit is not None]
         mad = _detrended_mad(ppts, min(MAX_K, max(2, len(ppts) // 3))) if len(ppts) >= EVENT_MIN_POINTS else 0.0
         for n, i in enumerate(idx):
             end = idx[n + 1] if n + 1 < len(idx) else len(pts)
-            before = [p.profit for p in pts[max(0, (idx[n - 1] if n else 0)):i] if p.profit is not None][-EVENT_SIDE_SAMPLES:]
+            before = [p.profit for p in pts[max(0, (idx[n - 1] if n else 0)) : i] if p.profit is not None][
+                -EVENT_SIDE_SAMPLES:
+            ]
             after = [p.profit for p in pts[i:end] if p.profit is not None][-EVENT_SIDE_SAMPLES:]
             seg = end - i
             b, a = _med(before), _med(after)
@@ -425,9 +532,24 @@ def _vehicle_events(lines: list[LineTrajectory], floor: float, policy) -> tuple[
                 verdict = "profit-rose" if delta > thr else "profit-fell" if delta < -thr else "within-noise"
             elif b is None or len(before) < 2:
                 verdict = "too-soon-before"
-            events.append(VehicleChangeEvent(
-                ln.line_id, ln.name, pts[i].tick, pts[i].date, v0, v1, b, a, delta, thr, seg, verdict,
-                b / v0 if b is not None and v0 else None, a / v1 if a is not None and v1 else None))
+            events.append(
+                VehicleChangeEvent(
+                    ln.line_id,
+                    ln.name,
+                    pts[i].tick,
+                    pts[i].date,
+                    v0,
+                    v1,
+                    b,
+                    a,
+                    delta,
+                    thr,
+                    seg,
+                    verdict,
+                    b / v0 if b is not None and v0 else None,
+                    a / v1 if a is not None and v1 else None,
+                )
+            )
     events.sort(key=lambda e: (_VERDICT_ORDER.get(e.verdict, 3), -abs(e.delta or 0), e.name, e.date, e.line_id, e.tick))
     return tuple(events)
 
@@ -437,9 +559,23 @@ def _follow_ups(cur: list[LineTrajectory]) -> tuple[ManualFollowUp, ...]:
 
     def make(t: LineTrajectory, code: str, action: str) -> ManualFollowUp:
         return ManualFollowUp(
-            t.line_id, t.name, code, action, t.trend_class, t.early, t.recent, t.vehicles_first, t.vehicles_last,
-            t.window_vehicles_first, t.window_vehicles_last, t.points[-1].profit, t.occupancy_mean, t.occupancy_latest,
-            len(t.occupancy), t.issues)
+            t.line_id,
+            t.name,
+            code,
+            action,
+            t.trend_class,
+            t.early,
+            t.recent,
+            t.vehicles_first,
+            t.vehicles_last,
+            t.window_vehicles_first,
+            t.window_vehicles_last,
+            t.points[-1].profit,
+            t.occupancy_mean,
+            t.occupancy_latest,
+            len(t.occupancy),
+            t.issues,
+        )
 
     def window_net(t: LineTrajectory) -> int | None:
         return _net((t.window_vehicles_first, t.window_vehicles_last))
@@ -456,8 +592,13 @@ def _follow_ups(cur: list[LineTrajectory]) -> tuple[ManualFollowUp, ...]:
             rising += 1
             if rising >= FOLLOWUP_RISING_FULL:
                 break
-    neg = [t for t in cur if t.trend_class in ("deteriorating", "stable", "improving") and t.window_points
-           and all(p.profit < 0 for p in t.window_points)]
+    neg = [
+        t
+        for t in cur
+        if t.trend_class in ("deteriorating", "stable", "improving")
+        and t.window_points
+        and all(p.profit < 0 for p in t.window_points)
+    ]
     neg.sort(key=lambda t: t.points[-1].profit if t.points[-1].profit is not None else t.window_points[-1].profit)
     for t in neg[:FOLLOWUP_PERSISTENT_LOSS]:
         rows.append(make(t, "persistent-loss", "rework-or-close"))

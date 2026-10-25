@@ -1,4 +1,5 @@
 """Evaluator: three-valued logic, availability, roles, rules, aggregates, recommendations and ladders."""
+
 from __future__ import annotations
 
 import itertools
@@ -16,6 +17,7 @@ from tf3companion.methodology.prepare import inspect
 FIXTURES = Path(__file__).parent / "fixtures" / "methodologies"
 T, F_, U = True, False, None
 
+
 @pytest.fixture
 def geometry_capability(monkeypatch):
     """Exercise evaluator geometry with an explicitly supported hypothetical collector capability."""
@@ -27,8 +29,10 @@ def test_current_release_rejects_geometry_even_if_a_draft_snapshot_contains_posi
     m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
     with pytest.raises(MethodologyError) as error:
         run(m, ladder_net(95, "ROAD"))
-    assert any(issue.category == "unsupported-capability" and issue.itemId == "mode-by-distance"
-               for issue in error.value.issues)
+    assert any(
+        issue.category == "unsupported-capability" and issue.itemId == "mode-by-distance"
+        for issue in error.value.issues
+    )
 
 
 class Scope:
@@ -84,12 +88,29 @@ def test_compound_condition_with_an_unknown_part():
     assert eval_condition({"all": [leaf("t"), leaf("u")]}, Scope()) is None
 
 
-@pytest.mark.parametrize("op, left, right, expected", [
-    ("eq", 3, 3, T), ("ne", 3, 4, T), ("lt", 3, 4, T), ("le", 4, 4, T), ("gt", 5, 4, T), ("ge", 4, 4, T), ("lt", 4, 4, F_),
-    ("in", "a", ["a", "b"], T), ("not_in", "c", ["a", "b"], T), ("matches", "oil_refinery", "oil|refiner", T),
-    ("matches", "coal", "oil", F_), ("contains_any", ["x", "y"], ["y", "z"], T), ("contains_any", ["x"], ["z"], F_),
-    ("lt", None, 4, U), ("eq", "a", 1, U), ("eq", True, 1, U), ("in", None, ["a"], U), ("matches", None, "a", U),
-])
+@pytest.mark.parametrize(
+    "op, left, right, expected",
+    [
+        ("eq", 3, 3, T),
+        ("ne", 3, 4, T),
+        ("lt", 3, 4, T),
+        ("le", 4, 4, T),
+        ("gt", 5, 4, T),
+        ("ge", 4, 4, T),
+        ("lt", 4, 4, F_),
+        ("in", "a", ["a", "b"], T),
+        ("not_in", "c", ["a", "b"], T),
+        ("matches", "oil_refinery", "oil|refiner", T),
+        ("matches", "coal", "oil", F_),
+        ("contains_any", ["x", "y"], ["y", "z"], T),
+        ("contains_any", ["x"], ["z"], F_),
+        ("lt", None, 4, U),
+        ("eq", "a", 1, U),
+        ("eq", True, 1, U),
+        ("in", None, ["a"], U),
+        ("matches", None, "a", U),
+    ],
+)
 def test_operators(op, left, right, expected):
     assert compare(op, left, right) is expected
 
@@ -103,6 +124,7 @@ def test_unknown_before_a_true_outcome_makes_the_entity_not_evaluable():
 
 # ---- availability ---------------------------------------------------------------------
 
+
 def test_known_field_without_snapshot_data_is_skipped(geometry_capability):
     net = Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta").line(100, "L", [1, 2], profit=-1)
     m = load_file(FIXTURES / "mode-ladder.tf3c-methodology.json")
@@ -115,24 +137,48 @@ def test_known_field_without_snapshot_data_is_skipped(geometry_capability):
 
 def test_typo_is_inspectable_but_blocks_application_of_the_whole_policy():
     net = Net().station(1, "A", 10, "Alpha").line(100, "L", [1], profit=-5)
-    m = methodology(rules=[
-        {"id": "typo", "entity": "line", "outcomes": [{"when": cond("line.profit_yeer", "lt", 0), "marker": "problem"}]},
-        {"id": "good", "entity": "line", "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "problem"}]},
-    ])
+    m = methodology(
+        rules=[
+            {
+                "id": "typo",
+                "entity": "line",
+                "outcomes": [{"when": cond("line.profit_yeer", "lt", 0), "marker": "problem"}],
+            },
+            {
+                "id": "good",
+                "entity": "line",
+                "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "problem"}],
+            },
+        ]
+    )
     _, diagnostic = inspect(m.raw)
     assert diagnostic["structurallyValid"] and not diagnostic["activationEligible"]
     support = {entry["id"]: entry["status"] for entry in diagnostic["rules"]}
     assert support == {"typo": "unsupported", "good": "ok"}
-    assert any(issue["ruleId"] == "typo" and issue["category"] == "unsupported-field"
-               for issue in diagnostic["diagnostics"])
+    assert any(
+        issue["ruleId"] == "typo" and issue["category"] == "unsupported-field" for issue in diagnostic["diagnostics"]
+    )
     with pytest.raises(MethodologyError):
         run(m, net)
 
 
 def test_per_entity_missing_value_counts_as_not_evaluable():
-    net = (Net().station(1, "A", 10, "Alpha").line(100, "Old", [1], profit=-1, age=5).line(101, "NoVehicles", [1], profit=-1, age=None))
-    m = methodology(rules=[{"id": "age", "entity": "line", "outcomes": [{"when": cond("line.age_years", "lt", 3), "marker": "note"}],
-                            "default": {"marker": "ok"}}])
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha")
+        .line(100, "Old", [1], profit=-1, age=5)
+        .line(101, "NoVehicles", [1], profit=-1, age=None)
+    )
+    m = methodology(
+        rules=[
+            {
+                "id": "age",
+                "entity": "line",
+                "outcomes": [{"when": cond("line.age_years", "lt", 3), "marker": "note"}],
+                "default": {"marker": "ok"},
+            }
+        ]
+    )
     result = rule(run(m, net), "age")
     assert result.evaluated == 2 and result.not_evaluable == 1
     assert markers_of(run(m, net), "age") == {"Old": "ok"}  # the line without vehicles gets no marker
@@ -147,16 +193,29 @@ def test_supported_unclassified_reports_roles_with_unknown_data():
 
 # ---- roles ------------------------------------------------------------------------------
 
-ROLE_DOC = {"roles": {"line": [
-    {"id": "local", "select": {"all": [cond("line.is_passenger_only", "eq", True), cond("line.town_count", "le", 1)]}},
-    {"id": "intercity", "select": cond("line.is_passenger_only", "eq", True)},
-    {"id": "freight", "select": cond("line.is_passenger_only", "eq", False)},
-]}}
+ROLE_DOC = {
+    "roles": {
+        "line": [
+            {
+                "id": "local",
+                "select": {"all": [cond("line.is_passenger_only", "eq", True), cond("line.town_count", "le", 1)]},
+            },
+            {"id": "intercity", "select": cond("line.is_passenger_only", "eq", True)},
+            {"id": "freight", "select": cond("line.is_passenger_only", "eq", False)},
+        ]
+    }
+}
 
 
 def test_name_free_classification():
-    net = (Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta")
-           .line(100, "Line 7", [1, 2]).line(101, "Line 8", [1, 1]).line(102, "Line 9", [1], cargo=FREIGHT))
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha")
+        .station(2, "B", 20, "Beta")
+        .line(100, "Line 7", [1, 2])
+        .line(101, "Line 8", [1, 1])
+        .line(102, "Line 9", [1], cargo=FREIGHT)
+    )
     verdicts = run(methodology(**ROLE_DOC), net)
     index = verdicts.role_index["line"]
     assert index == {100: "intercity", 101: "local", 102: "freight"}
@@ -172,27 +231,55 @@ def test_first_matching_role_wins_and_unclassified_lines_are_counted():
 
 
 def test_name_codes_never_decide_the_town():
-    net = (Net().station(1, "Mon central", 10, "Monnickendam").station(2, "Mon harbour", 20, "Montfoort")
-           .line(100, "Bus x-Mon-LO-1", [1], profit=-10).line(101, "Bus y-Mon-LO-2", [2], profit=-20))
+    net = (
+        Net()
+        .station(1, "Mon central", 10, "Monnickendam")
+        .station(2, "Mon harbour", 20, "Montfoort")
+        .line(100, "Bus x-Mon-LO-1", [1], profit=-10)
+        .line(101, "Bus y-Mon-LO-2", [2], profit=-20)
+    )
     m = methodology(
         name_patterns={"line": [{"id": "coded", "pattern": r"^(?P<mode>\S+) .*?-(?P<scope>LO|IC)-(?P<n>\d+)$"}]},
         roles={"line": [{"id": "local", "select": cond("line.name_capture.scope", "eq", "LO")}]},
-        rules=[{"id": "by-town", "entity": "line", "aggregate": {
-            "group_by": "town",
-            "measures": {"result": {"agg": "sum", "value": "line.profit_year", "via": "line.first_stop_town"}},
-            "outcomes": [{"when": {"measure": "result", "op": "lt", "value": 0}, "marker": "note"}]}}])
+        rules=[
+            {
+                "id": "by-town",
+                "entity": "line",
+                "aggregate": {
+                    "group_by": "town",
+                    "measures": {"result": {"agg": "sum", "value": "line.profit_year", "via": "line.first_stop_town"}},
+                    "outcomes": [{"when": {"measure": "result", "op": "lt", "value": 0}, "marker": "note"}],
+                },
+            }
+        ],
+    )
     groups = {g["group"]: g["measures"]["result"] for g in rule(run(m, net), "by-town").groups}
     assert groups == {"Monnickendam": -10, "Montfoort": -20}  # two towns share the code "Mon" and stay distinct
 
 
 def test_name_patterns_use_the_first_matching_pattern_all_or_nothing():
-    net = Net().station(1, "A", 10, "Alpha").line(100, "Bus x-IC-3", [1]).line(101, "Tram plain", [1]).line(102, "", [1])
-    m = methodology(name_patterns={"line": [
-        {"id": "coded", "pattern": r"^(?P<mode>\S+) .*?-(?P<scope>LO|IC)-(?P<n>\d+)$"},
-        {"id": "first-word", "pattern": r"^(?P<mode>\S+)"}]},
-        rules=[{"id": "caps", "entity": "line", "outcomes": [
-            {"when": cond("line.name_capture.scope", "missing"), "marker": "note"},
-            {"when": cond("line.name_capture.scope", "eq", "IC"), "marker": "watch"}], "default": {"marker": "ok"}}])
+    net = (
+        Net().station(1, "A", 10, "Alpha").line(100, "Bus x-IC-3", [1]).line(101, "Tram plain", [1]).line(102, "", [1])
+    )
+    m = methodology(
+        name_patterns={
+            "line": [
+                {"id": "coded", "pattern": r"^(?P<mode>\S+) .*?-(?P<scope>LO|IC)-(?P<n>\d+)$"},
+                {"id": "first-word", "pattern": r"^(?P<mode>\S+)"},
+            ]
+        },
+        rules=[
+            {
+                "id": "caps",
+                "entity": "line",
+                "outcomes": [
+                    {"when": cond("line.name_capture.scope", "missing"), "marker": "note"},
+                    {"when": cond("line.name_capture.scope", "eq", "IC"), "marker": "watch"},
+                ],
+                "default": {"marker": "ok"},
+            }
+        ],
+    )
     result = markers_of(run(m, net), "caps")
     assert result["Bus x-IC-3"] == "watch"
     assert result["Tram plain"] == "note"  # the second pattern matched mode only: scope stays missing
@@ -201,19 +288,42 @@ def test_name_patterns_use_the_first_matching_pattern_all_or_nothing():
 
 # ---- entity rules -----------------------------------------------------------------------------------
 
+
 def graded_rules():
     return methodology(
         parameters={"loss_alert": {"value": 100000}},
-        rules=[{"id": "loss", "label": "Loss", "entity": "line", "outcomes": [
-            {"when": cond("line.loss_year", "gt", {"param": "loss_alert"}), "marker": "problem",
-             "message": "{line.name} loses {line.loss_year|money} a year, above {param.loss_alert|money}."},
-            {"when": cond("line.profit_year", "lt", 0), "marker": "watch", "message": "{line.name} loses {line.loss_year|money}."}],
-            "default": {"marker": "ok"}}])
+        rules=[
+            {
+                "id": "loss",
+                "label": "Loss",
+                "entity": "line",
+                "outcomes": [
+                    {
+                        "when": cond("line.loss_year", "gt", {"param": "loss_alert"}),
+                        "marker": "problem",
+                        "message": "{line.name} loses {line.loss_year|money} a year, above {param.loss_alert|money}.",
+                    },
+                    {
+                        "when": cond("line.profit_year", "lt", 0),
+                        "marker": "watch",
+                        "message": "{line.name} loses {line.loss_year|money}.",
+                    },
+                ],
+                "default": {"marker": "ok"},
+            }
+        ],
+    )
 
 
 def test_graded_intercity_loss_and_marker_findings():
-    net = (Net().station(1, "A", 10, "Alpha").line(100, "Big", [1], profit=-150_000).line(101, "Small", [1], profit=-40_000)
-           .line(102, "Edge", [1], profit=-100_000).line(103, "Fine", [1], profit=1))
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha")
+        .line(100, "Big", [1], profit=-150_000)
+        .line(101, "Small", [1], profit=-40_000)
+        .line(102, "Edge", [1], profit=-100_000)
+        .line(103, "Fine", [1], profit=1)
+    )
     verdicts = run(graded_rules(), net)
     assert markers_of(verdicts, "loss") == {"Big": "problem", "Small": "watch", "Edge": "watch", "Fine": "ok"}
     hit = next(h for h in rule(verdicts, "loss").hits if h.entity["name"] == "Big")
@@ -224,30 +334,61 @@ def test_graded_intercity_loss_and_marker_findings():
 def test_marker_without_finding_produces_no_finding():
     from tf3companion.methodology.engine import rule_findings
 
-    net = Net().station(1, "A", 10, "Alpha").line(100, "Big", [1], profit=-150_000).line(101, "Small", [1], profit=-40_000)
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha")
+        .line(100, "Big", [1], profit=-150_000)
+        .line(101, "Small", [1], profit=-40_000)
+    )
     m = graded_rules()
     verdicts = run(m, net)
     found = rule_findings(m, verdicts)
     assert {f.entity["name"]: f.severity for f in found} == {"Big": "high", "Small": "low"}
     assert all(f.source == "methodology" and f.code == "rule:loss" for f in found)
     assert all(f.methodology == "test@1.0.0" and f.methodology_hash.startswith("sha256:") for f in found)
-    quiet = methodology(markers={"ok": {"label": "ok"}, "note": {"label": "within rule"}},
-                        rules=[{"id": "l", "entity": "line", "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "note"}]}])
+    quiet = methodology(
+        markers={"ok": {"label": "ok"}, "note": {"label": "within rule"}},
+        rules=[
+            {"id": "l", "entity": "line", "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "note"}]}
+        ],
+    )
     assert markers_of(run(quiet, net), "l") == {"Big": "note", "Small": "note"}
     assert rule_findings(quiet, run(quiet, net)) == []
 
 
 def test_template_with_missing_value_prints_not_available():
     net = Net().station(1, "A", 10, "Alpha").line(100, "L", [1], profit=-5, age=None)
-    m = methodology(rules=[{"id": "r", "entity": "line", "outcomes": [
-        {"when": cond("line.profit_year", "lt", 0), "marker": "note", "message": "{line.name}: age {line.age_years|years}"}]}])
+    m = methodology(
+        rules=[
+            {
+                "id": "r",
+                "entity": "line",
+                "outcomes": [
+                    {
+                        "when": cond("line.profit_year", "lt", 0),
+                        "marker": "note",
+                        "message": "{line.name}: age {line.age_years|years}",
+                    }
+                ],
+            }
+        ]
+    )
     assert rule(run(m, net), "r").hits[0].message == "L: age n/a"
 
 
 def test_hostile_text_is_stripped_of_control_characters():
     net = Net().station(1, "A", 10, "Alpha").line(100, "Line\x00with\x1bcontrol\nchars", [1], profit=-5)
-    m = methodology(rules=[{"id": "r", "entity": "line", "outcomes": [
-        {"when": cond("line.profit_year", "lt", 0), "marker": "note", "message": "bad {line.name}"}]}])
+    m = methodology(
+        rules=[
+            {
+                "id": "r",
+                "entity": "line",
+                "outcomes": [
+                    {"when": cond("line.profit_year", "lt", 0), "marker": "note", "message": "bad {line.name}"}
+                ],
+            }
+        ]
+    )
     message = rule(run(m, net), "r").hits[0].message
     assert "\x00" not in message and "\x1b" not in message and "\n" not in message
 
@@ -264,28 +405,78 @@ def test_parameter_override_at_apply_time():
 
 # ---- aggregates -----------------------------------------------------------------------------------------------
 
+
 def town_balance():
     return methodology(
         parameters={"ratio_alert": {"value": 0.25}},
-        roles={"line": [
-            {"id": "local", "select": {"all": [cond("line.is_passenger_only", "eq", True), cond("line.town_count", "le", 1)]}},
-            {"id": "intercity", "select": cond("line.is_passenger_only", "eq", True)}]},
-        markers={"ok": {"label": "ok"}, "problem": {"label": "problem", "finding": "high"}, "within": {"label": "within rule"}},
-        rules=[{"id": "balance", "entity": "line", "aggregate": {
-            "group_by": "town",
-            "measures": {
-                "local_result": {"agg": "sum", "value": "line.profit_year", "where": cond("line.role", "eq", "local"), "via": "line.first_stop_town"},
-                "local_lines": {"agg": "count", "where": cond("line.role", "eq", "local"), "via": "line.first_stop_town"},
-                "intercity_result": {"agg": "sum", "value": "line.profit_year", "where": cond("line.role", "eq", "intercity"), "via": "line.stop_towns"},
-                "ratio": {"agg": "ratio", "numerator": {"measure": "local_result", "negate": True}, "denominator": {"measure": "intercity_result"}}},
-            "having": {"measure": "local_lines", "op": "gt", "value": 0},
-            "outcomes": [
-                {"when": {"all": [{"measure": "local_result", "op": "lt", "value": 0},
-                                  {"any": [{"measure": "intercity_result", "op": "le", "value": 0},
-                                           {"measure": "ratio", "op": "gt", "value": {"param": "ratio_alert"}}]}]},
-                 "marker": "problem", "message": "{group}: local {local_result|money}, intercity {intercity_result|money}"},
-                {"when": {"measure": "local_result", "op": "lt", "value": 0}, "marker": "within"}],
-            "default": {"marker": "ok"}}}])
+        roles={
+            "line": [
+                {
+                    "id": "local",
+                    "select": {"all": [cond("line.is_passenger_only", "eq", True), cond("line.town_count", "le", 1)]},
+                },
+                {"id": "intercity", "select": cond("line.is_passenger_only", "eq", True)},
+            ]
+        },
+        markers={
+            "ok": {"label": "ok"},
+            "problem": {"label": "problem", "finding": "high"},
+            "within": {"label": "within rule"},
+        },
+        rules=[
+            {
+                "id": "balance",
+                "entity": "line",
+                "aggregate": {
+                    "group_by": "town",
+                    "measures": {
+                        "local_result": {
+                            "agg": "sum",
+                            "value": "line.profit_year",
+                            "where": cond("line.role", "eq", "local"),
+                            "via": "line.first_stop_town",
+                        },
+                        "local_lines": {
+                            "agg": "count",
+                            "where": cond("line.role", "eq", "local"),
+                            "via": "line.first_stop_town",
+                        },
+                        "intercity_result": {
+                            "agg": "sum",
+                            "value": "line.profit_year",
+                            "where": cond("line.role", "eq", "intercity"),
+                            "via": "line.stop_towns",
+                        },
+                        "ratio": {
+                            "agg": "ratio",
+                            "numerator": {"measure": "local_result", "negate": True},
+                            "denominator": {"measure": "intercity_result"},
+                        },
+                    },
+                    "having": {"measure": "local_lines", "op": "gt", "value": 0},
+                    "outcomes": [
+                        {
+                            "when": {
+                                "all": [
+                                    {"measure": "local_result", "op": "lt", "value": 0},
+                                    {
+                                        "any": [
+                                            {"measure": "intercity_result", "op": "le", "value": 0},
+                                            {"measure": "ratio", "op": "gt", "value": {"param": "ratio_alert"}},
+                                        ]
+                                    },
+                                ]
+                            },
+                            "marker": "problem",
+                            "message": "{group}: local {local_result|money}, intercity {intercity_result|money}",
+                        },
+                        {"when": {"measure": "local_result", "op": "lt", "value": 0}, "marker": "within"},
+                    ],
+                    "default": {"marker": "ok"},
+                },
+            }
+        ],
+    )
 
 
 def balance_net(local_loss: int, intercity: int) -> Net:
@@ -294,14 +485,17 @@ def balance_net(local_loss: int, intercity: int) -> Net:
     return net
 
 
-@pytest.mark.parametrize("local_loss, intercity, marker, ratio", [
-    (30_000, 100_000, "problem", 0.30),
-    (20_000, 100_000, "within", 0.20),
-    (25_000, 100_000, "within", 0.25),     # exactly the tolerance: strictly greater is required
-    (10_000, 0, "problem", None),          # no intercity profit: always a problem, ratio not applicable
-    (10_000, -5_000, "problem", None),
-    (-5_000, 100_000, "ok", -0.05),        # local lines profitable
-])
+@pytest.mark.parametrize(
+    "local_loss, intercity, marker, ratio",
+    [
+        (30_000, 100_000, "problem", 0.30),
+        (20_000, 100_000, "within", 0.20),
+        (25_000, 100_000, "within", 0.25),  # exactly the tolerance: strictly greater is required
+        (10_000, 0, "problem", None),  # no intercity profit: always a problem, ratio not applicable
+        (10_000, -5_000, "problem", None),
+        (-5_000, 100_000, "ok", -0.05),  # local lines profitable
+    ],
+)
 def test_town_balance_scenarios(local_loss, intercity, marker, ratio):
     verdicts = run(town_balance(), balance_net(local_loss, intercity))
     groups = {g["group"]: g for g in rule(verdicts, "balance").groups}
@@ -333,16 +527,34 @@ def test_first_town_versus_every_distinct_town():
 def air_station():
     return methodology(
         parameters={"watch": {"value": 3.0}},
-        rules=[{"id": "air", "entity": "stop", "aggregate": {
-            "group_by": "stop.station",
-            "having": {"any_member": cond("stop.line.carrier", "eq", "AIR")},
-            "measures": {
-                "vehicles": {"agg": "sum", "value": "stop.line.vehicle_count", "distinct_by": "stop.line_id"},
-                "terminals": {"agg": "distinct_count", "value": "stop.terminal"},
-                "per_terminal": {"agg": "ratio", "numerator": {"measure": "vehicles"}, "denominator": {"measure": "terminals"}}},
-            "outcomes": [{"when": {"measure": "per_terminal", "op": "ge", "value": {"param": "watch"}}, "marker": "watch",
-                          "message": "{group}: {per_terminal} per terminal"}],
-            "default": {"marker": "ok"}}}])
+        rules=[
+            {
+                "id": "air",
+                "entity": "stop",
+                "aggregate": {
+                    "group_by": "stop.station",
+                    "having": {"any_member": cond("stop.line.carrier", "eq", "AIR")},
+                    "measures": {
+                        "vehicles": {"agg": "sum", "value": "stop.line.vehicle_count", "distinct_by": "stop.line_id"},
+                        "terminals": {"agg": "distinct_count", "value": "stop.terminal"},
+                        "per_terminal": {
+                            "agg": "ratio",
+                            "numerator": {"measure": "vehicles"},
+                            "denominator": {"measure": "terminals"},
+                        },
+                    },
+                    "outcomes": [
+                        {
+                            "when": {"measure": "per_terminal", "op": "ge", "value": {"param": "watch"}},
+                            "marker": "watch",
+                            "message": "{group}: {per_terminal} per terminal",
+                        }
+                    ],
+                    "default": {"marker": "ok"},
+                },
+            }
+        ],
+    )
 
 
 def air_net(vehicles_a: int, vehicles_b: int, terminals) -> Net:
@@ -363,10 +575,14 @@ def test_air_station_pressure_counts_each_line_once_and_ignores_non_air_stations
 
 
 def test_missing_terminals_are_not_evaluable_never_zero():
-    net = Net().station(1, "Airport", 10, "Alpha").line(100, "AP 1", [1, 1], carrier="AIR", vehicles=4)  # no terminal values
+    net = (
+        Net().station(1, "Airport", 10, "Alpha").line(100, "AP 1", [1, 1], carrier="AIR", vehicles=4)
+    )  # no terminal values
     verdicts = run(air_station(), net)
     result = rule(verdicts, "air")
-    assert result.status == "skipped" and "stops[].terminal" in result.reason  # the collector emitted no terminals at all
+    assert (
+        result.status == "skipped" and "stops[].terminal" in result.reason
+    )  # the collector emitted no terminals at all
 
 
 def test_partial_terminal_data_marks_the_group_not_evaluable():
@@ -382,19 +598,41 @@ def test_partial_terminal_data_marks_the_group_not_evaluable():
 
 # ---- recommendations ----------------------------------------------------------------------------------
 
+
 def recommended():
     return methodology(
-        roles={"line": [{"id": "freight", "select": cond("line.is_passenger_only", "eq", False)},
-                        {"id": "pax", "select": cond("line.is_passenger_only", "eq", True)}]},
-        rules=[{"id": "loss", "entity": "line", "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "problem"}],
-                "default": {"marker": "ok"}}],
-        recommendations=[{"id": "fix", "when": {"rule": "loss", "marker": "problem", "role": "freight"}, "priority": 2,
-                          "text": "Review {line.name}: it loses {line.loss_year|money}."}])
+        roles={
+            "line": [
+                {"id": "freight", "select": cond("line.is_passenger_only", "eq", False)},
+                {"id": "pax", "select": cond("line.is_passenger_only", "eq", True)},
+            ]
+        },
+        rules=[
+            {
+                "id": "loss",
+                "entity": "line",
+                "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "problem"}],
+                "default": {"marker": "ok"},
+            }
+        ],
+        recommendations=[
+            {
+                "id": "fix",
+                "when": {"rule": "loss", "marker": "problem", "role": "freight"},
+                "priority": 2,
+                "text": "Review {line.name}: it loses {line.loss_year|money}.",
+            }
+        ],
+    )
 
 
 def test_recommendation_from_a_rule_hit_with_evidence_and_role_filter():
-    net = (Net().station(1, "A", 10, "Alpha").line(100, "Coal", [1], profit=-9_000, cargo=FREIGHT)
-           .line(101, "People", [1], profit=-4_000))
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha")
+        .line(100, "Coal", [1], profit=-9_000, cargo=FREIGHT)
+        .line(101, "People", [1], profit=-4_000)
+    )
     verdicts = run(recommended(), net)
     advice = verdicts.recommendations[0]
     assert advice.status == "ok" and len(advice.items) == 1  # only the freight hit matches the role filter
@@ -406,8 +644,17 @@ def test_recommendation_from_a_rule_hit_with_evidence_and_role_filter():
 
 def test_recommendation_is_skipped_when_its_trigger_is_skipped(geometry_capability):
     m = methodology(
-        rules=[{"id": "needs-positions", "entity": "line", "outcomes": [{"when": cond("line.route_km", "gt", 10), "marker": "problem"}]}],
-        recommendations=[{"id": "go", "when": {"rule": "needs-positions", "marker": "problem"}, "priority": 1, "text": "Go."}])
+        rules=[
+            {
+                "id": "needs-positions",
+                "entity": "line",
+                "outcomes": [{"when": cond("line.route_km", "gt", 10), "marker": "problem"}],
+            }
+        ],
+        recommendations=[
+            {"id": "go", "when": {"rule": "needs-positions", "marker": "problem"}, "priority": 1, "text": "Go."}
+        ],
+    )
     net = Net().station(1, "A", 10, "Alpha").line(100, "L", [1])
     verdicts = run(m, net)
     advice = verdicts.recommendations[0]
@@ -417,8 +664,13 @@ def test_recommendation_is_skipped_when_its_trigger_is_skipped(geometry_capabili
 
 # ---- distance-band ladder (positions exist only in this synthetic fixture) ---------------------------------
 
+
 def ladder_net(distance_km: float, carrier: str) -> Net:
-    net = Net().station(1, "A", 10, "Alpha", position=[0, 0, 0]).station(2, "B", 20, "Beta", position=[distance_km * 1000, 0, 0])
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha", position=[0, 0, 0])
+        .station(2, "B", 20, "Beta", position=[distance_km * 1000, 0, 0])
+    )
     return net.line(100, "Trunk", [1, 2], carrier=carrier)
 
 

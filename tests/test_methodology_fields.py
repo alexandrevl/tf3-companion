@@ -1,4 +1,5 @@
 """Field registry: declared attributes and derived values against hand-computed fixtures."""
+
 from __future__ import annotations
 
 import pytest
@@ -22,8 +23,13 @@ def record(net: Net, entity: str, index: int = 0, patterns=()):
 
 
 def test_line_derived_values():
-    net = (Net().station(1, "A", 10, "Alpha").station(2, "B", 10, "Alpha").station(3, "C", 20, "Beta")
-           .line(100, "Bus x-IC-1", [1, 2, 3], profit=-120_000, load=(90, 100), age=2.5, vehicles=2))
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha")
+        .station(2, "B", 10, "Alpha")
+        .station(3, "C", 20, "Beta")
+        .line(100, "Bus x-IC-1", [1, 2, 3], profit=-120_000, load=(90, 100), age=2.5, vehicles=2)
+    )
     line = record(net, "line")
     assert line.get("line.loss_year") == 120_000
     assert line.get("line.profit_year") == -120_000
@@ -89,14 +95,33 @@ def test_vehicle_model_family_and_age():
 def test_industry_and_stock_ratios():
     net = Net()
     net.data["industries"] = [
-        {"id": 1, "name": "Refinery", "type": "::/industries/oil_refinery/oil_refinery.con", "level": 2, "productionRating": 0.8,
-         "inputs": [{"cargo": 1, "deliveredYear": 30, "maxConsumptionYear": 60}, {"cargo": 2, "deliveredYear": 10, "maxConsumptionYear": 40}],
-         "outputs": [{"cargo": 3, "producedYear": 50, "shippedYear": 20}, {"cargo": 4, "producedYear": 50, "shippedYear": 30}]},
-        {"id": 2, "name": "Mine", "type": "::/industries/coal_mine/coal_mine.con", "inputs": [],
-         "outputs": [{"cargo": 3, "producedYear": 0, "shippedYear": 0}]},
+        {
+            "id": 1,
+            "name": "Refinery",
+            "type": "::/industries/oil_refinery/oil_refinery.con",
+            "level": 2,
+            "productionRating": 0.8,
+            "inputs": [
+                {"cargo": 1, "deliveredYear": 30, "maxConsumptionYear": 60},
+                {"cargo": 2, "deliveredYear": 10, "maxConsumptionYear": 40},
+            ],
+            "outputs": [
+                {"cargo": 3, "producedYear": 50, "shippedYear": 20},
+                {"cargo": 4, "producedYear": 50, "shippedYear": 30},
+            ],
+        },
+        {
+            "id": 2,
+            "name": "Mine",
+            "type": "::/industries/coal_mine/coal_mine.con",
+            "inputs": [],
+            "outputs": [{"cargo": 3, "producedYear": 0, "shippedYear": 0}],
+        },
     ]
-    net.data["stocks"] = [{"kind": "industry", "owner": 1, "ownerName": "Refinery", "count": 45, "capacity": 50},
-                          {"kind": "warehouse", "owner": 3, "ownerName": "W", "count": 5, "capacity": 0}]
+    net.data["stocks"] = [
+        {"kind": "industry", "owner": 1, "ownerName": "Refinery", "count": 45, "capacity": 50},
+        {"kind": "warehouse", "owner": 3, "ownerName": "W", "count": 5, "capacity": 0},
+    ]
     refinery, mine = record(net, "industry", 0), record(net, "industry", 1)
     assert refinery.get("industry.shipped_ratio") == pytest.approx(0.5)
     assert refinery.get("industry.input_delivery_ratio") == pytest.approx(0.4)
@@ -108,8 +133,12 @@ def test_industry_and_stock_ratios():
 
 
 def test_town_fields_and_positions():
-    net = (Net().station(1, "A", 10, "Alpha", position=[0, 0, 0]).station(2, "B", 20, "Beta", position=[3000, 4000, 0])
-           .line(100, "L", [1, 2]))
+    net = (
+        Net()
+        .station(1, "A", 10, "Alpha", position=[0, 0, 0])
+        .station(2, "B", 20, "Beta", position=[3000, 4000, 0])
+        .line(100, "L", [1, 2])
+    )
     town = record(net, "town", 0)
     assert town.get("town.capacity_sum") == 160 and town.get("town.line_usage") == 0.1
     assert town.get("town.pair_distance_km") == [pytest.approx(5.0)]
@@ -128,5 +157,5 @@ def test_probe_distinguishes_absent_data_from_empty_sections():
     assert F.probe_path(snap, "lines[].profitYear") is True
     assert F.probe_path(snap, "lines[].stops[].terminal") is False  # stops exist but none has a terminal
     assert F.probe_path(snap, "stations[].position") is False
-    assert F.probe_path(snap, "industries[].type") is None          # no industries at all: inconclusive
+    assert F.probe_path(snap, "industries[].type") is None  # no industries at all: inconclusive
     assert F.probe_path(snap, "meta.yearDuration") is True

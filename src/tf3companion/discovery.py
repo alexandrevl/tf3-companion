@@ -1,4 +1,5 @@
 """Read-only Steam userdata discovery, independent of the companion database."""
+
 from __future__ import annotations
 
 import os
@@ -26,6 +27,7 @@ class Discovery:
 def _registry_steam_path() -> str | None:
     try:
         import winreg
+
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
             return winreg.QueryValueEx(key, "SteamPath")[0]
     except (ImportError, OSError):
@@ -33,8 +35,11 @@ def _registry_steam_path() -> str | None:
 
 
 def discover(
-    *, platform: str | None = None, env: Mapping[str, str] | None = None,
-    home: Path | None = None, registry_reader: Callable[[], str | None] | None = None,
+    *,
+    platform: str | None = None,
+    env: Mapping[str, str] | None = None,
+    home: Path | None = None,
+    registry_reader: Callable[[], str | None] | None = None,
 ) -> Discovery:
     """Inspect candidates without creating folders or silently choosing an account."""
     platform = platform or sys.platform
@@ -50,22 +55,38 @@ def discover(
         registry = (registry_reader or _registry_steam_path)()
         if registry:
             roots.append(Path(registry))
-        roots.extend(Path(env.get(key, default)) / "Steam" for key, default in (
-            ("ProgramFiles(x86)", r"C:\Program Files (x86)"), ("ProgramFiles", r"C:\Program Files"),
-        ))
+        roots.extend(
+            Path(env.get(key, default)) / "Steam"
+            for key, default in (
+                ("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                ("ProgramFiles", r"C:\Program Files"),
+            )
+        )
     elif platform == "darwin":
         roots.append(home / "Library/Application Support/Steam")
     elif platform.startswith("linux"):
-        roots.extend((home / ".steam/steam", home / ".local/share/Steam",
-                      home / ".var/app/com.valvesoftware.Steam/.local/share/Steam"))
+        roots.extend(
+            (
+                home / ".steam/steam",
+                home / ".local/share/Steam",
+                home / ".var/app/com.valvesoftware.Steam/.local/share/Steam",
+            )
+        )
     roots = list(dict.fromkeys(p.resolve() for p in roots))
     candidates: list[Path] = []
     for root in roots:
         try:
-            candidates.extend(p.resolve() for p in (root / "userdata").glob(f"*/{TF3_STEAM_APP_ID}/local") if p.is_dir())
+            candidates.extend(
+                p.resolve() for p in (root / "userdata").glob(f"*/{TF3_STEAM_APP_ID}/local") if p.is_dir()
+            )
         except OSError as exc:
-            return Discovery(platform, tuple(roots), tuple(candidates), None,
-                             f"Cannot inspect Steam userdata at {root}: {exc}; set TF3C_USERDATA_DIR")
+            return Discovery(
+                platform,
+                tuple(roots),
+                tuple(candidates),
+                None,
+                f"Cannot inspect Steam userdata at {root}: {exc}; set TF3C_USERDATA_DIR",
+            )
     candidates = sorted(set(candidates))
     if len(candidates) == 1:
         return Discovery(platform, tuple(roots), tuple(candidates), candidates[0])
@@ -73,7 +94,10 @@ def discover(
         error = "Multiple Steam accounts contain TF3 userdata: " + "; ".join(map(str, candidates))
         error += ". Set TF3C_USERDATA_DIR to the intended account's local folder."
     else:
-        searched = "; ".join(str(p / "userdata" / "*" / TF3_STEAM_APP_ID / "local") for p in roots) or "no supported Steam roots"
+        searched = (
+            "; ".join(str(p / "userdata" / "*" / TF3_STEAM_APP_ID / "local") for p in roots)
+            or "no supported Steam roots"
+        )
         error = f"Transport Fever 3 userdata not found. Searched: {searched}. Launch the game once or set TF3C_USERDATA_DIR."
     return Discovery(platform, tuple(roots), tuple(candidates), None, error)
 

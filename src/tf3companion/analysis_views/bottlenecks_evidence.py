@@ -14,17 +14,17 @@ from ..snapshot import Snapshot
 from .models import EvaluationContext
 from .reader import EvidenceReader
 
-LOAD_LIMIT = 240       # newest full snapshots read from the store
-MERGE_FRACTION = 48    # samples closer than a 48th of a game year are one observation
+LOAD_LIMIT = 240  # newest full snapshots read from the store
+MERGE_FRACTION = 48  # samples closer than a 48th of a game year are one observation
 
 
 @dataclass(frozen=True)
 class BottlenecksEvidence:
-    history: tuple[Snapshot, ...]            # merged samples, oldest first; the last one is the endpoint
-    eligible: int                            # stored samples at or before the endpoint
-    read: int                                # full snapshots hydrated before merging
-    hydrated: int                            # hydrations besides the already-selected endpoint
-    known_depots: Mapping[Any, str]          # depot names seen anywhere in the read history
+    history: tuple[Snapshot, ...]  # merged samples, oldest first; the last one is the endpoint
+    eligible: int  # stored samples at or before the endpoint
+    read: int  # full snapshots hydrated before merging
+    hydrated: int  # hydrations besides the already-selected endpoint
+    known_depots: Mapping[Any, str]  # depot names seen anywhere in the read history
 
 
 def dedupe(snaps: list[Snapshot]) -> list[Snapshot]:

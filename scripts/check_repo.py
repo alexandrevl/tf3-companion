@@ -104,9 +104,7 @@ class Violation:
 
 def tracked_files(root: Path) -> list[str]:
     """Tracked paths relative to `root`, as git reports them."""
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"], check=True, capture_output=True
-    )
+    result = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], check=True, capture_output=True)
     return [p for p in result.stdout.decode("utf-8").split("\0") if p]
 
 
@@ -165,7 +163,9 @@ def rule_language(root: Path, files: list[str]) -> Iterator[Violation]:
                 scrubbed = scrubbed.replace(word, "")
             match = PORTUGUESE_ACCENTS.search(scrubbed) or PORTUGUESE_WORDS.search(scrubbed)
             if match:
-                yield Violation("language", rel, number, f"Portuguese text `{match.group(0)}`; write everything in English")
+                yield Violation(
+                    "language", rel, number, f"Portuguese text `{match.group(0)}`; write everything in English"
+                )
 
 
 def rule_required_files(root: Path, files: list[str]) -> Iterator[Violation]:
@@ -185,7 +185,12 @@ def rule_identity(root: Path, files: list[str]) -> Iterator[Violation]:
         for number, line in lines_of(text):
             for name in GITHUB_REPO_URL.findall(line):
                 if name.removesuffix(".git") != REPOSITORY:
-                    yield Violation("identity", rel, number, f"link names `{OWNER}/{name}`; this repository is `{OWNER}/{REPOSITORY}`")
+                    yield Violation(
+                        "identity",
+                        rel,
+                        number,
+                        f"link names `{OWNER}/{name}`; this repository is `{OWNER}/{REPOSITORY}`",
+                    )
         if rel.endswith(".md") and not rel.startswith(LINK_CHECK_SKIP_PREFIXES):
             base = Path(rel).parent
             for number, line in lines_of(text):
@@ -200,7 +205,9 @@ def rule_identity(root: Path, files: list[str]) -> Iterator[Violation]:
                             parts.append(piece)
                     normalized = "/".join(parts)
                     if normalized not in tracked and not any(t.startswith(normalized + "/") for t in tracked):
-                        yield Violation("identity", rel, number, f"relative link `{target}` does not resolve to a tracked file")
+                        yield Violation(
+                            "identity", rel, number, f"relative link `{target}` does not resolve to a tracked file"
+                        )
 
 
 LUAC_NAMES = ("luac", "luac5.4")

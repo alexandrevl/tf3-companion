@@ -38,8 +38,17 @@ _TOKEN = re.compile(
 )
 
 _ESCAPES = {
-    "n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "f": "\f", "v": "\v",
-    "\\": "\\", '"': '"', "'": "'", "\n": "\n",
+    "n": "\n",
+    "t": "\t",
+    "r": "\r",
+    "a": "\a",
+    "b": "\b",
+    "f": "\f",
+    "v": "\v",
+    "\\": "\\",
+    '"': '"',
+    "'": "'",
+    "\n": "\n",
 }
 
 _SPECIAL_NAMES = {
@@ -178,9 +187,7 @@ class _Parser:
             if tok and tok[1] == "[" and tok[0] == "op":
                 self.next()
                 key = self.value()
-                if key is None or isinstance(key, (list, dict)) or (
-                    isinstance(key, float) and math.isnan(key)
-                ):
+                if key is None or isinstance(key, (list, dict)) or (isinstance(key, float) and math.isnan(key)):
                     raise LuaDataError("unsupported table key")
                 if key in items:
                     raise LuaDataError("duplicate or ambiguous table key")
@@ -231,8 +238,28 @@ def loads(text: str) -> Any:
 
 _IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _KEYWORDS = {
-    "and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto", "if", "in",
-    "local", "nil", "not", "or", "repeat", "return", "then", "true", "until", "while",
+    "and",
+    "break",
+    "do",
+    "else",
+    "elseif",
+    "end",
+    "false",
+    "for",
+    "function",
+    "goto",
+    "if",
+    "in",
+    "local",
+    "nil",
+    "not",
+    "or",
+    "repeat",
+    "return",
+    "then",
+    "true",
+    "until",
+    "while",
 }
 
 

@@ -1,4 +1,5 @@
 """Engine integration: thresholds, finding overrides, default equivalence and provenance."""
+
 from __future__ import annotations
 
 import copy
@@ -29,9 +30,18 @@ def test_default_equivalence_with_the_engine_without_a_methodology():
     default = load_default()
     after = analysis.findings(snap, prev, methodology=default)
     assert [comparable(f) for f in after] == before
-    assert {f.code for f in after} >= {"line_losing_money", "line_overloaded", "line_underused", "line_config_issue",
-                                         "line_no_vehicles", "vehicle_no_path", "fleet_idle_in_depot", "industry_closing",
-                                         "snapshot_collection_errors", "line_profit_dropping"}
+    assert {f.code for f in after} >= {
+        "line_losing_money",
+        "line_overloaded",
+        "line_underused",
+        "line_config_issue",
+        "line_no_vehicles",
+        "vehicle_no_path",
+        "fleet_idle_in_depot",
+        "industry_closing",
+        "snapshot_collection_errors",
+        "line_profit_dropping",
+    }
     assert all(f.source == "engine" and f.methodology == "default@1.0.0" for f in after)
     assert thresholds_for(default) == analysis.Thresholds()
 
@@ -50,15 +60,24 @@ def test_default_equivalence_through_the_service(paths):
 
 
 def test_threshold_override_changes_maturity_dependent_findings():
-    net = Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta").line(100, "Loser", [1, 2], profit=-9_000, age=2)
+    net = (
+        Net().station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta").line(100, "Loser", [1, 2], profit=-9_000, age=2)
+    )
     snap, clock = net.snapshot(), net.clock()
-    default = [f for f in analysis.findings(snap, methodology=load_default(), clock=clock) if f.code == "line_losing_money"]
+    default = [
+        f for f in analysis.findings(snap, methodology=load_default(), clock=clock) if f.code == "line_losing_money"
+    ]
     assert [f.severity for f in default] == ["high"]
     patient = methodology(engine={"thresholds": {"mature_years": 3}})
-    patient_findings = [f for f in analysis.findings(snap, methodology=patient, clock=clock) if f.code == "line_losing_money"]
+    patient_findings = [
+        f for f in analysis.findings(snap, methodology=patient, clock=clock) if f.code == "line_losing_money"
+    ]
     assert [f.severity for f in patient_findings] == ["low"]  # a 2-year-old line is still maturing under 3 years
     assert thresholds_for(patient).mature_years == 3
-    assert analysis.findings(snap, t=analysis.Thresholds(mature_years=1.0), methodology=patient)[0].methodology == "test@1.0.0"
+    assert (
+        analysis.findings(snap, t=analysis.Thresholds(mature_years=1.0), methodology=patient)[0].methodology
+        == "test@1.0.0"
+    )
 
 
 def two_role_net() -> Net:
@@ -70,9 +89,17 @@ def two_role_net() -> Net:
 
 def role_override_methodology(**engine):
     return methodology(
-        roles={"line": [{"id": "local", "select": {"all": [cond("line.is_passenger_only", "eq", True), cond("line.town_count", "le", 1)]}},
-                        {"id": "trunk", "select": {"all": [cond("line.is_passenger_only", "eq", True)]}}]},
-        engine=engine)
+        roles={
+            "line": [
+                {
+                    "id": "local",
+                    "select": {"all": [cond("line.is_passenger_only", "eq", True), cond("line.town_count", "le", 1)]},
+                },
+                {"id": "trunk", "select": {"all": [cond("line.is_passenger_only", "eq", True)]}},
+            ]
+        },
+        engine=engine,
+    )
 
 
 def test_silencing_a_code_for_one_role_only():
@@ -89,8 +116,12 @@ def test_set_severity_override_and_the_disabled_list():
 
     net = two_role_net()
     snap, clock = net.snapshot(), net.clock()
-    m = role_override_methodology(findings=[{"code": "line_losing_money", "role": "trunk", "action": "set_severity", "severity": "low"},
-                                            {"code": "line_losing_money", "role": "local", "action": "off"}])
+    m = role_override_methodology(
+        findings=[
+            {"code": "line_losing_money", "role": "trunk", "action": "set_severity", "severity": "low"},
+            {"code": "line_losing_money", "role": "local", "action": "off"},
+        ]
+    )
     verdicts = evaluate(m, snap, clock=clock)
     found = analysis.findings(snap, methodology=m, verdicts=verdicts, clock=clock)
     severities = {f.entity["name"]: f.severity for f in found if f.code == "line_losing_money"}
@@ -107,8 +138,6 @@ def test_unknown_threshold_or_code_is_rejected_when_loading():
         methodology(engine={"findings": [{"code": "nope", "action": "off"}]})
 
 
-
-
 def test_editing_a_file_without_a_version_bump_changes_the_recorded_hash():
     base = {"schema": "tf3c-methodology/1", "id": "edit", "version": "1.0.0", "name": "N", "description": "D"}
     first = parse(json.dumps(base).encode())
@@ -117,8 +146,21 @@ def test_editing_a_file_without_a_version_bump_changes_the_recorded_hash():
 
 
 def test_findings_carry_the_hash_and_methodology_findings_the_source(paths):
-    m = methodology(rules=[{"id": "loss", "entity": "line", "outcomes": [
-        {"when": cond("line.profit_year", "lt", -100_000), "marker": "problem", "message": "{line.name} loses a lot"}]}])
+    m = methodology(
+        rules=[
+            {
+                "id": "loss",
+                "entity": "line",
+                "outcomes": [
+                    {
+                        "when": cond("line.profit_year", "lt", -100_000),
+                        "marker": "problem",
+                        "message": "{line.name} loses a lot",
+                    }
+                ],
+            }
+        ]
+    )
     snap = Snapshot(troubled_company())
     found = analysis.findings(snap, methodology=m)
     engine = [f for f in found if f.source == "engine"]

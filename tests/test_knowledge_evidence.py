@@ -1,4 +1,5 @@
 """Structural invariants of packaged knowledge that readers rely on (not wording)."""
+
 from __future__ import annotations
 
 import re
@@ -43,8 +44,11 @@ def check_topic(text: str, *, new_topic: bool = False) -> list[str]:
 
 def _topics() -> dict[str, str]:
     directory = files("tf3companion").joinpath("knowledge")
-    return {entry.name[:-3]: entry.read_text(encoding="utf-8")
-            for entry in directory.iterdir() if entry.name.endswith(".md")}
+    return {
+        entry.name[:-3]: entry.read_text(encoding="utf-8")
+        for entry in directory.iterdir()
+        if entry.name.endswith(".md")
+    }
 
 
 def test_new_topics_are_packaged():
@@ -56,13 +60,16 @@ def test_packaged_topic_keeps_evidence_invariants(topic):
     assert check_topic(_topics()[topic], new_topic=topic in NEW_TOPICS) == []
 
 
-@pytest.mark.parametrize("sample", [
-    "# T\n\nsummary\n\n- fact [ADOPTED: observed]\n",
-    "# T\n\nsummary\n\n- fact [ADOPTED: guess] (MPF:docs/RESEARCH.md:1)\n",
-    "# T\n\nsummary\n\n- fact [ADOPTED] (MPF:docs/RESEARCH.md:1)\n",
-    "# T\n\nsummary\n\n- fact at 0x2fc8fe0\n",
-    "# T\n\nsummary\n\n- fact [ADOPTED: code] (MPF:docs/RESEARCH.md:1)\n",
-])
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "# T\n\nsummary\n\n- fact [ADOPTED: observed]\n",
+        "# T\n\nsummary\n\n- fact [ADOPTED: guess] (MPF:docs/RESEARCH.md:1)\n",
+        "# T\n\nsummary\n\n- fact [ADOPTED] (MPF:docs/RESEARCH.md:1)\n",
+        "# T\n\nsummary\n\n- fact at 0x2fc8fe0\n",
+        "# T\n\nsummary\n\n- fact [ADOPTED: code] (MPF:docs/RESEARCH.md:1)\n",
+    ],
+)
 def test_checker_rejects_violations(sample):
     assert check_topic(sample), sample
 

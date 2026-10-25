@@ -1,4 +1,5 @@
 """Loader, structural validator and bounded regular expressions."""
+
 from __future__ import annotations
 
 import copy
@@ -15,13 +16,25 @@ EXAMPLES = Path(__file__).parent.parent / "src" / "tf3companion" / "methodology"
 AUTHOR_PATTERN = r"^(?P<mode>\S+) .*?-(?P<scope>LO|IC|RE)-(?P<n>\d+)$"
 
 BASE = {
-    "schema": "tf3c-methodology/1", "id": "demo", "version": "1.0.0", "name": "Demo", "description": "A demo.",
+    "schema": "tf3c-methodology/1",
+    "id": "demo",
+    "version": "1.0.0",
+    "name": "Demo",
+    "description": "A demo.",
     "parameters": {"limit": {"value": 10}},
     "markers": {"ok": {"label": "ok"}, "bad": {"label": "bad", "finding": "high"}},
     "roles": {"line": [{"id": "freight", "select": {"field": "line.is_passenger_only", "op": "eq", "value": False}}]},
-    "rules": [{"id": "r1", "entity": "line", "role": "freight",
-               "outcomes": [{"when": {"field": "line.profit_year", "op": "lt", "value": {"param": "limit"}}, "marker": "bad"}],
-               "default": {"marker": "ok"}}],
+    "rules": [
+        {
+            "id": "r1",
+            "entity": "line",
+            "role": "freight",
+            "outcomes": [
+                {"when": {"field": "line.profit_year", "op": "lt", "value": {"param": "limit"}}, "marker": "bad"}
+            ],
+            "default": {"marker": "ok"},
+        }
+    ],
 }
 
 
@@ -65,12 +78,15 @@ def test_wrong_types_are_errors():
     assert "list" in errors(doc(rules={"a": 1}))
 
 
-@pytest.mark.parametrize("change, fragment", [
-    (lambda d: d["rules"][0]["outcomes"][0]["when"].__setitem__("value", {"param": "nope"}), "undefined parameter"),
-    (lambda d: d["rules"][0].__setitem__("role", "ghost"), "not defined for line roles"),
-    (lambda d: d["rules"][0]["outcomes"][0].__setitem__("marker", "ghost"), "undefined marker"),
-    (lambda d: d["rules"][0]["outcomes"][0].__setitem__("when", {"ref": "ghost"}), "undefined definition"),
-])
+@pytest.mark.parametrize(
+    "change, fragment",
+    [
+        (lambda d: d["rules"][0]["outcomes"][0]["when"].__setitem__("value", {"param": "nope"}), "undefined parameter"),
+        (lambda d: d["rules"][0].__setitem__("role", "ghost"), "not defined for line roles"),
+        (lambda d: d["rules"][0]["outcomes"][0].__setitem__("marker", "ghost"), "undefined marker"),
+        (lambda d: d["rules"][0]["outcomes"][0].__setitem__("when", {"ref": "ghost"}), "undefined definition"),
+    ],
+)
 def test_undefined_references_are_errors(change, fragment):
     data = doc()
     change(data)
@@ -97,7 +113,9 @@ def test_cyclic_ref_is_an_error():
     assert "cyclic reference" in errors(data)
 
 
-@pytest.mark.parametrize("field, value", [("id", "../../x"), ("id", "Upper"), ("id", "a" * 70), ("version", "1.0/evil"), ("version", "1.0")])
+@pytest.mark.parametrize(
+    "field, value", [("id", "../../x"), ("id", "Upper"), ("id", "a" * 70), ("version", "1.0/evil"), ("version", "1.0")]
+)
 def test_path_unsafe_identity_names_the_field(field, value):
     message = errors(doc(**{field: value}))
     assert f"/{field}" in message
@@ -114,8 +132,16 @@ def test_size_limit_applies_before_parsing():
 
 
 def test_rule_count_limit():
-    data = doc(rules=[{"id": f"r{i}", "entity": "line", "outcomes": [{"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "ok"}]}
-                      for i in range(MAX_RULES + 1)])
+    data = doc(
+        rules=[
+            {
+                "id": f"r{i}",
+                "entity": "line",
+                "outcomes": [{"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "ok"}],
+            }
+            for i in range(MAX_RULES + 1)
+        ]
+    )
     assert "the limit is 200" in errors(data)
 
 
@@ -134,25 +160,45 @@ def test_text_length_limit():
 
 def test_aggregate_outcomes_cannot_read_member_fields():
     data = doc()
-    data["rules"] = [{"id": "agg", "entity": "line", "aggregate": {
-        "group_by": "town", "measures": {"n": {"agg": "count", "via": "line.first_stop_town"}},
-        "outcomes": [{"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "ok"}]}}]
+    data["rules"] = [
+        {
+            "id": "agg",
+            "entity": "line",
+            "aggregate": {
+                "group_by": "town",
+                "measures": {"n": {"agg": "count", "via": "line.first_stop_town"}},
+                "outcomes": [{"when": {"field": "line.profit_year", "op": "lt", "value": 0}, "marker": "ok"}],
+            },
+        }
+    ]
     assert "read measures" in errors(data)
 
 
 def test_town_grouping_requires_via():
     data = doc()
-    data["rules"] = [{"id": "agg", "entity": "line", "aggregate": {
-        "group_by": "town", "measures": {"n": {"agg": "count"}},
-        "outcomes": [{"when": {"measure": "n", "op": "gt", "value": 0}, "marker": "ok"}]}}]
+    data["rules"] = [
+        {
+            "id": "agg",
+            "entity": "line",
+            "aggregate": {
+                "group_by": "town",
+                "measures": {"n": {"agg": "count"}},
+                "outcomes": [{"when": {"measure": "n", "op": "gt", "value": 0}, "marker": "ok"}],
+            },
+        }
+    ]
     assert "needs a 'via'" in errors(data)
 
 
 def test_engine_overrides_reject_unknown_names():
     assert "unknown threshold" in errors(doc(engine={"thresholds": {"mature_year": 3}}))
     assert "unknown finding code" in errors(doc(engine={"findings": [{"code": "line_losing_mony", "action": "off"}]}))
-    assert "not defined for line roles" in errors(doc(engine={"findings": [{"code": "line_losing_money", "role": "ghost", "action": "off"}]}))
-    assert "set_severity requires severity" in errors(doc(engine={"findings": [{"code": "line_losing_money", "action": "set_severity"}]}))
+    assert "not defined for line roles" in errors(
+        doc(engine={"findings": [{"code": "line_losing_money", "role": "ghost", "action": "off"}]})
+    )
+    assert "set_severity requires severity" in errors(
+        doc(engine={"findings": [{"code": "line_losing_money", "action": "set_severity"}]})
+    )
 
 
 def test_unknown_report_kind_lists_valid_kinds():
@@ -188,23 +234,27 @@ def test_undeclared_name_capture_is_an_error():
 
 # ---- bounded regular expressions ------------------------------------------------------
 
+
 def test_author_name_pattern_is_accepted_and_matches():
     assert check_pattern(AUTHOR_PATTERN) is None
     match = bounded_search(AUTHOR_PATTERN, "Bus Passengers-Mon-LO-4")
     assert match and match.group("scope") == "LO" and match.group("n") == "4"
 
 
-@pytest.mark.parametrize("pattern, fragment", [
-    ("(a+)+$", "quantifier"),
-    ("(a*)*", "quantifier"),
-    ("(a|aa)+", "alternation"),
-    (r"(a)\1", "backreferences"),
-    ("(?=a)a", "lookahead"),
-    ("(?<=a)b", "lookahead"),
-    ("a" * 201, "limit is 200"),
-    ("a+b+c+d+", "unbounded"),
-    ("(unclosed", "invalid regular expression"),
-])
+@pytest.mark.parametrize(
+    "pattern, fragment",
+    [
+        ("(a+)+$", "quantifier"),
+        ("(a*)*", "quantifier"),
+        ("(a|aa)+", "alternation"),
+        (r"(a)\1", "backreferences"),
+        ("(?=a)a", "lookahead"),
+        ("(?<=a)b", "lookahead"),
+        ("a" * 201, "limit is 200"),
+        ("a+b+c+d+", "unbounded"),
+        ("(unclosed", "invalid regular expression"),
+    ],
+)
 def test_unsafe_patterns_are_rejected(pattern, fragment):
     assert fragment in check_pattern(pattern)
 

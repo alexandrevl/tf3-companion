@@ -17,14 +17,16 @@ from typing import Any
 
 SAVES_FOLDER = "saves"
 SAVE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
-FALLBACK_NOTE = ("No per-save layout is available: the single companion store acts as one implicit save, "
-                 "so this output is not isolated per save.")
+FALLBACK_NOTE = (
+    "No per-save layout is available: the single companion store acts as one implicit save, "
+    "so this output is not isolated per save."
+)
 
 
 @dataclass(frozen=True)
 class SaveScope:
-    root: Path            # holds `reports/` (and, in the per-save layout, the store)
-    metadata: Path        # JSON file holding the binding
+    root: Path  # holds `reports/` (and, in the per-save layout, the store)
+    metadata: Path  # JSON file holding the binding
     save_id: str | None = None
     isolated: bool = False
 
@@ -40,8 +42,10 @@ class SaveScope:
             raise ValueError(f"Invalid save id {save_id!r}: use letters, digits, dot, underscore or hyphen.")
         root = Path(data) / SAVES_FOLDER / save_id
         if not root.is_dir():
-            raise LookupError(f"Save '{save_id}' not found: {root} does not exist. "
-                              "The per-save layout is created by the companion; omit --save to use the implicit save.")
+            raise LookupError(
+                f"Save '{save_id}' not found: {root} does not exist. "
+                "The per-save layout is created by the companion; omit --save to use the implicit save."
+            )
         return cls(root, root / "save.json", save_id, True)
 
     # ---- layout --------------------------------------------------------------------
@@ -50,8 +54,12 @@ class SaveScope:
         return self.root / "reports"
 
     def describe(self) -> dict[str, Any]:
-        return {"saveId": self.save_id, "isolated": self.isolated, "root": str(self.root),
-                **({} if self.isolated else {"note": FALLBACK_NOTE})}
+        return {
+            "saveId": self.save_id,
+            "isolated": self.isolated,
+            "root": str(self.root),
+            **({} if self.isolated else {"note": FALLBACK_NOTE}),
+        }
 
     # ---- binding --------------------------------------------------------------------
     def _read(self) -> dict[str, Any]:
@@ -112,12 +120,15 @@ class UserPreference:
             if "methodology" not in data:
                 return None
             from .library import parse_ref
+
             value = data["methodology"]
             parse_ref(value)
             return value
         except (OSError, ValueError, TypeError) as exc:
-            raise ValueError(f"Cannot read user default {self.metadata}: {exc}. "
-                             "Use `tf3c methodology set-default REF` or `tf3c methodology clear-default`.") from exc
+            raise ValueError(
+                f"Cannot read user default {self.metadata}: {exc}. "
+                "Use `tf3c methodology set-default REF` or `tf3c methodology clear-default`."
+            ) from exc
 
     def set_reference(self, ref: str | None) -> dict[str, Any]:
         previous, error = None, None
@@ -127,6 +138,7 @@ class UserPreference:
             error = str(exc)
         if ref is not None or self.metadata.exists():
             from .library import _atomic_bytes
+
             data = {"schema": "tf3c-user-methodology/1"}
             if ref is not None:
                 data["methodology"] = ref

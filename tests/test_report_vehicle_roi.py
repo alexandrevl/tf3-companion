@@ -21,42 +21,160 @@ BUS_A, BUS_B, BUS_C, TRUCK = 11, 12, 13, 14
 
 def _models(bus_b_name="Bus B"):
     return [
-        {"id": BUS_A, "res": "vehicle/bus/a.mdl", "name": "Bus A", "price": 400_000, "runningCosts": 50_000, "lifespan": 20_000},
-        {"id": BUS_B, "res": "vehicle/bus/b.mdl", "name": bus_b_name, "price": 500_000, "runningCosts": 80_000, "lifespan": 20_000},
-        {"id": BUS_C, "res": "vehicle/bus/c.mdl", "name": "Bus C", "price": 300_000, "runningCosts": 40_000, "lifespan": 20_000},
-        {"id": TRUCK, "res": "vehicle/truck/t.mdl", "name": "Truck T", "price": 600_000, "runningCosts": 90_000, "lifespan": 20_000},
+        {
+            "id": BUS_A,
+            "res": "vehicle/bus/a.mdl",
+            "name": "Bus A",
+            "price": 400_000,
+            "runningCosts": 50_000,
+            "lifespan": 20_000,
+        },
+        {
+            "id": BUS_B,
+            "res": "vehicle/bus/b.mdl",
+            "name": bus_b_name,
+            "price": 500_000,
+            "runningCosts": 80_000,
+            "lifespan": 20_000,
+        },
+        {
+            "id": BUS_C,
+            "res": "vehicle/bus/c.mdl",
+            "name": "Bus C",
+            "price": 300_000,
+            "runningCosts": 40_000,
+            "lifespan": 20_000,
+        },
+        {
+            "id": TRUCK,
+            "res": "vehicle/truck/t.mdl",
+            "name": "Truck T",
+            "price": 600_000,
+            "runningCosts": 90_000,
+            "lifespan": 20_000,
+        },
     ]
 
 
 def _catalog(units=None):
     cat = [
-        {"id": 1, "res": "vehicle/bus/a.mdl", "name": "Bus A", "carrier": "ROAD", "yearFrom": 1970, "yearTo": 0, "available": True,
-         "price": 400_000, "runningCosts": 50_000, "lifespan": 20_000, "topSpeed": 20.0, "capacity": [{"cargo": PASSENGERS, "capacity": 20}]},
-        {"id": 2, "res": "vehicle/bus/b.mdl", "name": "Bus B", "carrier": "ROAD", "yearFrom": 1970, "yearTo": 0, "available": True,
-         "price": 500_000, "runningCosts": 80_000, "lifespan": 20_000, "topSpeed": 18.0, "capacity": [{"cargo": PASSENGERS, "capacity": 40}]},
-        {"id": 3, "res": "vehicle/bus/new.mdl", "name": "Bus New", "carrier": "ROAD", "yearFrom": 1975, "yearTo": 0, "available": True,
-         "price": 450_000, "runningCosts": 60_000, "lifespan": 25_000, "topSpeed": 22.0, "capacity": [{"cargo": PASSENGERS, "capacity": 30}]},
-        {"id": 4, "res": "vehicle/bus/future.mdl", "name": "Bus Future", "carrier": "ROAD", "yearFrom": 2000, "yearTo": 0, "available": False,
-         "price": 450_000, "runningCosts": 10_000, "lifespan": 25_000, "topSpeed": 30.0, "capacity": [{"cargo": PASSENGERS, "capacity": 99}]},
-        {"id": 5, "res": "vehicle/truck/t.mdl", "name": "Truck T", "carrier": "ROAD", "yearFrom": 1970, "yearTo": 0, "available": True,
-         "price": 600_000, "runningCosts": 90_000, "lifespan": 20_000, "topSpeed": 17.0, "capacity": [{"cargo": COAL, "capacity": 30}]},
-        {"id": 6, "res": "vehicle/train/x.mdl", "name": "Train X", "carrier": "RAIL", "yearFrom": 1970, "yearTo": 0, "available": True,
-         "price": 1, "runningCosts": 1, "lifespan": 1, "topSpeed": 1.0, "capacity": [{"cargo": PASSENGERS, "capacity": 99}]},
+        {
+            "id": 1,
+            "res": "vehicle/bus/a.mdl",
+            "name": "Bus A",
+            "carrier": "ROAD",
+            "yearFrom": 1970,
+            "yearTo": 0,
+            "available": True,
+            "price": 400_000,
+            "runningCosts": 50_000,
+            "lifespan": 20_000,
+            "topSpeed": 20.0,
+            "capacity": [{"cargo": PASSENGERS, "capacity": 20}],
+        },
+        {
+            "id": 2,
+            "res": "vehicle/bus/b.mdl",
+            "name": "Bus B",
+            "carrier": "ROAD",
+            "yearFrom": 1970,
+            "yearTo": 0,
+            "available": True,
+            "price": 500_000,
+            "runningCosts": 80_000,
+            "lifespan": 20_000,
+            "topSpeed": 18.0,
+            "capacity": [{"cargo": PASSENGERS, "capacity": 40}],
+        },
+        {
+            "id": 3,
+            "res": "vehicle/bus/new.mdl",
+            "name": "Bus New",
+            "carrier": "ROAD",
+            "yearFrom": 1975,
+            "yearTo": 0,
+            "available": True,
+            "price": 450_000,
+            "runningCosts": 60_000,
+            "lifespan": 25_000,
+            "topSpeed": 22.0,
+            "capacity": [{"cargo": PASSENGERS, "capacity": 30}],
+        },
+        {
+            "id": 4,
+            "res": "vehicle/bus/future.mdl",
+            "name": "Bus Future",
+            "carrier": "ROAD",
+            "yearFrom": 2000,
+            "yearTo": 0,
+            "available": False,
+            "price": 450_000,
+            "runningCosts": 10_000,
+            "lifespan": 25_000,
+            "topSpeed": 30.0,
+            "capacity": [{"cargo": PASSENGERS, "capacity": 99}],
+        },
+        {
+            "id": 5,
+            "res": "vehicle/truck/t.mdl",
+            "name": "Truck T",
+            "carrier": "ROAD",
+            "yearFrom": 1970,
+            "yearTo": 0,
+            "available": True,
+            "price": 600_000,
+            "runningCosts": 90_000,
+            "lifespan": 20_000,
+            "topSpeed": 17.0,
+            "capacity": [{"cargo": COAL, "capacity": 30}],
+        },
+        {
+            "id": 6,
+            "res": "vehicle/train/x.mdl",
+            "name": "Train X",
+            "carrier": "RAIL",
+            "yearFrom": 1970,
+            "yearTo": 0,
+            "available": True,
+            "price": 1,
+            "runningCosts": 1,
+            "lifespan": 1,
+            "topSpeed": 1.0,
+            "capacity": [{"cargo": PASSENGERS, "capacity": 99}],
+        },
     ]
     return cat, units
 
 
 def _vehicle(vid, line, model, cargo, profit, age_years, game_time, capacity=20, can_carry=None, carrier="ROAD"):
     return {
-        "id": vid, "name": f"V{vid}", "carrier": carrier, "state": "EN_ROUTE", "line": line,
-        "purchaseTime": int(game_time - age_years * YEAR), "profitYear": profit, "models": [model], "value": 100_000,
-        "runningCost": 50_000, "maintenanceState": 0.9, "capacity": capacity,
-        "loadConfig": [{"cargo": cargo, "capacity": capacity}], "canCarry": can_carry if can_carry is not None else [cargo],
+        "id": vid,
+        "name": f"V{vid}",
+        "carrier": carrier,
+        "state": "EN_ROUTE",
+        "line": line,
+        "purchaseTime": int(game_time - age_years * YEAR),
+        "profitYear": profit,
+        "models": [model],
+        "value": 100_000,
+        "runningCost": 50_000,
+        "maintenanceState": 0.9,
+        "capacity": capacity,
+        "loadConfig": [{"cargo": cargo, "capacity": capacity}],
+        "canCarry": can_carry if can_carry is not None else [cargo],
     }
 
 
-def _snapshot(year, month, with_catalog=False, units=None, bus_b_name="Bus B", extra_vehicles=(), b_profit=-30_000,
-              year_duration=YEAR):
+def _snapshot(
+    year,
+    month,
+    with_catalog=False,
+    units=None,
+    bus_b_name="Bus B",
+    extra_vehicles=(),
+    b_profit=-30_000,
+    year_duration=YEAR,
+):
     game_time = int((year - 1980) * YEAR + month * YEAR / 12) + 10 * YEAR
     vehicles = []
     vid = 1
@@ -80,20 +198,52 @@ def _snapshot(year, month, with_catalog=False, units=None, bus_b_name="Bus B", e
     vehicles.append(_vehicle(vid, 100, BUS_A, PASSENGERS, 9_000, 0.2, game_time))
     vehicles.extend(extra_vehicles)
     lines = [
-        {"id": 100, "name": "Line <Hot>", "vehicles": [v["id"] for v in vehicles if v["line"] == 100], "stops": [{}, {}],
-         "profitYear": 1_000_000, "capacity": [{"cargo": PASSENGERS + 1, "used": 95, "capacity": 100}], "issues": []},
-        {"id": 101, "name": "Line Cold", "vehicles": [v["id"] for v in vehicles if v["line"] == 101], "stops": [{}, {}],
-         "profitYear": -120_000, "capacity": [{"cargo": PASSENGERS + 1, "used": 10, "capacity": 160}], "issues": []},
-        {"id": 102, "name": "Coal Line", "vehicles": [v["id"] for v in vehicles if v["line"] == 102], "stops": [{}, {}],
-         "profitYear": -30_000, "capacity": [{"cargo": COAL + 1, "used": 30, "capacity": 90}], "issues": []},
+        {
+            "id": 100,
+            "name": "Line <Hot>",
+            "vehicles": [v["id"] for v in vehicles if v["line"] == 100],
+            "stops": [{}, {}],
+            "profitYear": 1_000_000,
+            "capacity": [{"cargo": PASSENGERS + 1, "used": 95, "capacity": 100}],
+            "issues": [],
+        },
+        {
+            "id": 101,
+            "name": "Line Cold",
+            "vehicles": [v["id"] for v in vehicles if v["line"] == 101],
+            "stops": [{}, {}],
+            "profitYear": -120_000,
+            "capacity": [{"cargo": PASSENGERS + 1, "used": 10, "capacity": 160}],
+            "issues": [],
+        },
+        {
+            "id": 102,
+            "name": "Coal Line",
+            "vehicles": [v["id"] for v in vehicles if v["line"] == 102],
+            "stops": [{}, {}],
+            "profitYear": -30_000,
+            "capacity": [{"cargo": COAL + 1, "used": 30, "capacity": 90}],
+            "issues": [],
+        },
     ]
     raw = {
-        "meta": {"schemaVersion": 1, "gameTime": game_time, "yearDuration": year_duration,
-                 "date": {"year": year, "month": month, "day": 1}, "reason": "interval"},
+        "meta": {
+            "schemaVersion": 1,
+            "gameTime": game_time,
+            "yearDuration": year_duration,
+            "date": {"year": year, "month": month, "day": 1},
+            "reason": "interval",
+        },
         "company": {"balance": 1_000_000, "loan": 0},
         "cargos": [{"id": 0, "name": "Passengers"}, {"id": 3, "name": "Coal"}],
-        "models": _models(bus_b_name), "lines": lines, "vehicles": vehicles,
-        "stations": [], "industries": [], "towns": [], "errors": [], "problems": {},
+        "models": _models(bus_b_name),
+        "lines": lines,
+        "vehicles": vehicles,
+        "stations": [],
+        "industries": [],
+        "towns": [],
+        "errors": [],
+        "problems": {},
     }
     if with_catalog:
         raw["catalog"], _ = _catalog()
@@ -107,9 +257,19 @@ def _store(tmp_path, specs, anchor=True, name="t.db", year_duration=YEAR):
     store = Store(tmp_path / name)
     if anchor:
         # Dated observation bounds old purchases explicitly; never extrapolate their ages.
-        store.add_snapshot(Snapshot({"meta": {"schemaVersion": 1, "gameTime": 0, "yearDuration": YEAR,
-                                             "date": {"year": 1970, "month": 1, "day": 1}}},
-                                    source="calendar-anchor.lua"))
+        store.add_snapshot(
+            Snapshot(
+                {
+                    "meta": {
+                        "schemaVersion": 1,
+                        "gameTime": 0,
+                        "yearDuration": YEAR,
+                        "date": {"year": 1970, "month": 1, "day": 1},
+                    }
+                },
+                source="calendar-anchor.lua",
+            )
+        )
     for spec in specs:
         store.add_snapshot(_snapshot(year_duration=year_duration, **spec))
     return store
@@ -160,7 +320,13 @@ def test_groups_and_small_sample_flags(tmp_path):
     assert a[cols.index("Young mean (partial)")] == 9_000
     v = _roi(store)
     ga, gb, gc = _group(v, "Bus A [ROAD]"), _group(v, "Bus B [ROAD]"), _group(v, "Bus C [ROAD]")
-    assert (ga.stats.n, ga.stats.mature, ga.stats.young, ga.stats.mean, ga.stats.young_mean) == (5, 4, 1, 200_000, 9_000)
+    assert (ga.stats.n, ga.stats.mature, ga.stats.young, ga.stats.mean, ga.stats.young_mean) == (
+        5,
+        4,
+        1,
+        200_000,
+        9_000,
+    )
     assert ga.stats.sample == "ok" and gc.stats.sample == "small-sample" and gc.rank is None
     assert gb.stats.loss_share == 1.0 and gb.stats.return_on_value == -30_000 / 100_000
     assert v.overall.n == 14 == len(v.observations)
@@ -213,7 +379,13 @@ def test_trend_movers_report_decline(tmp_path):
     v = _roi(store)
     assert len(v.trend_samples) == TREND_COLUMNS
     mover = next(m for m in v.trend_movers if m.key == "Bus B [ROAD]")
-    assert (mover.first_mean, mover.first_n, mover.last_mean, mover.last_n, mover.change) == (-30_000, 4, -90_000, 4, -60_000)
+    assert (mover.first_mean, mover.first_n, mover.last_mean, mover.last_n, mover.change) == (
+        -30_000,
+        4,
+        -90_000,
+        4,
+        -60_000,
+    )
     assert [m.change for m in v.trend_movers] == sorted(m.change for m in v.trend_movers)
     doc = document(store, "vehicle-roi")
     changes = next(t for t in _tables(doc) if t.columns[-1] == "Change")
@@ -230,9 +402,9 @@ def test_swap_candidates_same_cargo_in_production_only(tmp_path):
     rows = [r for r in cand.rows if r[0] == "Bus B [ROAD]"]
     names = [r[1] for r in rows]
     assert "Bus New" in names and "Bus A" in names
-    assert "Bus Future" not in names          # not yet in production
-    assert "Train X" not in names             # other carrier
-    assert "Truck T" not in names             # does not carry passengers
+    assert "Bus Future" not in names  # not yet in production
+    assert "Train X" not in names  # other carrier
+    assert "Truck T" not in names  # does not carry passengers
     bus_a = next(r for r in rows if r[1] == "Bus A")
     assert bus_a[cand.columns.index("Capacity ratio")] == "x0.50"
     assert bus_a[cand.columns.index("Running cost ratio")] == "x0.62"
@@ -246,7 +418,9 @@ def test_swap_candidates_same_cargo_in_production_only(tmp_path):
     weak = next(g for g in v.weak_groups if g.key == "Bus B [ROAD]")
     assert weak.status == "assessed" and weak.cargo == "Passengers" and weak.current_capacity == 40
     candidate = next(c for c in weak.candidates if c.name == "Bus A")
-    assert candidate.capacity_ratio == pytest.approx(0.5) and candidate.running_cost_ratio == pytest.approx(50_000 / 80_000)
+    assert candidate.capacity_ratio == pytest.approx(0.5) and candidate.running_cost_ratio == pytest.approx(
+        50_000 / 80_000
+    )
     assert candidate.in_fleet and candidate.own_mature == 4 and candidate.own_mean == 200_000
     assert {c.name for c in weak.candidates} <= {"Bus A", "Bus New", "Bus B"}
     assert len(weak.candidates) <= 3
@@ -290,7 +464,7 @@ def test_single_snapshot_degrades_gracefully(tmp_path):
     trend = next(t for t in _tables(doc) if t.columns[0] == "Model [Carrier]" and t.columns[1][:2] == "19")
     row = next(r for r in trend.rows if r[0] == "Bus A [ROAD]")
     assert row[1] == "-" and row[2].startswith("200,000 (n=4)")
-    assert _roi(store).swap_status == "no-catalog"   # weak groups exist but no catalog is stored
+    assert _roi(store).swap_status == "no-catalog"  # weak groups exist but no catalog is stored
 
 
 def test_model_name_markup_is_escaped_in_html(tmp_path):
@@ -337,7 +511,7 @@ def test_ages_use_bounded_calendar_not_nominal_fallback(tmp_path):
     unknown = [o for o in v.observations if o.age is None]
     assert unknown and all(o.maturity == "unknown" and o.age_reason for o in unknown)
     assert all(o.age_reason is None for o in v.observations if o.age is not None)
-    assert v.overall.mature == 0 and v.overall.mean is None   # unknown is not treated as zero
+    assert v.overall.mature == 0 and v.overall.mean is None  # unknown is not treated as zero
     assert v.coverage.unavailable and v.coverage.unavailable[0].code == "unknown-vehicle-age"
 
 
@@ -366,7 +540,9 @@ def test_sustained_load_screens_follow_thresholds(tmp_path):
     short = _roi(_store(tmp_path, MULTI_YEAR[:2], name="short.db"))
     assert short.high_load == () and short.low_load == ()
     doc = document(store, "vehicle-roi")
-    high = next(t for t in _tables(doc) if t.columns[0] == "Line" and "Load across samples: median (range)" in t.columns)
+    high = next(
+        t for t in _tables(doc) if t.columns[0] == "Line" and "Load across samples: median (range)" in t.columns
+    )
     assert high.rows[0][0] == "Line <Hot>"
 
 
@@ -409,17 +585,21 @@ def test_selected_earlier_endpoint_excludes_later_evidence(tmp_path):
     ctx = EvaluationContext(earlier, resolve_context(), store.time_context(earlier), None, store.previous_of(earlier))
     v = evaluate_views(store, ctx, ("vehicle-roi",)).vehicle_roi
     assert v.coverage.endpoint.tick == earlier.game_time == v.last_sample.tick
-    assert v.catalog is None and v.swap_status == "no-catalog"       # the only catalog is after the endpoint
+    assert v.catalog is None and v.swap_status == "no-catalog"  # the only catalog is after the endpoint
     assert 950 not in {o.id for o in v.observations}
     assert v.coverage.eligible == sum(1 for s in snaps if s.game_time <= earlier.game_time)
     assert all(r.tick <= earlier.game_time for r in v.coverage.sampled)
-    assert all(r.tick <= earlier.game_time for r in v.load_samples) and v.trend_samples[-1].sample.tick == earlier.game_time
+    assert (
+        all(r.tick <= earlier.game_time for r in v.load_samples)
+        and v.trend_samples[-1].sample.tick == earlier.game_time
+    )
     doc = document_at(store, ctx)
     assert "No stored catalog snapshot" in _text(doc) and "V950" not in _text(doc)
 
 
 def document_at(store, ctx):
     from tf3companion import report_vehicle_roi
+
     return report_vehicle_roi.build(evaluate_views(store, ctx, ("vehicle-roi",)).vehicle_roi, context=ctx)
 
 
@@ -429,7 +609,7 @@ def test_hydration_is_bounded_for_a_long_history(tmp_path):
     store = _store(tmp_path, specs)
     v = _roi(store)
     cov = v.coverage
-    assert cov.eligible == cov.read == 61                       # 60 samples plus the calendar anchor
+    assert cov.eligible == cov.read == 61  # 60 samples plus the calendar anchor
     assert 0 < cov.hydrated <= cov.hydration_limit
     assert cov.used <= 33 and len(v.trend_samples) <= TREND_COLUMNS and len(v.load_samples) == 24
     assert cov.omitted == cov.eligible - cov.used

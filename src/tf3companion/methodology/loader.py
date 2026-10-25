@@ -55,13 +55,25 @@ def parse(raw: bytes, *, source: str = "file", path: str | None = None, label: s
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise MethodologyError([Issue("", f"file is not valid UTF-8: {exc.reason}",
-                                      category="syntax", code="invalid-utf8")], where) from exc
+        raise MethodologyError(
+            [Issue("", f"file is not valid UTF-8: {exc.reason}", category="syntax", code="invalid-utf8")], where
+        ) from exc
     try:
         data = json.loads(text, object_pairs_hook=_pairs, parse_constant=_reject_constant)
     except (ValueError, RecursionError) as exc:
-        raise MethodologyError([Issue("", f"invalid JSON: {exc}", category="syntax", code="invalid-json",
-                                      line=getattr(exc, "lineno", None), column=getattr(exc, "colno", None))], where) from exc
+        raise MethodologyError(
+            [
+                Issue(
+                    "",
+                    f"invalid JSON: {exc}",
+                    category="syntax",
+                    code="invalid-json",
+                    line=getattr(exc, "lineno", None),
+                    column=getattr(exc, "colno", None),
+                )
+            ],
+            where,
+        ) from exc
     if _depth(data) > MAX_JSON_DEPTH:
         raise MethodologyError([Issue("", f"JSON nesting exceeds {MAX_JSON_DEPTH} levels")], where)
     if isinstance(data, dict):
@@ -76,11 +88,20 @@ def _check_schema(data: dict[str, Any], where: str) -> None:
     declared = data.get("schema")
     if not isinstance(declared, str) or not declared.startswith(SCHEMA_PREFIX):
         return  # reported by the validator with the other structural problems
-    major = declared[len(SCHEMA_PREFIX):]
+    major = declared[len(SCHEMA_PREFIX) :]
     if major != str(SCHEMA_MAJOR):
-        raise MethodologyError([Issue("/schema", f"declared schema '{declared}' is not supported; this companion "
-                                                 f"supports '{SCHEMA_ID}'. No rule was evaluated.",
-                                      category="unsupported-schema", code="unsupported-schema")], where)
+        raise MethodologyError(
+            [
+                Issue(
+                    "/schema",
+                    f"declared schema '{declared}' is not supported; this companion "
+                    f"supports '{SCHEMA_ID}'. No rule was evaluated.",
+                    category="unsupported-schema",
+                    code="unsupported-schema",
+                )
+            ],
+            where,
+        )
 
 
 def read_file(path: Path) -> bytes:
@@ -89,8 +110,9 @@ def read_file(path: Path) -> bytes:
     try:
         size = path.stat().st_size
         if size > MAX_BYTES:
-            raise MethodologyError([Issue("", f"file is {size:,} bytes; the limit is {MAX_BYTES:,}",
-                                          code="size-limit")], str(path))
+            raise MethodologyError(
+                [Issue("", f"file is {size:,} bytes; the limit is {MAX_BYTES:,}", code="size-limit")], str(path)
+            )
         return path.read_bytes()
     except OSError as exc:
         raise MethodologyError([Issue("", str(exc), category="io", code="read-error")], str(path)) from exc
@@ -104,6 +126,7 @@ def load_file(path: Path, *, source: str = "file") -> Methodology:
 # ---------------------------------------------------------------------------
 # packaged resources (editable checkout and installed wheel alike)
 
+
 def _packaged_root():
     return files("tf3companion.methodology")
 
@@ -114,7 +137,9 @@ def packaged_files() -> list[tuple[str, bytes]]:
     out = [("default.json", root.joinpath("default.json").read_bytes())]
     examples = root.joinpath("examples")
     if examples.is_dir():
-        out += sorted((f"examples/{e.name}", e.read_bytes()) for e in examples.iterdir() if e.name.endswith(FILE_SUFFIX))
+        out += sorted(
+            (f"examples/{e.name}", e.read_bytes()) for e in examples.iterdir() if e.name.endswith(FILE_SUFFIX)
+        )
     return out
 
 

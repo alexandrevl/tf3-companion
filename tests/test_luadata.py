@@ -52,7 +52,7 @@ def test_nil_values_are_dropped():
 
 
 def test_roundtrip_through_dumps():
-    data = {"id": 3, "list": [1, 2.5, "x\"y", {"\u00e7": True}], "empty": [], "neg": -7}
+    data = {"id": 3, "list": [1, 2.5, 'x"y', {"\u00e7": True}], "empty": [], "neg": -7}
     assert luadata.loads(luadata.dumps(data)) == data
 
 
@@ -62,18 +62,21 @@ def test_rejects_malformed_documents(text):
         luadata.loads(text)
 
 
-@pytest.mark.parametrize("text", [
-    "return os.execute('touch /tmp/unsafe')",
-    "return {} os.execute('anything')",
-    "return { [nil] = 1 }",
-    "return { [{}] = 1 }",
-    "return { [nan] = 1 }",
-    "return { [true] = 1, [1] = 2 }",
-    "return { a = 1, a = 2 }",
-    r'return "\999"',
-    r'return "\xzz"',
-    r'return "\u{110000}"',
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "return os.execute('touch /tmp/unsafe')",
+        "return {} os.execute('anything')",
+        "return { [nil] = 1 }",
+        "return { [{}] = 1 }",
+        "return { [nan] = 1 }",
+        "return { [true] = 1, [1] = 2 }",
+        "return { a = 1, a = 2 }",
+        r'return "\999"',
+        r'return "\xzz"',
+        r'return "\u{110000}"',
+    ],
+)
 def test_rejects_executable_or_ambiguous_data(text):
     with pytest.raises(luadata.LuaDataError):
         luadata.loads(text)

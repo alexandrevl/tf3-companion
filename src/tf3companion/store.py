@@ -94,8 +94,10 @@ class Store:
         self._view_depth = 0
         if read_only:
             if not Path(path).is_file():
-                raise LookupError(f"No companion database at {path}. Import evidence first: run `tf3c ingest` "
-                                  "(or `tf3c refresh` with the game open); stored-only commands never create it.")
+                raise LookupError(
+                    f"No companion database at {path}. Import evidence first: run `tf3c ingest` "
+                    "(or `tf3c refresh` with the game open); stored-only commands never create it."
+                )
             self.conn = sqlite3.connect(f"{Path(path).resolve().as_uri()}?mode=ro", uri=True)
         else:
             self.conn = sqlite3.connect(path)
@@ -114,20 +116,27 @@ class Store:
         expected = sqlite3.connect(":memory:")
         try:
             expected.executescript(SCHEMA)
-            wanted = {t: {r[1] for r in expected.execute(f"PRAGMA table_info({t})")}
-                      for (t,) in expected.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+            wanted = {
+                t: {r[1] for r in expected.execute(f"PRAGMA table_info({t})")}
+                for (t,) in expected.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+            }
         finally:
             expected.close()
         try:
             actual = {t: {r[1] for r in self.conn.execute(f"PRAGMA table_info({t})")} for t in wanted}
         except sqlite3.DatabaseError as exc:
             raise ValueError(f"{self.path} is not a readable companion database ({exc}).") from exc
-        problems = [f"{t} ({'missing' if not actual[t] else 'missing columns ' + ', '.join(sorted(cols - actual[t]))})"
-                    for t, cols in sorted(wanted.items()) if not cols <= actual[t]]
+        problems = [
+            f"{t} ({'missing' if not actual[t] else 'missing columns ' + ', '.join(sorted(cols - actual[t]))})"
+            for t, cols in sorted(wanted.items())
+            if not cols <= actual[t]
+        ]
         if problems:
-            raise ValueError(f"Unsupported companion database schema at {self.path}: {'; '.join(problems)}. "
-                             "Stored-only commands never migrate or repair it; open it once with a writable "
-                             "command such as `tf3c ingest`, or use a separate data directory.")
+            raise ValueError(
+                f"Unsupported companion database schema at {self.path}: {'; '.join(problems)}. "
+                "Stored-only commands never migrate or repair it; open it once with a writable "
+                "command such as `tf3c ingest`, or use a separate data directory."
+            )
 
     def _require_writable(self) -> None:
         if self.read_only:
@@ -168,31 +177,40 @@ class Store:
         be detected; monotone history is never proof of save/branch isolation.
         """
         from .game_time import GameCalendarClock
+
         rows = self.conn.execute(
             "SELECT game_time, ingested_at, json_extract(data, '$.meta.date') AS date, "
             "json_extract(data, '$.meta.saveId') AS save_id FROM snapshots "
             "WHERE game_time <= ? ORDER BY ingested_at, game_time",
             (snapshot.game_time,),
         ).fetchall()
-        samples = [{"gameTime": r["game_time"],
-                    "date": json.loads(r["date"]) if r["date"] else None,
-                    "saveId": r["save_id"]} for r in rows]
+        samples = [
+            {"gameTime": r["game_time"], "date": json.loads(r["date"]) if r["date"] else None, "saveId": r["save_id"]}
+            for r in rows
+        ]
         if not any(s["gameTime"] == snapshot.game_time for s in samples):
-            samples.append({"gameTime": snapshot.game_time, "date": snapshot.date,
-                            "saveId": snapshot.meta.get("saveId")})
+            samples.append(
+                {"gameTime": snapshot.game_time, "date": snapshot.date, "saveId": snapshot.meta.get("saveId")}
+            )
         chronology = self.conn.execute(
             "SELECT game_time, (SELECT MAX(game_time) FROM snapshots) AS max_tick "
             "FROM snapshots ORDER BY ingested_at DESC, game_time DESC LIMIT 1"
         ).fetchone()
         rewind = bool(chronology and chronology["game_time"] < chronology["max_tick"])
-        return GameCalendarClock.from_samples(samples, context={
-            "selectedTick": snapshot.game_time, "saveId": snapshot.meta.get("saveId"),
-            "isolation": "legacy-unverified", "ambiguous": rewind,
-        })
+        return GameCalendarClock.from_samples(
+            samples,
+            context={
+                "selectedTick": snapshot.game_time,
+                "saveId": snapshot.meta.get("saveId"),
+                "isolation": "legacy-unverified",
+                "ambiguous": rewind,
+            },
+        )
 
     def calendar_baseline(self, snapshot: Snapshot) -> Snapshot | None:
         """Latest dated observation at least 365.25 calendar days before evaluation."""
         from .game_time import DAYS_PER_YEAR, calendar_ordinal
+
         clock = self.time_context(snapshot)
         ordinal = calendar_ordinal(snapshot.date)
         if clock.ambiguous or ordinal is None:
@@ -206,8 +224,10 @@ class Store:
         if existing is not None:
             save_id = json.loads(existing["data"]).get("meta", {}).get("saveId")
             if save_id != snap.meta.get("saveId"):
-                raise ValueError("single-store save identity mismatch; use a separate data directory "
-                                 "for each save, and explicitly migrate legacy history")
+                raise ValueError(
+                    "single-store save identity mismatch; use a separate data directory "
+                    "for each save, and explicitly migrate legacy history"
+                )
         company = snap.company
         with self.conn:
             self.conn.execute("DELETE FROM snapshots WHERE game_time = ?", (snap.game_time,))
@@ -273,7 +293,9 @@ class Store:
                 snap = Snapshot(raw=luadata.loads(content.decode("utf-8")), source=path.name)
                 if snap.game_time != int(path.stem.removeprefix("tf3c_snap_")):
                     raise ValueError("snapshot filename does not match meta.gameTime")
-                stored = self.conn.execute("SELECT data FROM snapshots WHERE game_time = ?", (snap.game_time,)).fetchone()
+                stored = self.conn.execute(
+                    "SELECT data FROM snapshots WHERE game_time = ?", (snap.game_time,)
+                ).fetchone()
                 same_data = stored is not None and json.loads(stored["data"]) == snap.raw
                 if receipt is not None and receipt["content_hash"] == digest and same_data:
                     result.skipped.append(label)
@@ -295,7 +317,7 @@ class Store:
                 imported.append((path, digest, signature))
             except Exception as exc:  # preserve malformed, partial and conflicting inputs
                 result.failed[label] = str(exc)
-        for path, digest, signature in imported[:max(len(imported) - keep_files, 0)]:
+        for path, digest, signature in imported[: max(len(imported) - keep_files, 0)]:
             label = str(path) if path.name in duplicate_names else path.name
             if path.name in duplicate_names and any(str(p) in result.failed for p in files if p.name == path.name):
                 continue
@@ -368,8 +390,9 @@ class Store:
         return self.snapshots(year)
 
     def available_years(self) -> list[int]:
-        return sorted({year for s in self.snapshots()
-                       if type(year := (s.date or {}).get("year", s.meta.get("year"))) is int})
+        return sorted(
+            {year for s in self.snapshots() if type(year := (s.date or {}).get("year", s.meta.get("year"))) is int}
+        )
 
     def recent_snapshots(self, limit: int = 24, game_time: int | None = None) -> list[Snapshot]:
         _nonnegative_integer(limit, "limit")
@@ -420,28 +443,41 @@ class Store:
     def iter_sample_index(self, endpoint: int) -> Iterator[tuple[int, str, dict[str, Any] | None]]:
         """(game_time, date_label, meta.date) of every sample at or before the endpoint, oldest first."""
         _nonnegative_integer(endpoint, "endpoint")
-        for row in self._stream("SELECT game_time, date_label, json_extract(data, '$.meta.date') AS date FROM snapshots "
-                                "WHERE game_time <= ? ORDER BY game_time", (endpoint,)):
+        for row in self._stream(
+            "SELECT game_time, date_label, json_extract(data, '$.meta.date') AS date FROM snapshots "
+            "WHERE game_time <= ? ORDER BY game_time",
+            (endpoint,),
+        ):
             yield row["game_time"], row["date_label"], json.loads(row["date"]) if row["date"] else None
 
     def iter_company_points(self, endpoint: int) -> Iterator[dict[str, Any]]:
         """Company counters of every sample at or before the endpoint, oldest first."""
         _nonnegative_integer(endpoint, "endpoint")
-        for row in self._stream("SELECT game_time, date_label, balance, loan, lines, vehicles, errors FROM snapshots "
-                                "WHERE game_time <= ? ORDER BY game_time", (endpoint,)):
+        for row in self._stream(
+            "SELECT game_time, date_label, balance, loan, lines, vehicles, errors FROM snapshots "
+            "WHERE game_time <= ? ORDER BY game_time",
+            (endpoint,),
+        ):
             yield dict(row)
 
     def iter_line_points(self, endpoint: int, line_id: int | None = None) -> Iterator[dict[str, Any]]:
         """Stored per-line series rows at or before the endpoint, ordered by line then time."""
         _nonnegative_integer(endpoint, "endpoint")
-        where, params = ("h.game_time <= ?", (endpoint,)) if line_id is None else ("h.game_time <= ? AND h.line_id = ?", (endpoint, line_id))
+        where, params = (
+            ("h.game_time <= ?", (endpoint,))
+            if line_id is None
+            else ("h.game_time <= ? AND h.line_id = ?", (endpoint, line_id))
+        )
         for row in self._stream(
-                "SELECT h.line_id, h.game_time, s.date_label, h.name, h.profit_year, h.transported_year, h.rate, h.vehicles "
-                f"FROM line_history h JOIN snapshots s USING (game_time) WHERE {where} ORDER BY h.line_id, h.game_time", params):
+            "SELECT h.line_id, h.game_time, s.date_label, h.name, h.profit_year, h.transported_year, h.rate, h.vehicles "
+            f"FROM line_history h JOIN snapshots s USING (game_time) WHERE {where} ORDER BY h.line_id, h.game_time",
+            params,
+        ):
             yield dict(row)
 
-    def iter_projection(self, endpoint: int, keys: tuple[str, ...],
-                        ticks: Collection[int] | None = None) -> Iterator[tuple[int, str, dict[str, Any]]]:
+    def iter_projection(
+        self, endpoint: int, keys: tuple[str, ...], ticks: Collection[int] | None = None
+    ) -> Iterator[tuple[int, str, dict[str, Any]]]:
         """(game_time, date_label, {top-level key: value}) at or before the endpoint, one source row parsed at a time.
 
         SQLite extracts only the requested top-level keys, so no whole raw snapshot is hydrated.
@@ -452,12 +488,16 @@ class Store:
             if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", key):
                 raise ValueError(f"unsupported projection key {key!r}")
         columns = "".join(f", json_extract(data, '$.{key}') AS k{i}" for i, key in enumerate(keys))
-        for row in self._stream(f"SELECT game_time, date_label{columns} FROM snapshots WHERE game_time <= ? ORDER BY game_time",
-                                (endpoint,)):
+        for row in self._stream(
+            f"SELECT game_time, date_label{columns} FROM snapshots WHERE game_time <= ? ORDER BY game_time", (endpoint,)
+        ):
             if ticks is not None and row["game_time"] not in ticks:
                 continue
-            yield row["game_time"], row["date_label"], {key: json.loads(row[f"k{i}"]) for i, key in enumerate(keys)
-                                                       if row[f"k{i}"] is not None}
+            yield (
+                row["game_time"],
+                row["date_label"],
+                {key: json.loads(row[f"k{i}"]) for i, key in enumerate(keys) if row[f"k{i}"] is not None},
+            )
 
     def hydrate(self, game_time: int) -> Snapshot | None:
         """Full snapshot at exactly this tick, or None."""
@@ -543,7 +583,8 @@ class Store:
             f"'value', {integer('$.value', 'e.value')}, 'purchase', {integer('$.purchaseTime', 'e.value')})) "
             "FROM json_each(data, '$.vehicles') AS e) AS vehicles, "
             "json_extract(data, '$.errors') AS errors "
-            "FROM snapshots WHERE game_time <= ? ORDER BY game_time")
+            "FROM snapshots WHERE game_time <= ? ORDER BY game_time"
+        )
         for row in self._stream(sql, (endpoint,)):
             out = dict(row)
             for key in ("date", "lines", "vehicles", "errors"):

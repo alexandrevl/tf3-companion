@@ -20,8 +20,16 @@ COAL, IRON, PLANKS = 3, 4, 5
 
 
 def industry(id_, name, kind, x, y, inputs=(), outputs=(), **extra):
-    return {"id": id_, "name": name, "type": f"::/industries/{kind}/{kind}.con", "position": [x, y, 0],
-            "inputs": [dict(i) for i in inputs], "outputs": [dict(o) for o in outputs], "closureTimeStamp": 0, **extra}
+    return {
+        "id": id_,
+        "name": name,
+        "type": f"::/industries/{kind}/{kind}.con",
+        "position": [x, y, 0],
+        "inputs": [dict(i) for i in inputs],
+        "outputs": [dict(o) for o in outputs],
+        "closureTimeStamp": 0,
+        **extra,
+    }
 
 
 def out(cargo, produced, shipped, maximum=None):
@@ -35,10 +43,12 @@ def inp(cargo, maximum, delivered=0, consumed=0):
 def make(game_time=10 * YEAR, date=(1980, 1, 1), industries=None, stocks=None, towns=None, catalog=False, lines=None):
     data = base_snapshot(game_time)
     data["meta"]["date"] = {"year": date[0], "month": date[1], "day": date[2]}
-    data["cargos"] = [{"id": 0, "name": "Passengers", "res": "::/cargos/passengers/passengers.cargo"},
-                      {"id": COAL, "name": "Coal", "res": "::/cargos/coal/coal.cargo"},
-                      {"id": IRON, "name": "Iron", "res": "::/cargos/iron_ore/iron_ore.cargo"},
-                      {"id": PLANKS, "name": "Planks", "res": "::/cargos/planks/planks.cargo"}]
+    data["cargos"] = [
+        {"id": 0, "name": "Passengers", "res": "::/cargos/passengers/passengers.cargo"},
+        {"id": COAL, "name": "Coal", "res": "::/cargos/coal/coal.cargo"},
+        {"id": IRON, "name": "Iron", "res": "::/cargos/iron_ore/iron_ore.cargo"},
+        {"id": PLANKS, "name": "Planks", "res": "::/cargos/planks/planks.cargo"},
+    ]
     data["industries"] = industries if industries is not None else default_industries()
     data["stocks"] = stocks or []
     if towns is not None:
@@ -47,12 +57,42 @@ def make(game_time=10 * YEAR, date=(1980, 1, 1), industries=None, stocks=None, t
         data["lines"], data["vehicles"], data["stations"] = lines
     if catalog:
         data["catalog"] = [
-            {"id": 1, "name": "Small Truck", "res": "t1", "carrier": "ROAD", "available": True, "capacity": [{"cargo": COAL, "capacity": 20}],
-             "price": 1000, "runningCosts": 60, "yearFrom": 1970, "yearTo": 2000},
-            {"id": 2, "name": "Big Truck", "res": "t2", "carrier": "ROAD", "available": True, "capacity": [{"cargo": COAL, "capacity": 40}],
-             "price": 3000, "runningCosts": 200, "yearFrom": 1970, "yearTo": 2000},
-            {"id": 3, "name": "Old Truck", "res": "t3", "carrier": "ROAD", "available": True, "capacity": [{"cargo": COAL, "capacity": 99}],
-             "price": 10, "runningCosts": 1, "yearFrom": 1920, "yearTo": 1950},
+            {
+                "id": 1,
+                "name": "Small Truck",
+                "res": "t1",
+                "carrier": "ROAD",
+                "available": True,
+                "capacity": [{"cargo": COAL, "capacity": 20}],
+                "price": 1000,
+                "runningCosts": 60,
+                "yearFrom": 1970,
+                "yearTo": 2000,
+            },
+            {
+                "id": 2,
+                "name": "Big Truck",
+                "res": "t2",
+                "carrier": "ROAD",
+                "available": True,
+                "capacity": [{"cargo": COAL, "capacity": 40}],
+                "price": 3000,
+                "runningCosts": 200,
+                "yearFrom": 1970,
+                "yearTo": 2000,
+            },
+            {
+                "id": 3,
+                "name": "Old Truck",
+                "res": "t3",
+                "carrier": "ROAD",
+                "available": True,
+                "capacity": [{"cargo": COAL, "capacity": 99}],
+                "price": 10,
+                "runningCosts": 1,
+                "yearFrom": 1920,
+                "yearTo": 1950,
+            },
         ]
     return data
 
@@ -60,7 +100,9 @@ def make(game_time=10 * YEAR, date=(1980, 1, 1), industries=None, stocks=None, t
 def default_industries():
     return [
         industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 200, 0)]),
-        industry(2, "Steel B", "steel_mill", 6000, 0, inputs=[inp(COAL, 300), inp(IRON, 300)], outputs=[out(7, 0, 0, 200)]),
+        industry(
+            2, "Steel B", "steel_mill", 6000, 0, inputs=[inp(COAL, 300), inp(IRON, 300)], outputs=[out(7, 0, 0, 200)]
+        ),
         industry(3, "Mine C", "iron_ore_mine", 0, 1000, outputs=[out(IRON, 100, 90)]),
     ]
 
@@ -86,10 +128,30 @@ def ev(store):
 
 def lines_for(*, cargo=COAL):
     return (
-        [{"id": 100, "name": "Coal Run", "vehicles": [1000], "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
-          "profitYear": 5, "capacity": [], "issues": []}],
-        [{"id": 1000, "name": "T1", "carrier": "ROAD", "state": "EN_ROUTE", "line": 100, "profitYear": 5, "models": [7],
-          "loadConfig": [{"cargo": cargo, "capacity": 20}], "purchaseTime": 0}],
+        [
+            {
+                "id": 100,
+                "name": "Coal Run",
+                "vehicles": [1000],
+                "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
+                "profitYear": 5,
+                "capacity": [],
+                "issues": [],
+            }
+        ],
+        [
+            {
+                "id": 1000,
+                "name": "T1",
+                "carrier": "ROAD",
+                "state": "EN_ROUTE",
+                "line": 100,
+                "profitYear": 5,
+                "models": [7],
+                "loadConfig": [{"cargo": cargo, "capacity": 20}],
+                "purchaseTime": 0,
+            }
+        ],
         [{"id": 500, "name": "Mine A", "lines": [100]}, {"id": 501, "name": "Steel B", "lines": [100]}],
     )
 
@@ -104,7 +166,9 @@ def test_ranking_scores_components_and_formula(store):
     add(store, make(stocks=stocks))
     v = ev(store)
     md = text(store)
-    assert "## Scoring Formula" in md and "Score = Volume + Distance + Urgency + Pull + Chain + Proven - Penalties" in md
+    assert (
+        "## Scoring Formula" in md and "Score = Volume + Distance + Urgency + Pull + Chain + Proven - Penalties" in md
+    )
     assert [c.producer.name for c in v.candidates] == ["Mine A"]  # Mine C ships 90% so it is not under-shipped
     top = v.candidates[0]
     assert top.rank == 1 and top.consumer.name == "Steel B" and top.volume == 200
@@ -130,7 +194,9 @@ def test_view_and_report_agree_on_numbers_and_order(store):
     add(store, make(industries=inds))
     v = ev(store)
     doc = document(store, "expansion")
-    ranking = next(b for b in doc.blocks if isinstance(b, reports.Table) and b.columns[:2] == ["#", "Route (producer -> consumer)"])
+    ranking = next(
+        b for b in doc.blocks if isinstance(b, reports.Table) and b.columns[:2] == ["#", "Route (producer -> consumer)"]
+    )
     assert [r[0] for r in ranking.rows] == [c.rank for c in v.candidates]
     assert [r[5] for r in ranking.rows] == [round(c.score, 1) for c in v.candidates]
     assert [r[3] for r in ranking.rows] == [round(c.volume) for c in v.candidates]
@@ -188,10 +254,22 @@ def test_town_candidate_uses_name_anchor_and_marks_estimate(store):
         industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 120, 0)]),
         industry(9, "Depot of Oakton", "farm", 4000, 3000),
     ]
-    towns = [{"id": 900, "name": "Oakton", "capacities": [300, 100, 100], "lineUsage": 0.0,
-              "cargoSupply": [{"cargo": COAL, "supply": 20, "limit": 100, "extra": 1}]},
-             {"id": 901, "name": "Nowhere", "capacities": [300, 100, 100], "lineUsage": 0.0,
-              "cargoSupply": [{"cargo": COAL, "supply": 0, "limit": 100, "extra": 1}]}]
+    towns = [
+        {
+            "id": 900,
+            "name": "Oakton",
+            "capacities": [300, 100, 100],
+            "lineUsage": 0.0,
+            "cargoSupply": [{"cargo": COAL, "supply": 20, "limit": 100, "extra": 1}],
+        },
+        {
+            "id": 901,
+            "name": "Nowhere",
+            "capacities": [300, 100, 100],
+            "lineUsage": 0.0,
+            "cargoSupply": [{"cargo": COAL, "supply": 0, "limit": 100, "extra": 1}],
+        },
+    ]
     add(store, make(industries=inds, towns=towns))
     v = ev(store)
     top = v.candidates[0]
@@ -206,8 +284,15 @@ def test_town_candidate_uses_name_anchor_and_marks_estimate(store):
 
 def test_unanchored_town_scores_zero_distance_and_flags_unknown(store):
     inds = [industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 120, 0)])]
-    towns = [{"id": 901, "name": "Nowhere", "capacities": [300, 100, 100], "lineUsage": 0.0,
-              "cargoSupply": [{"cargo": COAL, "supply": 0, "limit": 100, "extra": 1}]}]
+    towns = [
+        {
+            "id": 901,
+            "name": "Nowhere",
+            "capacities": [300, 100, 100],
+            "lineUsage": 0.0,
+            "cargoSupply": [{"cargo": COAL, "supply": 0, "limit": 100, "extra": 1}],
+        }
+    ]
     add(store, make(industries=inds, towns=towns))
     top = ev(store).candidates[0]
     assert top.distance_km is None and top.distance_method == "unknown" and top.parts.distance == 0
@@ -216,10 +301,30 @@ def test_unanchored_town_scores_zero_distance_and_flags_unknown(store):
 
 def test_vehicle_fit_uses_available_models_and_capacity_crosscheck(store):
     lines = (
-        [{"id": 100, "name": "Coal Run", "vehicles": [1000], "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
-          "profitYear": 5, "capacity": [], "issues": []}],
-        [{"id": 1000, "name": "T1", "carrier": "ROAD", "state": "EN_ROUTE", "line": 100, "profitYear": 5, "models": [7],
-          "loadConfig": [{"cargo": COAL, "capacity": 20}], "purchaseTime": 0}],
+        [
+            {
+                "id": 100,
+                "name": "Coal Run",
+                "vehicles": [1000],
+                "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
+                "profitYear": 5,
+                "capacity": [],
+                "issues": [],
+            }
+        ],
+        [
+            {
+                "id": 1000,
+                "name": "T1",
+                "carrier": "ROAD",
+                "state": "EN_ROUTE",
+                "line": 100,
+                "profitYear": 5,
+                "models": [7],
+                "loadConfig": [{"cargo": COAL, "capacity": 20}],
+                "purchaseTime": 0,
+            }
+        ],
         [{"id": 500, "name": "Elsewhere", "lines": [100]}, {"id": 501, "name": "Other", "lines": [100]}],
     )
     data = make(catalog=True, lines=lines)
@@ -316,11 +421,14 @@ def test_chart_has_adjacent_table_with_same_scores(store):
     assert [r[5] for r in table.rows] == chart.series[0][1]
 
 
-@pytest.mark.parametrize("distance_m, expected", [
-    (200, 0), (1750, 10), (5000, 20), (15000, 20 * 0.7), (50000, 20 * 0.4)])
+@pytest.mark.parametrize(
+    "distance_m, expected", [(200, 0), (1750, 10), (5000, 20), (15000, 20 * 0.7), (50000, 20 * 0.4)]
+)
 def test_distance_points_shape(store, distance_m, expected):
-    inds = [industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 500, 0)]),
-            industry(2, "Steel B", "steel_mill", distance_m, 0, inputs=[inp(COAL, 600)], outputs=[])]
+    inds = [
+        industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 500, 0)]),
+        industry(2, "Steel B", "steel_mill", distance_m, 0, inputs=[inp(COAL, 600)], outputs=[]),
+    ]
     add(store, make(industries=inds))
     assert ev(store).candidates[0].parts.distance == pytest.approx(expected)
 
@@ -346,7 +454,11 @@ def test_unverified_costs_are_not_ranked_or_printed(store):
     assert all("lowest_running_cost_per_capacity" not in f.why for f in v.catalog.candidates)
     fit = text(store).split("### Vehicle Fit")[1].split("## Extend")[0]
     assert "Small Truck" not in fit  # cheap-cost selection cannot run without units
-    table = next(b for b in document(store, "expansion").blocks if isinstance(b, reports.Table) and b.columns[:2] == ["#", "Cargo"])
+    table = next(
+        b
+        for b in document(store, "expansion").blocks
+        if isinstance(b, reports.Table) and b.columns[:2] == ["#", "Cargo"]
+    )
     assert all(row[7:9] == [None, None] for row in table.rows)
 
 
@@ -356,8 +468,10 @@ def test_transfer_connection_is_conservatively_excluded(store):
         {"id": 100, "name": "Coal feeder", "vehicles": [1000], "stops": [{"stationGroup": 500}, {"stationGroup": 502}]},
         {"id": 101, "name": "Coal trunk", "vehicles": [1001], "stops": [{"stationGroup": 502}, {"stationGroup": 501}]},
     ]
-    data["vehicles"] = [{"id": vid, "line": lid, "loadConfig": [{"cargo": COAL, "capacity": 20}]}
-                        for vid, lid in ((1000, 100), (1001, 101))]
+    data["vehicles"] = [
+        {"id": vid, "line": lid, "loadConfig": [{"cargo": COAL, "capacity": 20}]}
+        for vid, lid in ((1000, 100), (1001, 101))
+    ]
     data["stations"] = [{"id": 500, "name": "Mine A"}, {"id": 501, "name": "Steel B"}, {"id": 502, "name": "Hub"}]
     add(store, data)
     v = ev(store)
@@ -366,28 +480,43 @@ def test_transfer_connection_is_conservatively_excluded(store):
 
 
 def test_dead_end_reasons_and_order(store):
-    inds = [industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 300, 0)]),
-            industry(2, "Quarry", "quarry", 0, 3000, outputs=[out(9, 500, 0)]),
-            industry(3, "Full Steel", "steel_mill", 6000, 0, inputs=[inp(COAL, 100, delivered=100)], outputs=[])]
+    inds = [
+        industry(1, "Mine A", "coal_mine", 0, 0, outputs=[out(COAL, 300, 0)]),
+        industry(2, "Quarry", "quarry", 0, 3000, outputs=[out(9, 500, 0)]),
+        industry(3, "Full Steel", "steel_mill", 6000, 0, inputs=[inp(COAL, 100, delivered=100)], outputs=[]),
+    ]
     data = make(industries=inds)
     data["cargos"].append({"id": 9, "name": "Stone", "res": "::/cargos/stone/stone.cargo"})
     add(store, data)
     v = ev(store)
-    assert [(d.producer.name, d.reasons) for d in v.dead_ends] == [("Quarry", ("no_consumer",)), ("Mine A", ("input_at_capacity",))]
+    assert [(d.producer.name, d.reasons) for d in v.dead_ends] == [
+        ("Quarry", ("no_consumer",)),
+        ("Mine A", ("input_at_capacity",)),
+    ]
     md = text(store)
     assert "consumer input already at recorded capacity" in md and "no consumer of this cargo in the snapshot" in md
 
 
 def test_proven_economics_groups_and_ranking_counts(store):
     data = make()
-    data["lines"] = [{"id": 100, "name": "Coal Run", "vehicles": [1, 2, 3], "stops": [{"stationGroup": 500}, {"stationGroup": 502}]}]
-    data["vehicles"] = [{"id": i, "line": 100, "carrier": "ROAD", "profitYear": p, "loadConfig": [{"cargo": COAL, "capacity": 20}]}
-                        for i, p in ((1, 100), (2, 50), (3, -10))]
+    data["lines"] = [
+        {"id": 100, "name": "Coal Run", "vehicles": [1, 2, 3], "stops": [{"stationGroup": 500}, {"stationGroup": 502}]}
+    ]
+    data["vehicles"] = [
+        {"id": i, "line": 100, "carrier": "ROAD", "profitYear": p, "loadConfig": [{"cargo": COAL, "capacity": 20}]}
+        for i, p in ((1, 100), (2, 50), (3, -10))
+    ]
     data["stations"] = [{"id": 500, "name": "Mine A"}, {"id": 502, "name": "Hub"}]
     add(store, data)
     v = ev(store)
     group = next(g for g in v.proven if g.cargo.id == COAL)
-    assert (group.carrier, group.vehicles, group.profitable, group.median_profit, group.qualifies) == ("ROAD", 3, 2, 50, True)
+    assert (group.carrier, group.vehicles, group.profitable, group.median_profit, group.qualifies) == (
+        "ROAD",
+        3,
+        2,
+        50,
+        True,
+    )
     assert group.candidates_in_ranking == 1
     top = v.candidates[0]
     assert top.proof.share == pytest.approx(2 / 3) and top.proof.best_carrier == "ROAD"
@@ -399,7 +528,10 @@ def test_starved_consumer_and_unknown_usage_is_not_starved(store):
     v = ev(store)
     starved = v.starved_consumers
     assert [(s.consumer.name, s.capacity, s.usage_ratio) for s in starved] == [("Steel B", 600, 0)]
-    assert {(s.cargo.id, s.producer.name if s.producer else None) for s in starved[0].suppliers} == {(COAL, "Mine A"), (IRON, "Mine C")}
+    assert {(s.cargo.id, s.producer.name if s.producer else None) for s in starved[0].suppliers} == {
+        (COAL, "Mine A"),
+        (IRON, "Mine C"),
+    }
     assert "Starved Consumers" in text(store)
 
     other = make(game_time=11 * YEAR)
@@ -414,9 +546,15 @@ def test_starved_consumer_and_unknown_usage_is_not_starved(store):
 
 
 def test_town_with_unknown_supply_is_not_counted_as_unmet(store):
-    towns = [{"id": 900, "name": "Oakton", "capacities": [300, 100, 100], "lineUsage": 0.0,
-              "cargoSupply": [{"cargo": COAL, "supply": None, "limit": 100},
-                              {"cargo": IRON, "supply": 10, "limit": 100}]}]
+    towns = [
+        {
+            "id": 900,
+            "name": "Oakton",
+            "capacities": [300, 100, 100],
+            "lineUsage": 0.0,
+            "cargoSupply": [{"cargo": COAL, "supply": None, "limit": 100}, {"cargo": IRON, "supply": 10, "limit": 100}],
+        }
+    ]
     add(store, make(towns=towns))
     row = ev(store).towns[0]
     assert row.town.name == "Oakton" and row.capacity_sum == 500 and row.stations == 0
@@ -433,7 +571,11 @@ def test_nondefault_threshold_changes_membership_not_measurements(store):
     assert {c.producer.name for c in loose.candidates} == {"Mine A", "Mine C"}
     a_default = default.candidates[0]
     a_loose = next(c for c in loose.candidates if c.producer.name == "Mine A")
-    assert (a_default.produced, a_default.shipped, a_default.unshipped) == (a_loose.produced, a_loose.shipped, a_loose.unshipped)
+    assert (a_default.produced, a_default.shipped, a_default.unshipped) == (
+        a_loose.produced,
+        a_loose.shipped,
+        a_loose.unshipped,
+    )
 
 
 def test_view_is_plain_serializable_and_holds_no_snapshots(store):
@@ -466,7 +608,10 @@ def test_selected_earlier_endpoint_excludes_later_entities_and_catalog(store):
 def test_hydration_is_bounded_for_a_long_history(store):
     for year in range(1980, 1990):
         for month in range(1, 13):
-            add(store, make(game_time=year * YEAR + month * 10, date=(year, month, 1), catalog=(year == 1980 and month == 1)))
+            add(
+                store,
+                make(game_time=year * YEAR + month * 10, date=(year, month, 1), catalog=(year == 1980 and month == 1)),
+            )
     v = ev(store)
     assert v.coverage.eligible == 120
     assert v.coverage.used <= 21 and v.coverage.omitted == 120 - v.coverage.used

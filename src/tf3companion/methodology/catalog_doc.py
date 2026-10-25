@@ -53,7 +53,12 @@ def render_catalog() -> str:
     for entity in ENTITIES:
         specs = sorted((s for s in fieldmod.all_fields() if s.entity == entity), key=lambda s: s.name)
         title = {"stop": "stop (a stop of a line; aggregate rules only)"}.get(entity, entity)
-        out += [f"## {title}", "", "| Field | Type | Source (snapshot path) | Meaning and caveat |", "|---|---|---|---|"]
+        out += [
+            f"## {title}",
+            "",
+            "| Field | Type | Source (snapshot path) | Meaning and caveat |",
+            "|---|---|---|---|",
+        ]
         for spec in specs:
             sources = ", ".join(f"`{p}`" for p in spec.sources)
             note = spec.description + (f" **Caveat:** {spec.caveat}" if spec.caveat else "")

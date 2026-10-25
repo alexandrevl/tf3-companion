@@ -1,4 +1,5 @@
 """Behavioral safety gates and library-root inheritance, without a game or database."""
+
 import json
 from pathlib import Path
 
@@ -12,8 +13,14 @@ from tf3companion.methodology.resolve import Resolver, validate_file
 
 
 def document(ident="policy", version="1.0.0", **extra):
-    return {"schema": "tf3c-methodology/1", "id": ident, "version": version,
-            "name": "Policy", "description": "Fixture policy.", **extra}
+    return {
+        "schema": "tf3c-methodology/1",
+        "id": ident,
+        "version": version,
+        "name": "Policy",
+        "description": "Fixture policy.",
+        **extra,
+    }
 
 
 def drop(root, data):
@@ -25,9 +32,18 @@ def drop(root, data):
 
 
 def incompatible(ident="unsupported", version="1.0.0"):
-    return document(ident, version, rules=[{"id": "unknown", "entity": "line", "outcomes": [
-        {"when": {"field": "line.no_such_measure", "op": "gt", "value": 1}, "marker": "review"}]}],
-        markers={"review": {"label": "Review"}})
+    return document(
+        ident,
+        version,
+        rules=[
+            {
+                "id": "unknown",
+                "entity": "line",
+                "outcomes": [{"when": {"field": "line.no_such_measure", "op": "gt", "value": 1}, "marker": "review"}],
+            }
+        ],
+        markers={"review": {"label": "Review"}},
+    )
 
 
 def test_default_inheritance_is_shared_but_save_overrides_are_not(tmp_path):
@@ -132,8 +148,10 @@ def test_validation_diagnostics_include_syntax_locations_and_escaped_pointers(tm
     bad = document(**{"bad/key~": 1, "parameters": {"broken": {"value": []}}})
     _, report = inspect(json.dumps(bad).encode())
     assert {d["path"] for d in report["diagnostics"]} >= {"/bad~1key~0", "/parameters/broken/value"}
-    assert all({"category", "code", "severity", "itemId", "ruleId", "line", "column"} <= d.keys()
-               for d in report["diagnostics"])
+    assert all(
+        {"category", "code", "severity", "itemId", "ruleId", "line", "column"} <= d.keys()
+        for d in report["diagnostics"]
+    )
     path = tmp_path / "draft.json"
     path.write_text(json.dumps(incompatible()))
     assert validate_file(str(path))["valid"]
@@ -162,6 +180,7 @@ def test_effective_overrides_are_finite_typed_and_isolated():
     from conftest import base_snapshot
     from tf3companion.methodology.engine import evaluate
     from tf3companion.snapshot import Snapshot
+
     verdicts = evaluate(repeated, Snapshot(base_snapshot()))
     assert verdicts.parameters["number"] == 7
     assert verdicts.overrides == {"number": 7}
@@ -184,6 +203,7 @@ def test_changed_dropin_is_revalidated_and_previous_selection_is_not_erased(tmp_
 
 def test_readonly_mcp_validation_and_configuration_need_no_companion(tmp_path, monkeypatch):
     from tf3companion import mcp_server
+
     monkeypatch.setenv("TF3C_DATA_DIR", str(tmp_path / "library"))
     monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: pytest.fail("must not construct Companion"))
     result = mcp_server.validate_methodology(content=json.dumps(document()))
@@ -200,6 +220,7 @@ def test_readonly_mcp_validation_and_configuration_need_no_companion(tmp_path, m
 
 def test_single_report_publication_stages_manifest_before_replacing_old_folder(tmp_path, monkeypatch):
     from tf3companion.methodology import output
+
     folder = tmp_path / "reports" / "date__policy@1.0.0"
     output.write_bundle(folder, {"company.md": "old", "lines.md": "preserved"}, {"generation": 1})
     before = {p.name: p.read_bytes() for p in folder.iterdir()}
@@ -244,6 +265,7 @@ def test_report_policy_validation_uses_shared_registry_and_preserves_old_default
 def test_failed_runtime_regeneration_preserves_reports_manifest_latest_and_evidence(paths):
     from methodology_helpers import companion_with, troubled_company
     from tf3companion.methodology import output
+
     companion = companion_with(paths, troubled_company())
     try:
         path = drop(paths.data, document(parameters={"limit": {"value": 3}}))
@@ -251,8 +273,11 @@ def test_failed_runtime_regeneration_preserves_reports_manifest_latest_and_evide
         summary = companion.analyse()
         companion.report("company")
         folder = Path(summary["outputFolder"])
-        before = {str(p.relative_to(paths.data)): p.read_bytes()
-                  for p in paths.data.joinpath("reports").rglob("*") if p.is_file()}
+        before = {
+            str(p.relative_to(paths.data)): p.read_bytes()
+            for p in paths.data.joinpath("reports").rglob("*")
+            if p.is_file()
+        }
         rows = companion.store.conn.execute("SELECT game_time, data FROM snapshots ORDER BY game_time").fetchall()
         for method in (
             lambda: companion.analyse(param_overrides={"limit": float("nan")}),
@@ -264,10 +289,15 @@ def test_failed_runtime_regeneration_preserves_reports_manifest_latest_and_evide
         for method in (companion.analyse, companion.findings, lambda: companion.report("company")):
             with pytest.raises(ValueError):
                 method()
-        after = {str(p.relative_to(paths.data)): p.read_bytes()
-                 for p in paths.data.joinpath("reports").rglob("*") if p.is_file()}
+        after = {
+            str(p.relative_to(paths.data)): p.read_bytes()
+            for p in paths.data.joinpath("reports").rglob("*")
+            if p.is_file()
+        }
         assert before == after
-        assert companion.store.conn.execute("SELECT game_time, data FROM snapshots ORDER BY game_time").fetchall() == rows
+        assert (
+            companion.store.conn.execute("SELECT game_time, data FROM snapshots ORDER BY game_time").fetchall() == rows
+        )
         assert (folder / output.MANIFEST).is_file()
         assert (paths.data / "reports" / output.LATEST).is_file()
     finally:
@@ -275,9 +305,19 @@ def test_failed_runtime_regeneration_preserves_reports_manifest_latest_and_evide
 
 
 def regex_policy():
-    return document(parameters={"pattern": {"value": "^Train"}}, markers={"review": {"label": "Review"}}, rules=[
-        {"id": "named", "entity": "line", "outcomes": [
-            {"when": {"field": "line.name", "op": "matches", "value": {"param": "pattern"}}, "marker": "review"}]}])
+    return document(
+        parameters={"pattern": {"value": "^Train"}},
+        markers={"review": {"label": "Review"}},
+        rules=[
+            {
+                "id": "named",
+                "entity": "line",
+                "outcomes": [
+                    {"when": {"field": "line.name", "op": "matches", "value": {"param": "pattern"}}, "marker": "review"}
+                ],
+            }
+        ],
+    )
 
 
 @pytest.mark.parametrize("pattern", ["(a+)+$", "(unclosed"])
@@ -305,6 +345,7 @@ def test_valid_override_retains_provenance_and_unrelated_default_is_untouched():
 
 def _stored_snapshots(paths):
     import sqlite3
+
     conn = sqlite3.connect(paths.database)
     try:
         return conn.execute("SELECT game_time, data FROM snapshots ORDER BY game_time").fetchall()
@@ -318,13 +359,28 @@ def test_validate_import_select_apply_agree_across_cli_and_mcp_without_touching_
     from tf3companion import mcp_server
     from tf3companion.cli import main
     from tf3companion.service import Companion
+
     monkeypatch.setenv("TF3C_DATA_DIR", str(paths.data))
     monkeypatch.setenv("TF3C_USERDATA_DIR", str(paths.userdata))
     monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: Companion(paths, save))
     write_snapshot(paths.snapshot_folder, troubled_company())
-    draft = document("sequence", parameters={"limit": {"value": 3}}, markers={"review": {"label": "Review"}}, rules=[
-        {"id": "many", "entity": "line", "outcomes": [
-            {"when": {"field": "line.vehicle_count", "op": "gt", "value": {"param": "limit"}}, "marker": "review"}]}])
+    draft = document(
+        "sequence",
+        parameters={"limit": {"value": 3}},
+        markers={"review": {"label": "Review"}},
+        rules=[
+            {
+                "id": "many",
+                "entity": "line",
+                "outcomes": [
+                    {
+                        "when": {"field": "line.vehicle_count", "op": "gt", "value": {"param": "limit"}},
+                        "marker": "review",
+                    }
+                ],
+            }
+        ],
+    )
     source = paths.data.parent / "draft.json"
     source.write_text(json.dumps(draft))
 
@@ -360,6 +416,7 @@ def test_validate_import_select_apply_agree_across_cli_and_mcp_without_touching_
 
 def test_cli_analyse_without_snapshots_fails_without_writing_reports(paths, monkeypatch, capsys):
     from tf3companion.cli import main
+
     monkeypatch.setenv("TF3C_DATA_DIR", str(paths.data))
     monkeypatch.setenv("TF3C_USERDATA_DIR", str(paths.userdata))
     assert main(["analyse"]) != 0

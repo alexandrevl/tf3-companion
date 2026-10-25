@@ -41,18 +41,19 @@ _CHEAPEST = "lowest_running_cost_per_capacity"
 # typed result
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class EntityRef:
-    kind: str                 # "industry" | "town"
+    kind: str  # "industry" | "town"
     id: int | None
-    name: str | None          # untrusted display data; None when the sample has no name
+    name: str | None  # untrusted display data; None when the sample has no name
 
 
 @dataclass(frozen=True)
 class CargoRef:
     id: int | None
     name: str | None
-    key: str                  # resource key, e.g. "coal"; empty when unknown
+    key: str  # resource key, e.g. "coal"; empty when unknown
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,7 @@ class ScoreParts:
 
 @dataclass(frozen=True)
 class Penalty:
-    code: str                 # consumer_input_stock_full | consumer_closing | producer_closing
+    code: str  # consumer_input_stock_full | consumer_closing | producer_closing
     amount: float
     stock_ratio: float | None = None
 
@@ -83,8 +84,8 @@ class Penalty:
 @dataclass(frozen=True)
 class Flag:
     code: str
-    subject: str | None = None     # a line or cargo name where the code names one
-    value: float | None = None     # a ratio where the code carries one
+    subject: str | None = None  # a line or cargo name where the code names one
+    value: float | None = None  # a ratio where the code carries one
     samples: int | None = None
 
 
@@ -92,7 +93,7 @@ class Flag:
 class CargoProof:
     vehicles: int
     profitable: int
-    share: float | None             # None below the minimum vehicle count
+    share: float | None  # None below the minimum vehicle count
     best_carrier: str | None
 
 
@@ -120,12 +121,12 @@ class ExpansionCandidate:
     persistence: float | None
     persistence_samples: int
     unmet_recorded: float
-    unmet_available: float          # what was left of the consumer's demand when this candidate was chosen
+    unmet_available: float  # what was left of the consumer's demand when this candidate was chosen
     consumer_capacity: float
     town_supplied: float | None
-    volume: float                   # allocated volume: min(unshipped, unmet_available)
+    volume: float  # allocated volume: min(unshipped, unmet_available)
     distance_km: float | None
-    distance_method: str            # industry-positions | town-anchor-estimate | unknown
+    distance_method: str  # industry-positions | town-anchor-estimate | unknown
     anchor_industries: int | None
     anchor_spread_km: float | None
     parts: ScoreParts
@@ -161,7 +162,7 @@ class DeadEnd:
     shipped: float
     unshipped: float
     ratio: float
-    reasons: tuple[str, ...]        # already_linked | input_at_capacity | booster_cargo_without_inputs | no_consumer
+    reasons: tuple[str, ...]  # already_linked | input_at_capacity | booster_cargo_without_inputs | no_consumer
 
 
 @dataclass(frozen=True)
@@ -172,7 +173,7 @@ class ProvenGroup:
     profitable: int
     median_profit: float
     total_profit: float
-    qualifies: bool                 # freight, enough vehicles and a positive median
+    qualifies: bool  # freight, enough vehicles and a positive median
     candidates_in_ranking: int
 
 
@@ -183,7 +184,7 @@ class TownAnchorEstimate:
     y: float
     industries_used: int
     spread_km: float
-    confidence: str = "low"         # positions are never collected; derived from industry names
+    confidence: str = "low"  # positions are never collected; derived from industry names
 
 
 @dataclass(frozen=True)
@@ -227,11 +228,11 @@ class VehicleFitCandidate:
     cargo: CargoRef
     carrier: str
     model: VehicleModelRef
-    why: tuple[str, ...]            # largest_capacity | lowest_running_cost_per_capacity
+    why: tuple[str, ...]  # largest_capacity | lowest_running_cost_per_capacity
     capacity: float
     loads_per_year: float | None
-    price: float | None             # None unless the catalog's price unit is verified
-    running_costs: float | None     # None unless the catalog's running-cost unit is verified
+    price: float | None  # None unless the catalog's price unit is verified
+    running_costs: float | None  # None unless the catalog's running-cost unit is verified
     year_from: int | None
     year_to: int | None
 
@@ -252,17 +253,17 @@ class ExpansionView:
     endpoint: SampleRef
     unshipped_ratio_limit: float
     full_stock_ratio: float
-    candidates: tuple[ExpansionCandidate, ...]       # the greedy selection, rank order
-    candidates_evaluated: int                        # producer-consumer pairs before selection
-    outputs_evaluated: int                           # distinct under-shipping (producer, cargo) outputs
-    persistence_usable: int                          # selected candidates with enough history samples
+    candidates: tuple[ExpansionCandidate, ...]  # the greedy selection, rank order
+    candidates_evaluated: int  # producer-consumer pairs before selection
+    outputs_evaluated: int  # distinct under-shipping (producer, cargo) outputs
+    persistence_usable: int  # selected candidates with enough history samples
     excluded: tuple[ExcludedRoute, ...]
-    dead_ends: tuple[DeadEnd, ...]                   # largest unshipped output first
-    proven: tuple[ProvenGroup, ...]                  # best median first
+    dead_ends: tuple[DeadEnd, ...]  # largest unshipped output first
+    proven: tuple[ProvenGroup, ...]  # best median first
     town_anchors: tuple[TownAnchorEstimate, ...]
-    starved_consumers: tuple[StarvedConsumer, ...]   # largest input capacity first
-    unassessed_consumers: tuple[EntityRef, ...]      # input usage unknown: never reported as starved
-    towns: tuple[TownDemand, ...]                    # towns with no or little service, largest first
+    starved_consumers: tuple[StarvedConsumer, ...]  # largest input capacity first
+    unassessed_consumers: tuple[EntityRef, ...]  # input usage unknown: never reported as starved
+    towns: tuple[TownDemand, ...]  # towns with no or little service, largest first
     catalog: CatalogFit
     criteria: tuple[Criterion, ...]
     coverage: ViewCoverage
@@ -271,6 +272,7 @@ class ExpansionView:
 # ---------------------------------------------------------------------------
 # small helpers
 # ---------------------------------------------------------------------------
+
 
 def _name(entity: dict[str, Any], kind: str) -> str:
     return entity.get("name") or f"{kind} #{entity.get('id', 'unknown')}"
@@ -292,11 +294,14 @@ def _cargo(snap: Snapshot, cargo_id: int | None) -> CargoRef:
 
 
 def _is_closing(snap: Snapshot, industry: dict[str, Any]) -> bool:
-    return bool(industry.get("closureTimeStamp")) or industry.get("id") in set(snap.problems.get("closingIndustries") or [])
+    return bool(industry.get("closureTimeStamp")) or industry.get("id") in set(
+        snap.problems.get("closingIndustries") or []
+    )
 
 
 def _distance(a: Any, b: Any) -> float | None:
     from .. import analysis
+
     dist = analysis._distance(a, b)
     return None if dist is None else dist / 1000
 
@@ -326,13 +331,19 @@ def _distance_points(km: float | None, policy) -> float:
     if km <= p.distance_sweet_to_km:
         return float(p.weight_distance)
     if km <= p.distance_long_km:
-        return p.weight_distance * (1 - (1 - p.distance_long_floor) * (km - p.distance_sweet_to_km) / (p.distance_long_km - p.distance_sweet_to_km))
+        return p.weight_distance * (
+            1
+            - (1 - p.distance_long_floor)
+            * (km - p.distance_sweet_to_km)
+            / (p.distance_long_km - p.distance_sweet_to_km)
+        )
     return p.weight_distance * p.distance_long_floor
 
 
 # ---------------------------------------------------------------------------
 # network cross-check: what does the company already run?
 # ---------------------------------------------------------------------------
+
 
 class _Network:
     """Which industries and towns our lines already call at, and which cargo those lines carry."""
@@ -391,21 +402,31 @@ class _Network:
         return self._path(self.industry_groups.get(industry, set()), self.town_groups.get(town, set()), cargo)
 
     def lines_at(self, industry: int, cargo: int) -> list[str]:
-        return sorted(self.line_names[lid] for lid, inds in self.line_industries.items()
-                      if industry in inds and cargo in self.line_cargos[lid])
+        return sorted(
+            self.line_names[lid]
+            for lid, inds in self.line_industries.items()
+            if industry in inds and cargo in self.line_cargos[lid]
+        )
 
 
 # ---------------------------------------------------------------------------
 # evidence: persistence, proven cargo economics, stocks, towns
 # ---------------------------------------------------------------------------
 
-def _persistence(samples: tuple[Snapshot, ...], producer: int, cargo: int, ratio_limit: float) -> tuple[float | None, int]:
+
+def _persistence(
+    samples: tuple[Snapshot, ...], producer: int, cargo: int, ratio_limit: float
+) -> tuple[float | None, int]:
     """Share of samples in which this output shipped below the limit (needs enough samples)."""
     flags: list[bool] = []
     for snap in samples:
         industry = snap.industries_by_id.get(producer)
         for flow in (industry or {}).get("outputs") or []:
-            if flow.get("cargo") == cargo and flow.get("shippedYear") is not None and _num(flow.get("producedYear")) > 0:
+            if (
+                flow.get("cargo") == cargo
+                and flow.get("shippedYear") is not None
+                and _num(flow.get("producedYear")) > 0
+            ):
                 flags.append(_num(flow.get("shippedYear")) / flow["producedYear"] < ratio_limit)
     if len(flags) < PERSISTENCE_MIN_SAMPLES:
         return None, len(flags)
@@ -427,16 +448,24 @@ def _proven(snap: Snapshot) -> dict[tuple[int, str], dict[str, Any]]:
             continue
         groups[(cargo, vehicle.get("carrier") or "?")].append(profit)
     return {
-        key: {"vehicles": len(values), "profitable": sum(1 for v in values if v > 0),
-              "median": statistics.median(values), "total": sum(values)}
+        key: {
+            "vehicles": len(values),
+            "profitable": sum(1 for v in values if v > 0),
+            "median": statistics.median(values),
+            "total": sum(values),
+        }
         for key, values in groups.items()
     }
 
 
-def _cargo_proof(proven: dict[tuple[int, str], dict[str, Any]], cargo: int,
-                 carriers: tuple[str, ...] | None = None) -> CargoProof:
-    rows = [(carrier, row) for (c, carrier), row in proven.items()
-            if c == cargo and (carriers is None or carrier in carriers)]
+def _cargo_proof(
+    proven: dict[tuple[int, str], dict[str, Any]], cargo: int, carriers: tuple[str, ...] | None = None
+) -> CargoProof:
+    rows = [
+        (carrier, row)
+        for (c, carrier), row in proven.items()
+        if c == cargo and (carriers is None or carrier in carriers)
+    ]
     vehicles = sum(r["vehicles"] for _, r in rows)
     profitable = sum(r["profitable"] for _, r in rows)
     solid = [(carrier, r) for carrier, r in rows if r["vehicles"] >= PROVEN_MIN_VEHICLES and r["median"] > 0]
@@ -452,7 +481,12 @@ def _stock_fill(snap: Snapshot) -> dict[tuple[int, int, str], float]:
             continue
         count, capacity = stock.get("count"), stock.get("capacity")
         industry = snap.industries_by_id.get(stock.get("owner"))
-        if industry is None or not isinstance(count, (int, float)) or not isinstance(capacity, (int, float)) or capacity <= 0:
+        if (
+            industry is None
+            or not isinstance(count, (int, float))
+            or not isinstance(capacity, (int, float))
+            or capacity <= 0
+        ):
             continue
         inputs = {f.get("cargo") for f in industry.get("inputs") or []}
         outputs = {f.get("cargo") for f in industry.get("outputs") or []}
@@ -471,8 +505,11 @@ def _town_anchors(snap: Snapshot) -> dict[int, tuple[list[float], int, float]]:
         if not town_name:
             continue
         pattern = re.compile(rf"(?<!\w){re.escape(town_name)}(?!\w)", re.IGNORECASE)
-        points = [i["position"][:2] for i in snap.industries
-                  if pattern.search(i.get("name") or "") and isinstance(i.get("position"), list) and len(i["position"]) >= 2]
+        points = [
+            i["position"][:2]
+            for i in snap.industries
+            if pattern.search(i.get("name") or "") and isinstance(i.get("position"), list) and len(i["position"]) >= 2
+        ]
         if points:
             cx = sum(p[0] for p in points) / len(points)
             cy = sum(p[1] for p in points) / len(points)
@@ -485,8 +522,10 @@ def _town_anchors(snap: Snapshot) -> dict[int, tuple[list[float], int, float]]:
 # candidates
 # ---------------------------------------------------------------------------
 
-def _outputs_useful(snap: Snapshot, consumer: dict[str, Any], consuming: dict[int, list[dict[str, Any]]],
-                    town_cargos: set[int]) -> float:
+
+def _outputs_useful(
+    snap: Snapshot, consumer: dict[str, Any], consuming: dict[int, list[dict[str, Any]]], town_cargos: set[int]
+) -> float:
     best = 0.0
     for flow in consumer.get("outputs") or []:
         cargo = flow.get("cargo")
@@ -500,18 +539,25 @@ def _outputs_useful(snap: Snapshot, consumer: dict[str, Any], consuming: dict[in
 def _other_inputs_missing(snap: Snapshot, consumer: dict[str, Any], cargo: int) -> list[str]:
     """Other mandatory inputs with no recorded delivery. Food Factory takes fish OR meat."""
     inputs = consumer.get("inputs") or []
-    alternates = {f.get("cargo") for f in inputs if _industry_key(consumer) == "food_factory"
-                  and _cargo_key(snap, f.get("cargo")) in {"fish", "meat"}}
+    alternates = {
+        f.get("cargo")
+        for f in inputs
+        if _industry_key(consumer) == "food_factory" and _cargo_key(snap, f.get("cargo")) in {"fish", "meat"}
+    }
     if cargo in alternates:
-        return [snap.cargo(f.get("cargo")) or "?" for f in inputs
-                if f.get("cargo") not in alternates and not _num(f.get("deliveredYear")) and not _num(f.get("consumedYear"))]
+        return [
+            snap.cargo(f.get("cargo")) or "?"
+            for f in inputs
+            if f.get("cargo") not in alternates and not _num(f.get("deliveredYear")) and not _num(f.get("consumedYear"))
+        ]
     out = []
     for flow in inputs:
         other = flow.get("cargo")
         if other == cargo or _num(flow.get("deliveredYear")) or _num(flow.get("consumedYear")):
             continue
-        if other in alternates and any(_num(f.get("deliveredYear")) or _num(f.get("consumedYear"))
-                                       for f in inputs if f.get("cargo") in alternates):
+        if other in alternates and any(
+            _num(f.get("deliveredYear")) or _num(f.get("consumedYear")) for f in inputs if f.get("cargo") in alternates
+        ):
             continue
         out.append(snap.cargo(other) or "?")
     return sorted(set(out))
@@ -545,8 +591,12 @@ class _Scoring:
         for ind in latest.industries:
             for flow in ind.get("inputs") or []:
                 self.consuming[flow.get("cargo")].append(ind)
-        self.town_cargos = {c["cargo"] for t in latest.towns for c in t.get("cargoSupply") or []
-                            if isinstance(c, dict) and _num(c.get("limit")) > 0}
+        self.town_cargos = {
+            c["cargo"]
+            for t in latest.towns
+            for c in t.get("cargoSupply") or []
+            if isinstance(c, dict) and _num(c.get("limit")) > 0
+        }
 
 
 def _candidates(ctx: _Scoring) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -567,10 +617,16 @@ def _candidates(ctx: _Scoring) -> tuple[list[dict[str, Any]], list[dict[str, Any
             if ratio >= limit:
                 continue
             cargo = flow["cargo"]
-            base = {"producer": producer, "cargo": cargo, "produced": produced, "shipped": shipped,
-                    "unshipped": produced - shipped, "ratio": ratio,
-                    "outFill": ctx.fills.get((producer["id"], cargo, "out")),
-                    "producerLines": ctx.network.lines_at(producer["id"], cargo)}
+            base = {
+                "producer": producer,
+                "cargo": cargo,
+                "produced": produced,
+                "shipped": shipped,
+                "unshipped": produced - shipped,
+                "ratio": ratio,
+                "outFill": ctx.fills.get((producer["id"], cargo, "out")),
+                "producerLines": ctx.network.lines_at(producer["id"], cargo),
+            }
             base["persistence"], base["persistenceN"] = _persistence(ctx.samples, producer["id"], cargo, limit)
             found = 0
             reasons: set[str] = set()
@@ -585,23 +641,40 @@ def _candidates(ctx: _Scoring) -> tuple[list[dict[str, Any]], list[dict[str, Any
             for _, _, _, consumer, unmet, capacity in targets[:MAX_TARGETS_PER_OUTPUT]:
                 direct = ctx.network.lines_between(producer["id"], consumer["id"], cargo)
                 if direct:
-                    excluded.append({**base, "consumer": consumer["name"], "consumerRef": _industry_ref(consumer),
-                                     "lines": direct, "kind": "industry"})
+                    excluded.append(
+                        {
+                            **base,
+                            "consumer": consumer["name"],
+                            "consumerRef": _industry_ref(consumer),
+                            "lines": direct,
+                            "kind": "industry",
+                        }
+                    )
                     reasons.add("already_linked")
                     continue
                 if unmet <= 0:
                     reasons.add("input_at_capacity")
                     continue
-                candidates.append({**base, "type": "industry", "consumer": consumer, "unmet": unmet,
-                                   "consumerCapacity": capacity,
-                                   "distance": _distance(producer.get("position"), consumer.get("position")),
-                                   "distanceMethod": "industry-positions", "anchor": None,
-                                   "inFill": ctx.fills.get((consumer["id"], cargo, "in"))})
+                candidates.append(
+                    {
+                        **base,
+                        "type": "industry",
+                        "consumer": consumer,
+                        "unmet": unmet,
+                        "consumerCapacity": capacity,
+                        "distance": _distance(producer.get("position"), consumer.get("position")),
+                        "distanceMethod": "industry-positions",
+                        "anchor": None,
+                        "inFill": ctx.fills.get((consumer["id"], cargo, "in")),
+                    }
+                )
                 found += 1
                 if found >= MAX_INDUSTRY_CANDIDATES_PER_OUTPUT:
                     break
             for town in snap.towns:
-                supply = next((c for c in town.get("cargoSupply") or [] if isinstance(c, dict) and c.get("cargo") == cargo), None)
+                supply = next(
+                    (c for c in town.get("cargoSupply") or [] if isinstance(c, dict) and c.get("cargo") == cargo), None
+                )
                 if not supply or supply.get("supply") is None or _num(supply.get("limit")) <= 0:
                     continue
                 unmet = _num(supply["limit"]) - _num(supply.get("supply"))
@@ -611,19 +684,39 @@ def _candidates(ctx: _Scoring) -> tuple[list[dict[str, Any]], list[dict[str, Any
                 distance = _distance(producer.get("position"), anchor[0]) if anchor else None
                 direct = ctx.network.lines_to_town(producer["id"], town["id"], cargo)
                 if direct:
-                    excluded.append({**base, "consumer": _name(town, "Town"), "consumerRef": _town_ref(town),
-                                     "lines": direct, "kind": "town"})
+                    excluded.append(
+                        {
+                            **base,
+                            "consumer": _name(town, "Town"),
+                            "consumerRef": _town_ref(town),
+                            "lines": direct,
+                            "kind": "town",
+                        }
+                    )
                     continue
-                candidates.append({**base, "type": "town", "consumer": town, "unmet": unmet,
-                                   "consumerCapacity": _num(supply["limit"]),
-                                   "distance": distance,
-                                   "distanceMethod": "town-anchor-estimate" if anchor else "unknown", "anchor": anchor,
-                                   "inFill": None})
+                candidates.append(
+                    {
+                        **base,
+                        "type": "town",
+                        "consumer": town,
+                        "unmet": unmet,
+                        "consumerCapacity": _num(supply["limit"]),
+                        "distance": distance,
+                        "distanceMethod": "town-anchor-estimate" if anchor else "unknown",
+                        "anchor": anchor,
+                        "inFill": None,
+                    }
+                )
                 found += 1
             if not found:
                 booster = _cargo_key(snap, cargo) in BOOSTER_CARGOS
-                dead_ends.append({**base, "why": tuple(sorted(reasons)) or (
-                    ("booster_cargo_without_inputs",) if booster else ("no_consumer",))})
+                dead_ends.append(
+                    {
+                        **base,
+                        "why": tuple(sorted(reasons))
+                        or (("booster_cargo_without_inputs",) if booster else ("no_consumer",)),
+                    }
+                )
     return candidates, excluded, dead_ends
 
 
@@ -636,7 +729,9 @@ def _score(ctx: _Scoring, cand: dict[str, Any], remaining: dict[tuple[int, int],
     parts["volume"] = policy.weight_volume * min(1.0, volume / policy.volume_reference)
     parts["distance"] = _distance_points(cand["distance"], policy)
     waiting = cand["outFill"]
-    base_urgency = (0.5 * (1 - cand["ratio"]) + 0.5 * waiting) if waiting is not None else 0.5 * (1 - cand["ratio"]) * 0.5
+    base_urgency = (
+        (0.5 * (1 - cand["ratio"]) + 0.5 * waiting) if waiting is not None else 0.5 * (1 - cand["ratio"]) * 0.5
+    )
     persistence = cand["persistence"]
     if persistence is not None:
         base_urgency *= 0.5 + 0.5 * persistence
@@ -680,9 +775,19 @@ def _score(ctx: _Scoring, cand: dict[str, Any], remaining: dict[tuple[int, int],
         flags.append(Flag("persistence_underserved", value=persistence, samples=cand["persistenceN"]))
     penalty = sum(p.amount for p in penalties)
     total = max(0.0, sum(parts.values()) - penalty)
-    return {**cand, "unmetAvailable": unmet, "volume": volume, "parts": parts, "penalties": tuple(penalties),
-            "penaltyTotal": penalty, "score": total, "flags": tuple(flags), "missingInputs": tuple(missing),
-            "water": water, "proof": proof}
+    return {
+        **cand,
+        "unmetAvailable": unmet,
+        "volume": volume,
+        "parts": parts,
+        "penalties": tuple(penalties),
+        "penaltyTotal": penalty,
+        "score": total,
+        "flags": tuple(flags),
+        "missingInputs": tuple(missing),
+        "water": water,
+        "proof": proof,
+    }
 
 
 def _rank(ctx: _Scoring, candidates: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
@@ -702,7 +807,8 @@ def _rank(ctx: _Scoring, candidates: list[dict[str, Any]], limit: int) -> list[d
         best["alternatives"] = tuple(
             Alternative(_consumer_ref(c), c["score"], c["distance"])
             for c in scored[1:]
-            if c["producer"]["id"] == best["producer"]["id"] and c["cargo"] == best["cargo"])[:ALTERNATIVES]
+            if c["producer"]["id"] == best["producer"]["id"] and c["cargo"] == best["cargo"]
+        )[:ALTERNATIVES]
         picked.append(best)
         key = (best["consumer"]["id"], best["cargo"])
         remaining[key] = max(0.0, remaining.get(key, best["unmet"]) - best["volume"])
@@ -717,6 +823,7 @@ def _consumer_ref(cand: dict[str, Any]) -> EntityRef:
 # ---------------------------------------------------------------------------
 # vehicle fit
 # ---------------------------------------------------------------------------
+
 
 def _available(model: dict[str, Any], year: int | None) -> bool:
     if model.get("available") is False:
@@ -751,8 +858,9 @@ def _capacity_check(latest: Snapshot, catalog_snap: Snapshot | None) -> tuple[in
     return matched, compared
 
 
-def _vehicle_fit(snap: Snapshot, catalog_snap: Snapshot, year: int | None, rank: int,
-                 cand: dict[str, Any]) -> list[VehicleFitCandidate]:
+def _vehicle_fit(
+    snap: Snapshot, catalog_snap: Snapshot, year: int | None, rank: int, cand: dict[str, Any]
+) -> list[VehicleFitCandidate]:
     cargo = cand["cargo"]
     carriers: list[str]
     if cand["water"]:
@@ -775,13 +883,20 @@ def _vehicle_fit(snap: Snapshot, catalog_snap: Snapshot, year: int | None, rank:
         if carrier in seen:
             continue
         seen.add(carrier)
-        models = [m for m in catalog_snap.catalog if m.get("carrier") == carrier and _available(m, year)
-                  and _capacity_for(m, cargo) > 0]
+        models = [
+            m
+            for m in catalog_snap.catalog
+            if m.get("carrier") == carrier and _available(m, year) and _capacity_for(m, cargo) > 0
+        ]
         if not models:
             continue
         biggest = max(models, key=lambda m: (_capacity_for(m, cargo), str(m.get("name"))))
         priced = [m for m in models if _num(m.get("runningCosts")) > 0] if running_ok else []
-        cheapest = min(priced, key=lambda m: (_num(m["runningCosts"]) / _capacity_for(m, cargo), str(m.get("name")))) if priced else None
+        cheapest = (
+            min(priced, key=lambda m: (_num(m["runningCosts"]) / _capacity_for(m, cargo), str(m.get("name"))))
+            if priced
+            else None
+        )
         for tag, model in ((_LARGEST, biggest), (_CHEAPEST, cheapest)):
             if model is None:
                 continue
@@ -793,11 +908,21 @@ def _vehicle_fit(snap: Snapshot, catalog_snap: Snapshot, year: int | None, rank:
     for row in rows:
         m = row["model"]
         capacity = _capacity_for(m, cargo)
-        out.append(VehicleFitCandidate(
-            rank, cargo_ref, row["carrier"], VehicleModelRef(m.get("id"), m.get("res"), m.get("name")),
-            tuple(row["why"]), capacity, cand["volume"] / capacity if capacity else None,
-            m.get("price") if price_ok else None, m.get("runningCosts") if running_ok else None,
-            m.get("yearFrom"), m.get("yearTo")))
+        out.append(
+            VehicleFitCandidate(
+                rank,
+                cargo_ref,
+                row["carrier"],
+                VehicleModelRef(m.get("id"), m.get("res"), m.get("name")),
+                tuple(row["why"]),
+                capacity,
+                cand["volume"] / capacity if capacity else None,
+                m.get("price") if price_ok else None,
+                m.get("runningCosts") if running_ok else None,
+                m.get("yearFrom"),
+                m.get("yearTo"),
+            )
+        )
     return out
 
 
@@ -805,9 +930,11 @@ def _vehicle_fit(snap: Snapshot, catalog_snap: Snapshot, year: int | None, rank:
 # diagnostics: starved consumers and towns with little service
 # ---------------------------------------------------------------------------
 
+
 def _usage_known(flow: dict[str, Any]) -> bool:
     return flow.get("maxConsumptionYear") is not None and not (
-        flow.get("deliveredYear") is None and flow.get("consumedYear") is None)
+        flow.get("deliveredYear") is None and flow.get("consumedYear") is None
+    )
 
 
 def _starved(snap: Snapshot) -> tuple[list[StarvedConsumer], list[EntityRef]]:
@@ -832,8 +959,11 @@ def _starved(snap: Snapshot) -> tuple[list[StarvedConsumer], list[EntityRef]]:
         suppliers = []
         for flow in inputs:
             cargo = flow["cargo"]
-            options = [(_distance(consumer.get("position"), p["ind"].get("position")), p)
-                       for p in producers.get(cargo, []) if p["ind"]["id"] != consumer["id"]]
+            options = [
+                (_distance(consumer.get("position"), p["ind"].get("position")), p)
+                for p in producers.get(cargo, [])
+                if p["ind"]["id"] != consumer["id"]
+            ]
             options = [o for o in options if o[0] is not None]
             if options:
                 dist, best = min(options, key=lambda o: (o[0], o[1]["ind"]["id"]))
@@ -842,8 +972,16 @@ def _starved(snap: Snapshot) -> tuple[list[StarvedConsumer], list[EntityRef]]:
             else:
                 suppliers.append(StarvedSupplier(_cargo(snap, cargo), None, None, None))
         outputs = tuple(_cargo(snap, f.get("cargo")) for f in consumer.get("outputs") or [])
-        rows.append(StarvedConsumer(_industry_ref(consumer), capacity, used, used / capacity, outputs, tuple(suppliers)))
-    rows.sort(key=lambda r: (-r.capacity, _name({"name": r.consumer.name, "id": r.consumer.id}, "Industry"), r.consumer.id or 0))
+        rows.append(
+            StarvedConsumer(_industry_ref(consumer), capacity, used, used / capacity, outputs, tuple(suppliers))
+        )
+    rows.sort(
+        key=lambda r: (
+            -r.capacity,
+            _name({"name": r.consumer.name, "id": r.consumer.id}, "Industry"),
+            r.consumer.id or 0,
+        )
+    )
     return rows, unassessed
 
 
@@ -868,12 +1006,23 @@ def _town_demand(snap: Snapshot) -> list[TownDemand]:
                     unknown.append(_cargo(snap, c.get("cargo")))
             elif _num(c.get("limit")) - _num(c.get("supply")) > 0:
                 unmet.append(_cargo(snap, c.get("cargo")))
+
         def key(c):
             return c.name or "?"
-        rows.append(TownDemand(_town_ref(town), sum(town.get("capacities") or []) or None,
-                               usage if _is_num(usage) else None, stations,
-                               tuple(sorted(unmet, key=key)), tuple(sorted(unknown, key=key))))
-    rows.sort(key=lambda r: (-(r.capacity_sum or 0), _name({"name": r.town.name, "id": r.town.id}, "Town"), r.town.id or 0))
+
+        rows.append(
+            TownDemand(
+                _town_ref(town),
+                sum(town.get("capacities") or []) or None,
+                usage if _is_num(usage) else None,
+                stations,
+                tuple(sorted(unmet, key=key)),
+                tuple(sorted(unknown, key=key)),
+            )
+        )
+    rows.sort(
+        key=lambda r: (-(r.capacity_sum or 0), _name({"name": r.town.name, "id": r.town.id}, "Town"), r.town.id or 0)
+    )
     return rows
 
 
@@ -881,37 +1030,96 @@ def _town_demand(snap: Snapshot) -> list[TownDemand]:
 # evaluation
 # ---------------------------------------------------------------------------
 
+
 def _candidate(rank: int, c: dict[str, Any], snap: Snapshot) -> ExpansionCandidate:
     anchor = c["anchor"]
     town = c["type"] == "town"
     parts = c["parts"]
     fill = c["inFill"]
-    elevated = (c["type"] == "industry" and fill is not None and fill >= ELEVATED_INPUT_STOCK
-                and not any(p.code == "consumer_input_stock_full" for p in c["penalties"]))
+    elevated = (
+        c["type"] == "industry"
+        and fill is not None
+        and fill >= ELEVATED_INPUT_STOCK
+        and not any(p.code == "consumer_input_stock_full" for p in c["penalties"])
+    )
     return ExpansionCandidate(
-        rank, _industry_ref(c["producer"]), _consumer_ref(c), c["type"], _cargo(snap, c["cargo"]),
-        c["produced"], c["shipped"], c["unshipped"], c["ratio"], c["outFill"], fill, tuple(c["producerLines"]),
-        c["persistence"], c["persistenceN"], c["unmet"], c["unmetAvailable"], c["consumerCapacity"],
-        c["consumerCapacity"] - c["unmet"] if town else None, c["volume"], c["distance"], c["distanceMethod"],
-        anchor[1] if anchor else None, anchor[2] if anchor else None,
-        ScoreParts(parts["volume"], parts["distance"], parts["urgency"], parts["pull"], parts["chain"], parts["proven"]),
-        c["penalties"], c["penaltyTotal"], c["score"], c["flags"], c["missingInputs"], elevated, c["water"], c["proof"],
-        tuple(c["alternatives"]))
+        rank,
+        _industry_ref(c["producer"]),
+        _consumer_ref(c),
+        c["type"],
+        _cargo(snap, c["cargo"]),
+        c["produced"],
+        c["shipped"],
+        c["unshipped"],
+        c["ratio"],
+        c["outFill"],
+        fill,
+        tuple(c["producerLines"]),
+        c["persistence"],
+        c["persistenceN"],
+        c["unmet"],
+        c["unmetAvailable"],
+        c["consumerCapacity"],
+        c["consumerCapacity"] - c["unmet"] if town else None,
+        c["volume"],
+        c["distance"],
+        c["distanceMethod"],
+        anchor[1] if anchor else None,
+        anchor[2] if anchor else None,
+        ScoreParts(
+            parts["volume"], parts["distance"], parts["urgency"], parts["pull"], parts["chain"], parts["proven"]
+        ),
+        c["penalties"],
+        c["penaltyTotal"],
+        c["score"],
+        c["flags"],
+        c["missingInputs"],
+        elevated,
+        c["water"],
+        c["proof"],
+        tuple(c["alternatives"]),
+    )
 
 
 def _criteria(unshipped_limit: float, full_stock: float) -> tuple[Criterion, ...]:
     return (
-        Criterion("unshippedRatio", unshipped_limit, "ratio", "outputs shipping below this share of production are considered"),
+        Criterion(
+            "unshippedRatio", unshipped_limit, "ratio", "outputs shipping below this share of production are considered"
+        ),
         Criterion("fullStockRatio", full_stock, "ratio", "stock fill treated as full for penalties and flags"),
         Criterion("topN", TOP_N, "candidates", "greedy selection length; selection deducts shared consumer demand"),
         Criterion("alternatives", ALTERNATIVES, "consumers", "other consumers listed per selected candidate"),
         Criterion("targetsPerOutput", MAX_TARGETS_PER_OUTPUT, "consumers", "nearest consumers examined per output"),
-        Criterion("industryCandidatesPerOutput", MAX_INDUSTRY_CANDIDATES_PER_OUTPUT, "consumers", "industry candidates kept per output"),
-        Criterion("provenMinVehicles", PROVEN_MIN_VEHICLES, "vehicles", "minimum vehicles before a cargo counts as proven"),
-        Criterion("persistenceMinSamples", PERSISTENCE_MIN_SAMPLES, "samples", "minimum usable samples before persistence scales urgency"),
-        Criterion("starvedUsageRatio", STARVED_USAGE_RATIO, "ratio", "input usage below this share marks a starved consumer"),
-        Criterion("servedTownLineUsage", SERVED_TOWN_USAGE, "ratio", "towns with a station and line usage at or above this are well served"),
-        Criterion("elevatedInputStockRatio", ELEVATED_INPUT_STOCK, "ratio", "consumer input stock noted as a risk below the full threshold"),
+        Criterion(
+            "industryCandidatesPerOutput",
+            MAX_INDUSTRY_CANDIDATES_PER_OUTPUT,
+            "consumers",
+            "industry candidates kept per output",
+        ),
+        Criterion(
+            "provenMinVehicles", PROVEN_MIN_VEHICLES, "vehicles", "minimum vehicles before a cargo counts as proven"
+        ),
+        Criterion(
+            "persistenceMinSamples",
+            PERSISTENCE_MIN_SAMPLES,
+            "samples",
+            "minimum usable samples before persistence scales urgency",
+        ),
+        Criterion(
+            "starvedUsageRatio", STARVED_USAGE_RATIO, "ratio", "input usage below this share marks a starved consumer"
+        ),
+        Criterion(
+            "servedTownLineUsage",
+            SERVED_TOWN_USAGE,
+            "ratio",
+            "towns with a station and line usage at or above this are well served",
+        ),
+        Criterion(
+            "elevatedInputStockRatio",
+            ELEVATED_INPUT_STOCK,
+            "ratio",
+            "consumer input stock noted as a risk below the full threshold",
+        ),
         Criterion("railMinKm", RAIL_MIN_KM, "km", "distance from which rail models are also listed"),
     )
 
@@ -930,9 +1138,15 @@ def evaluate(evidence: ExpansionEvidence, *, context: EvaluationContext) -> Expa
             fit.extend(_vehicle_fit(snap, catalog_snap, year, i + 1, c))
         units = catalog_snap.meta.get("verifiedUnits") or {}
         matched, compared = _capacity_check(snap, catalog_snap)
-        catalog = CatalogFit(SampleRef(catalog_snap.game_time, catalog_snap.date_label), year,
-                             units.get("price") == "currency", units.get("runningCosts") == "currency/year",
-                             matched, compared, tuple(fit))
+        catalog = CatalogFit(
+            SampleRef(catalog_snap.game_time, catalog_snap.date_label),
+            year,
+            units.get("price") == "currency",
+            units.get("runningCosts") == "currency/year",
+            matched,
+            compared,
+            tuple(fit),
+        )
     else:
         catalog = CatalogFit(None, year, False, False, 0, 0, ())
 
@@ -940,10 +1154,19 @@ def evaluate(evidence: ExpansionEvidence, *, context: EvaluationContext) -> Expa
     for c in picked:
         in_ranking[c["cargo"]] += 1
     proven_rows = sorted(scoring.proven.items(), key=lambda kv: (-kv[1]["median"], str(snap.cargo(kv[0][0])), kv[0][1]))
-    proven = tuple(ProvenGroup(_cargo(snap, cargo), carrier, v["vehicles"], v["profitable"], v["median"], v["total"],
-                               cargo != 0 and v["vehicles"] >= PROVEN_MIN_VEHICLES and v["median"] > 0,
-                               in_ranking.get(cargo, 0))
-                   for (cargo, carrier), v in proven_rows)
+    proven = tuple(
+        ProvenGroup(
+            _cargo(snap, cargo),
+            carrier,
+            v["vehicles"],
+            v["profitable"],
+            v["median"],
+            v["total"],
+            cargo != 0 and v["vehicles"] >= PROVEN_MIN_VEHICLES and v["median"] > 0,
+            in_ranking.get(cargo, 0),
+        )
+        for (cargo, carrier), v in proven_rows
+    )
 
     seen: set[tuple[Any, Any, Any]] = set()
     excluded_out: list[ExcludedRoute] = []
@@ -952,39 +1175,92 @@ def evaluate(evidence: ExpansionEvidence, *, context: EvaluationContext) -> Expa
         if key in seen:
             continue
         seen.add(key)
-        excluded_out.append(ExcludedRoute(_industry_ref(e["producer"]), e["consumerRef"], e["kind"], _cargo(snap, e["cargo"]),
-                                          e["produced"], e["shipped"], e["unshipped"], e["ratio"], tuple(e["lines"])))
+        excluded_out.append(
+            ExcludedRoute(
+                _industry_ref(e["producer"]),
+                e["consumerRef"],
+                e["kind"],
+                _cargo(snap, e["cargo"]),
+                e["produced"],
+                e["shipped"],
+                e["unshipped"],
+                e["ratio"],
+                tuple(e["lines"]),
+            )
+        )
     dead = sorted(dead_ends, key=lambda d: (-d["unshipped"], d["producer"]["id"], d["cargo"]))
-    dead_out = tuple(DeadEnd(_industry_ref(d["producer"]), _cargo(snap, d["cargo"]), d["produced"], d["shipped"],
-                             d["unshipped"], d["ratio"], d["why"]) for d in dead)
+    dead_out = tuple(
+        DeadEnd(
+            _industry_ref(d["producer"]),
+            _cargo(snap, d["cargo"]),
+            d["produced"],
+            d["shipped"],
+            d["unshipped"],
+            d["ratio"],
+            d["why"],
+        )
+        for d in dead
+    )
 
-    anchors = tuple(TownAnchorEstimate(_town_ref(t), scoring.anchors[t["id"]][0][0], scoring.anchors[t["id"]][0][1],
-                                       scoring.anchors[t["id"]][1], scoring.anchors[t["id"]][2])
-                    for t in snap.towns if t["id"] in scoring.anchors)
+    anchors = tuple(
+        TownAnchorEstimate(
+            _town_ref(t),
+            scoring.anchors[t["id"]][0][0],
+            scoring.anchors[t["id"]][0][1],
+            scoring.anchors[t["id"]][1],
+            scoring.anchors[t["id"]][2],
+        )
+        for t in snap.towns
+        if t["id"] in scoring.anchors
+    )
     starved, unassessed = _starved(snap)
 
     unavailable: list[Unavailable] = []
     if catalog_snap is None:
         unavailable.append(Unavailable("catalog_missing", "no catalog snapshot at or before the endpoint"))
     if unassessed:
-        unavailable.append(Unavailable("starved_usage_unknown", f"{len(unassessed)} industries lack recorded input usage"))
+        unavailable.append(
+            Unavailable("starved_usage_unknown", f"{len(unassessed)} industries lack recorded input usage")
+        )
     if evidence.missing_ticks:
-        unavailable.append(Unavailable("sample_missing", f"{len(evidence.missing_ticks)} selected samples could not be read"))
+        unavailable.append(
+            Unavailable("sample_missing", f"{len(evidence.missing_ticks)} selected samples could not be read")
+        )
     sampled = tuple(SampleRef(s.game_time, s.date_label) for s in evidence.samples)
     coverage = ViewCoverage(
-        endpoint=SampleRef(snap.game_time, snap.date_label), eligible=evidence.eligible, read=evidence.read,
-        used=len(evidence.samples), hydrated=evidence.hydrated, hydration_limit=HYDRATION_LIMIT, sampled=sampled,
-        limits={"topN": TOP_N, "maxMonthlySamples": MAX_MONTHLY_SAMPLES, "maxQuarterlySamples": MAX_QUARTERLY_SAMPLES,
-                "alternatives": ALTERNATIVES},
+        endpoint=SampleRef(snap.game_time, snap.date_label),
+        eligible=evidence.eligible,
+        read=evidence.read,
+        used=len(evidence.samples),
+        hydrated=evidence.hydrated,
+        hydration_limit=HYDRATION_LIMIT,
+        sampled=sampled,
+        limits={
+            "topN": TOP_N,
+            "maxMonthlySamples": MAX_MONTHLY_SAMPLES,
+            "maxQuarterlySamples": MAX_QUARTERLY_SAMPLES,
+            "alternatives": ALTERNATIVES,
+        },
         omitted=max(0, evidence.eligible - len(evidence.samples)),
-        collection_errors=tuple(dict.fromkeys(str(e) for e in snap.errors)), unavailable=tuple(unavailable))
+        collection_errors=tuple(dict.fromkeys(str(e) for e in snap.errors)),
+        unavailable=tuple(unavailable),
+    )
     return ExpansionView(
-        endpoint=coverage.endpoint, unshipped_ratio_limit=context.thresholds.unshipped_ratio,
+        endpoint=coverage.endpoint,
+        unshipped_ratio_limit=context.thresholds.unshipped_ratio,
         full_stock_ratio=context.thresholds.full_stock_ratio,
         candidates=tuple(_candidate(i + 1, c, snap) for i, c in enumerate(picked)),
-        candidates_evaluated=len(candidates), outputs_evaluated=len({(c["producer"]["id"], c["cargo"]) for c in candidates}),
+        candidates_evaluated=len(candidates),
+        outputs_evaluated=len({(c["producer"]["id"], c["cargo"]) for c in candidates}),
         persistence_usable=sum(1 for c in picked if c["persistence"] is not None),
-        excluded=tuple(excluded_out), dead_ends=dead_out, proven=proven, town_anchors=anchors,
-        starved_consumers=tuple(starved), unassessed_consumers=tuple(unassessed), towns=tuple(_town_demand(snap)),
-        catalog=catalog, criteria=_criteria(context.thresholds.unshipped_ratio, context.thresholds.full_stock_ratio),
-        coverage=coverage)
+        excluded=tuple(excluded_out),
+        dead_ends=dead_out,
+        proven=proven,
+        town_anchors=anchors,
+        starved_consumers=tuple(starved),
+        unassessed_consumers=tuple(unassessed),
+        towns=tuple(_town_demand(snap)),
+        catalog=catalog,
+        criteria=_criteria(context.thresholds.unshipped_ratio, context.thresholds.full_stock_ratio),
+        coverage=coverage,
+    )

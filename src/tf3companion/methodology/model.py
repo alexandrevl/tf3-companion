@@ -19,8 +19,8 @@ MAX_ROLES_PER_ENTITY = 20
 MAX_TEXT = 2000
 MAX_REGEX = 200
 MAX_SUBJECT = 200
-MAX_DEPTH = 12          # condition nesting, references included
-MAX_JSON_DEPTH = 40     # raw JSON nesting
+MAX_DEPTH = 12  # condition nesting, references included
+MAX_JSON_DEPTH = 40  # raw JSON nesting
 MAX_UNBOUNDED_QUANTIFIERS = 3
 
 ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -60,6 +60,7 @@ class Issue:
 
     def to_dict(self) -> dict[str, Any]:
         from dataclasses import asdict
+
         value = asdict(self)
         value["relatedPaths"] = list(self.relatedPaths)
         return value
@@ -75,7 +76,9 @@ class MethodologyError(ValueError):
         self.issues = issues
         self.source = source
         head = f"{source}: " if source else ""
-        super().__init__(head + "; ".join(str(i) for i in issues[:10]) + (f" (+{len(issues) - 10} more)" if len(issues) > 10 else ""))
+        super().__init__(
+            head + "; ".join(str(i) for i in issues[:10]) + (f" (+{len(issues) - 10} more)" if len(issues) > 10 else "")
+        )
 
 
 @dataclass(frozen=True, eq=False)
@@ -84,7 +87,7 @@ class Methodology:
 
     data: Mapping[str, Any]
     sha256: str
-    source: str = "file"        # packaged | user | file
+    source: str = "file"  # packaged | user | file
     path: str | None = None
     raw: bytes = field(default=b"", repr=False)
     selection: Mapping[str, Any] = field(default_factory=dict)
@@ -115,8 +118,14 @@ class Methodology:
         return {k: v["value"] for k, v in (self.data.get("parameters") or {}).items()}
 
     def provenance(self) -> dict[str, Any]:
-        return {"id": self.id, "version": self.version, "identity": self.identity,
-                "hash": self.short_hash, "sha256": self.sha256, "source": self.source}
+        return {
+            "id": self.id,
+            "version": self.version,
+            "identity": self.identity,
+            "hash": self.short_hash,
+            "sha256": self.sha256,
+            "source": self.source,
+        }
 
 
 def content_hash(raw: bytes) -> str:

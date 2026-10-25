@@ -1,4 +1,5 @@
 """Endpoint-bounded, batched evidence access shared by every analysis view."""
+
 from __future__ import annotations
 
 from contextlib import closing
@@ -89,10 +90,10 @@ def test_full_hydration_is_bounded_counted_and_never_after_the_endpoint(long_sto
     assert reader.hydrated == 0
     recent = reader.recent(12)
     assert [s.game_time for s in recent] == [t for t in TICKS if t <= 3000][-12:]
-    assert reader.hydrated == 11                       # the endpoint itself is already selected
+    assert reader.hydrated == 11  # the endpoint itself is already selected
     reader.hydrate(recent[0].game_time)
     reader.recent(12)
-    assert reader.hydrated == 11                       # operation-local reuse, no second read
+    assert reader.hydrated == 11  # operation-local reuse, no second read
 
 
 def test_catalog_is_the_newest_at_or_before_the_endpoint(long_store):
@@ -111,8 +112,15 @@ def test_selection_is_closed_ordered_and_collapsed():
 
 
 def test_empty_selection_reads_no_history(long_store, monkeypatch):
-    for name in ("iter_sample_index", "iter_company_points", "iter_line_points", "iter_projection", "hydrate",
-                 "recent_snapshots", "latest_with_catalog"):
+    for name in (
+        "iter_sample_index",
+        "iter_company_points",
+        "iter_line_points",
+        "iter_projection",
+        "hydrate",
+        "recent_snapshots",
+        "latest_with_catalog",
+    ):
         monkeypatch.setattr(long_store, name, lambda *a, **k: pytest.fail("history was read"))
     snap = _snap(3000)
     context = EvaluationContext(snap, resolve_context(), None, None, None)

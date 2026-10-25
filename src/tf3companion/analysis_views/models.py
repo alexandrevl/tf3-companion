@@ -39,11 +39,11 @@ class EvaluationContext:
     the latest snapshot or a clock themselves.
     """
 
-    snapshot: Snapshot                         # the selected endpoint, hydrated
-    report: "ReportAnalysisContext"            # effective thresholds, report policies and their origins
-    clock: GameCalendarClock                   # calendar evidence bounded at the endpoint
+    snapshot: Snapshot  # the selected endpoint, hydrated
+    report: "ReportAnalysisContext"  # effective thresholds, report policies and their origins
+    clock: GameCalendarClock  # calendar evidence bounded at the endpoint
     scope: "SaveScope | None" = None
-    previous: Snapshot | None = None           # the stored sample before the endpoint, if any
+    previous: Snapshot | None = None  # the stored sample before the endpoint, if any
 
     @property
     def thresholds(self):
@@ -58,7 +58,9 @@ class EvaluationContext:
         return self.snapshot.game_time
 
     @classmethod
-    def from_lens(cls, lens: Any, scope: "SaveScope | None" = None, previous: Snapshot | None = None) -> "EvaluationContext":
+    def from_lens(
+        cls, lens: Any, scope: "SaveScope | None" = None, previous: Snapshot | None = None
+    ) -> "EvaluationContext":
         return cls(lens.snapshot, lens.report_context, lens.clock, scope, previous)
 
 
@@ -117,8 +119,11 @@ class AnalysisViews:
 
     def to_dict(self) -> dict[str, Any]:
         """Requested views only, keyed by their public names in the fixed family order."""
-        return {name: plain(getattr(self, name.replace("-", "_"))) for name in VIEW_NAMES
-                if getattr(self, name.replace("-", "_")) is not None}
+        return {
+            name: plain(getattr(self, name.replace("-", "_")))
+            for name in VIEW_NAMES
+            if getattr(self, name.replace("-", "_")) is not None
+        }
 
 
 def camel(name: str) -> str:

@@ -5,6 +5,7 @@ tolerances, instantaneous load is greater-or-equal, maintenance is strictly belo
 per terminal screens at watch from 3.0 and problem from 3.5. The aircraft markers are policy screening, never
 a measured capacity, arrival rate or congestion; absent terminals make the rule unavailable, never zero.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,14 +15,31 @@ import pytest
 from methodology_helpers import FREIGHT, Net, markers_of, rule
 from tf3companion.methodology import evaluate, load_file
 
-EXAMPLE = Path(__file__).parent.parent / "src" / "tf3companion" / "methodology" / "examples" / "local-feeder-intercity-trunk.tf3c-methodology.json"
+EXAMPLE = (
+    Path(__file__).parent.parent
+    / "src"
+    / "tf3companion"
+    / "methodology"
+    / "examples"
+    / "local-feeder-intercity-trunk.tf3c-methodology.json"
+)
 
 
 def example_net() -> Net:
     net = Net()
-    for station, town, name in [(1, 10, "Alpha"), (2, 20, "Beta"), (3, 30, "Gamma"), (4, 40, "Delta"), (5, 50, "Epsilon"),
-                                (6, 60, "Zeta"), (7, 70, "Airfield"), (8, 80, "Airport 8"), (9, 90, "Airport 9"),
-                                (10, 100, "Mu"), (11, 110, "Nu")]:
+    for station, town, name in [
+        (1, 10, "Alpha"),
+        (2, 20, "Beta"),
+        (3, 30, "Gamma"),
+        (4, 40, "Delta"),
+        (5, 50, "Epsilon"),
+        (6, 60, "Zeta"),
+        (7, 70, "Airfield"),
+        (8, 80, "Airport 8"),
+        (9, 90, "Airport 9"),
+        (10, 100, "Mu"),
+        (11, 110, "Nu"),
+    ]:
         net.station(station, f"Stn {name}", town, name)
     # intercity lines: loss boundaries
     net.line(200, "Bus IC-exact-Alp-Bet-IC-1", [1, 2], profit=-100_000)
@@ -70,7 +88,7 @@ def verdicts():
 
 def test_intercity_loss_is_strictly_greater_than_the_tolerance(verdicts):
     markers = markers_of(verdicts, "intercity-result")
-    assert markers["Bus IC-exact-Alp-Bet-IC-1"] == "watch"      # exactly 100,000 is within tolerance
+    assert markers["Bus IC-exact-Alp-Bet-IC-1"] == "watch"  # exactly 100,000 is within tolerance
     assert markers["Bus IC-over-Alp-Bet-IC-2"] == "problem"
     assert markers["Bus IC-small-Alp-Bet-IC-3"] == "watch"
     assert markers["Bus IC-profit-Alp-Bet-IC-4"] == "ok"
@@ -80,7 +98,7 @@ def test_freight_is_maturing_below_three_years_and_a_problem_from_three(verdicts
     markers = markers_of(verdicts, "freight-result")
     assert markers["RC Coal-young-Alp-Bet-IC-5"] == "maturing"
     assert markers["RC Coal-old-Alp-Bet-IC-6"] == "problem"
-    assert markers["RC Coal-three-Alp-Bet-IC-7"] == "problem"   # exactly 3 years is no longer below the tolerance
+    assert markers["RC Coal-three-Alp-Bet-IC-7"] == "problem"  # exactly 3 years is no longer below the tolerance
     assert markers["RC Coal-novehicles-Alp-Bet-IC-8"] == "maturing"  # no vehicles: age unknown, so still maturing
     assert markers["RC Coal-earning-Alp-Bet-IC-9"] == "ok"
 
@@ -90,7 +108,8 @@ def test_load_is_flagged_from_exactly_ninety_percent(verdicts):
     assert markers["Bus Load-exact-Alp-LO-5"] == "watch"
     assert "Bus Load-below-Alp-LO-6" not in markers
     assert "n/a" not in rule(verdicts, "high-load").hits[0].message and "90%" in next(
-        h.message for h in rule(verdicts, "high-load").hits if h.entity["name"] == "Bus Load-exact-Alp-LO-5")
+        h.message for h in rule(verdicts, "high-load").hits if h.entity["name"] == "Bus Load-exact-Alp-LO-5"
+    )
 
 
 def test_local_lines_that_lose_money_are_within_rule_never_a_finding(verdicts):
@@ -101,14 +120,14 @@ def test_local_lines_that_lose_money_are_within_rule_never_a_finding(verdicts):
 def test_town_balance_ratio_is_strictly_greater_than_the_tolerance(verdicts):
     result = rule(verdicts, "town-feeder-balance")
     groups = {g["group"]: g for g in result.groups}
-    assert groups["Mu"]["marker"] == "local-loss-within-rule"               # exactly 0.25
+    assert groups["Mu"]["marker"] == "local-loss-within-rule"  # exactly 0.25
     assert groups["Mu"]["measures"]["feeder_cost_ratio"] == 0.25
-    assert groups["Gamma"]["marker"] == "problem"                           # 25,001 / 100,000
-    assert groups["Epsilon"]["marker"] == "problem"                         # no intercity profit
-    assert groups["Epsilon"]["measures"]["feeder_cost_ratio"] is None       # ratio not applicable
+    assert groups["Gamma"]["marker"] == "problem"  # 25,001 / 100,000
+    assert groups["Epsilon"]["marker"] == "problem"  # no intercity profit
+    assert groups["Epsilon"]["measures"]["feeder_cost_ratio"] is None  # ratio not applicable
     assert "Beta" not in groups and "Delta" not in groups and "Nu" not in groups  # no local line there
-    assert all(label != "?" for label in groups)                            # no placeholder town bucket
-    assert result.excluded_members >= 1                                     # the stop without a station is counted
+    assert all(label != "?" for label in groups)  # no placeholder town bucket
+    assert result.excluded_members >= 1  # the stop without a station is counted
 
 
 def test_aircraft_per_terminal_screening(verdicts):
@@ -123,9 +142,9 @@ def test_maintenance_markers_are_strictly_below_the_limits(verdicts):
     for hit in rule(verdicts, "vehicle-maintenance").hits:
         by_state[hit.evidence["vehicle.maintenance_state"]] = hit.marker
     assert by_state[0.69] == "problem"
-    assert by_state[0.70] == "watch"      # exactly 0.70 is not below 0.70
+    assert by_state[0.70] == "watch"  # exactly 0.70 is not below 0.70
     assert by_state[0.84] == "watch"
-    assert by_state[0.85] == "ok"         # exactly 0.85 is not below 0.85
+    assert by_state[0.85] == "ok"  # exactly 0.85 is not below 0.85
 
 
 def test_helicopters_surface_through_the_role_table(verdicts):
@@ -151,11 +170,15 @@ def test_aircraft_screening_is_policy_guidance_not_a_congestion_claim(verdicts):
 def test_missing_terminals_make_the_aircraft_rule_unavailable_not_zero():
     net = Net()
     net.station(7, "Stn Field", 70, "Airfield")
-    net.line(400, "Air line", [7, 7], carrier="AIR", vehicles=6)           # stops carry no terminal data
+    net.line(400, "Air line", [7, 7], carrier="AIR", vehicles=6)  # stops carry no terminal data
     for line in net.data["lines"]:
         line.setdefault("capacity", [])
     result = evaluate(load_file(EXAMPLE), net.snapshot(), clock=net.clock())
     air = rule(result, "air-station-pressure")
     assert air.status == "skipped" and air.reason == "missing data: lines[].stops[].terminal"
     assert air.groups == [] and air.hits == []
-    assert {"kind": "rule", "id": "air-station-pressure", "reason": "missing data: lines[].stops[].terminal"} in result.skipped
+    assert {
+        "kind": "rule",
+        "id": "air-station-pressure",
+        "reason": "missing data: lines[].stops[].terminal",
+    } in result.skipped

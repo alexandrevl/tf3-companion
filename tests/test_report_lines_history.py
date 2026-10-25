@@ -17,12 +17,27 @@ from view_helpers import document, view
 def _line(lid, name, profit, vehicles, now, load=0.5):
     vids = [lid * 100 + k for k in range(vehicles)]
     return {
-        "id": lid, "name": name, "vehicles": vids, "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
-        "profitYear": profit, "transportedYear": 1000, "rate": 100,
-        "capacity": [{"cargo": 0, "used": int(100 * load), "capacity": 100}], "issues": [],
+        "id": lid,
+        "name": name,
+        "vehicles": vids,
+        "stops": [{"stationGroup": 500}, {"stationGroup": 501}],
+        "profitYear": profit,
+        "transportedYear": 1000,
+        "rate": 100,
+        "capacity": [{"cargo": 0, "used": int(100 * load), "capacity": 100}],
+        "issues": [],
     }, [
-        {"id": v, "name": f"V{v}", "carrier": "ROAD", "state": "EN_ROUTE", "line": lid,
-         "purchaseTime": now - YEAR // 10 if lid == 104 else 10 * YEAR, "profitYear": 0, "models": [7], "value": 1000}
+        {
+            "id": v,
+            "name": f"V{v}",
+            "carrier": "ROAD",
+            "state": "EN_ROUTE",
+            "line": lid,
+            "purchaseTime": now - YEAR // 10 if lid == 104 else 10 * YEAR,
+            "profitYear": 0,
+            "models": [7],
+            "value": 1000,
+        }
         for v in vids
     ]
 
@@ -61,8 +76,14 @@ def multi_year(tmp_path):
 
 
 def _cls(doc):
-    table = next(b for b in doc.blocks if isinstance(b, reports.Table) and b.columns[0] == "Line"
-                 and "Class" in b.columns and "Profit path" in b.columns)
+    table = next(
+        b
+        for b in doc.blocks
+        if isinstance(b, reports.Table)
+        and b.columns[0] == "Line"
+        and "Class" in b.columns
+        and "Profit path" in b.columns
+    )
     return {row[0]: row[1] for row in table.rows}
 
 
@@ -122,7 +143,7 @@ def test_view_classes_threshold_terms_and_maturity(multi_year):
     rising, falling, flat, saw = (lines["Rising <b>Line</b> | x"], lines["Falling"], lines["Flat"], lines["Sawtooth"])
     assert rising.trend_class == "improving" and rising.delta > rising.threshold
     assert falling.trend_class == "deteriorating" and falling.delta < -falling.threshold
-    assert rising.mad < 0.001 * abs(rising.delta)         # a steady trend adds (almost) no noise
+    assert rising.mad < 0.001 * abs(rising.delta)  # a steady trend adds (almost) no noise
     assert saw.noise_term == pytest.approx(2 * saw.mad)
     assert flat.trend_class == saw.trend_class == "stable"
     fresh = lines["Fresh"]
@@ -137,8 +158,11 @@ def test_view_classes_threshold_terms_and_maturity(multi_year):
 def test_nondefault_policy_changes_decision_terms_not_measurements(multi_year):
     snap = multi_year.latest()
     default = _by_name(evaluate_views(multi_year, _context(multi_year, snap), ("lines-history",)).lines_history)
-    strict = _by_name(evaluate_views(multi_year, _context(multi_year, snap, **{"lines-history": {"floor_share": 1}}),
-                                     ("lines-history",)).lines_history)
+    strict = _by_name(
+        evaluate_views(
+            multi_year, _context(multi_year, snap, **{"lines-history": {"floor_share": 1}}), ("lines-history",)
+        ).lines_history
+    )
     name = "Rising <b>Line</b> | x"
     assert default[name].trend_class == "improving" and strict[name].trend_class == "stable"
     for field in ("early", "recent", "delta", "mad", "k", "window_samples"):
@@ -161,7 +185,7 @@ def test_vehicle_changes_created_removed_and_follow_ups(multi_year):
     assert gone.window_start.tick < gone.window_end.tick and gone.trend_class is None
     assert gone.profit_last == 10_000
     codes = {f.name: f.code for f in v.follow_ups}
-    assert codes["Falling"] == "declining-without-added-vehicles"   # fleet was already 4 at the window start
+    assert codes["Falling"] == "declining-without-added-vehicles"  # fleet was already 4 at the window start
     assert codes["Chronic loss"] == "persistent-loss"
     assert all(f.occupancy_samples > 0 for f in v.follow_ups)
 
@@ -173,7 +197,11 @@ def test_report_agrees_with_view(multi_year):
     assert classes == {t.name: t.trend_class for t in v.trajectories if t.current}
     events = next(b for b in doc.blocks if isinstance(b, reports.Table) and "Verdict" in b.columns)
     assert [r[0] for r in events.rows] == [e.name for e in v.vehicle_changes][:25]
-    det = next(b for b in doc.blocks if isinstance(b, reports.Table) and b.columns[0] == "Line" and "Noise threshold" in b.columns)
+    det = next(
+        b
+        for b in doc.blocks
+        if isinstance(b, reports.Table) and b.columns[0] == "Line" and "Noise threshold" in b.columns
+    )
     by_id = {t.line_id: t for t in v.trajectories}
     expected = [by_id[i].name for i in next(o.line_ids for o in v.class_order if o.trend_class == "deteriorating")]
     assert [r[0] for r in det.rows] == expected
@@ -199,6 +227,7 @@ def test_endpoint_excludes_later_samples_and_lines(multi_year):
 
 def document_at(store, ctx, v):
     from tf3companion import report_lines_history
+
     return report_lines_history.build(v, context=ctx)
 
 
@@ -241,7 +270,7 @@ def test_charts_have_matching_tables_and_html_is_offline(multi_year):
     doc = document(multi_year, "lines-history")
     for i, b in enumerate(doc.blocks):
         if isinstance(b, reports.Chart) and b.kind == "line":
-            table = next(x for x in doc.blocks[i + 1:] if isinstance(x, reports.Table))
+            table = next(x for x in doc.blocks[i + 1 :] if isinstance(x, reports.Table))
             assert [r[0] for r in table.rows] == b.categories
             assert len(table.columns) == len(b.series) + 1
     html = reports.render_html(doc)
@@ -250,12 +279,14 @@ def test_charts_have_matching_tables_and_html_is_offline(multi_year):
 
     class P(HTMLParser):
         pass
+
     P().feed(html)
 
 
 def test_deterministic(multi_year):
-    assert (reports.render_markdown(document(multi_year, "lines-history"))
-            == reports.render_markdown(document(multi_year, "lines-history")))
+    assert reports.render_markdown(document(multi_year, "lines-history")) == reports.render_markdown(
+        document(multi_year, "lines-history")
+    )
 
 
 def test_short_history_degrades(tmp_path):

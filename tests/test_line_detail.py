@@ -1,4 +1,5 @@
 """Line detail: capacity entries name the cargo they carry and list only positive capacity (P-010/P-011)."""
+
 from __future__ import annotations
 
 import json

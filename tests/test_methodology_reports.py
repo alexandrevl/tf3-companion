@@ -1,4 +1,5 @@
 """The verdicts report, the table/chart catalog, provenance headers and escaping of hostile methodology text."""
+
 from __future__ import annotations
 
 import re
@@ -27,7 +28,9 @@ def store(tmp_path):
         net = Net(game_time=10 * YEAR + month * (YEAR // 12))
         net.data["meta"]["date"] = {"year": 1980, "month": month, "day": 1}
         net.station(1, "A", 10, "Alpha").station(2, "B", 20, "Beta")
-        net.line(100, "Trunk", [1, 2], profit=-10_000 * month).line(101, "Coal", [1, 2], profit=5_000 * month, cargo=FREIGHT)
+        net.line(100, "Trunk", [1, 2], profit=-10_000 * month).line(
+            101, "Coal", [1, 2], profit=5_000 * month, cargo=FREIGHT
+        )
         s.add_snapshot(Snapshot(net.data, source=f"s{month}.lua"))
     yield s
     s.close()
@@ -39,18 +42,44 @@ def lens_for(store, m, origin="request"):
 
 def hostile_methodology():
     return methodology(
-        name="# Injected name <b>bold</b>", description=HOSTILE, author="- list | injection\n> quote",
-        markers={"ok": {"symbol": "<i>", "label": "fine"}, "problem": {"symbol": "!", "label": "bad | marker", "finding": "high"}},
-        roles={"line": [{"id": "trunk", "label": "# Heading role <u>", "select": cond("line.is_passenger_only", "eq", True)}]},
-        rules=[{"id": "loss", "label": "<img src=x onerror=alert(1)>", "rationale": "# Fake heading\n- fake | list\x07", "entity": "line",
+        name="# Injected name <b>bold</b>",
+        description=HOSTILE,
+        author="- list | injection\n> quote",
+        markers={
+            "ok": {"symbol": "<i>", "label": "fine"},
+            "problem": {"symbol": "!", "label": "bad | marker", "finding": "high"},
+        },
+        roles={
+            "line": [
+                {"id": "trunk", "label": "# Heading role <u>", "select": cond("line.is_passenger_only", "eq", True)}
+            ]
+        },
+        rules=[
+            {
+                "id": "loss",
+                "label": "<img src=x onerror=alert(1)>",
+                "rationale": "# Fake heading\n- fake | list\x07",
+                "entity": "line",
                 "role": "trunk",
-                "outcomes": [{"when": cond("line.profit_year", "lt", 0), "marker": "problem",
-                              "message": "# Not a heading | a|b `code` <script>x</script>\x07{line.name}"}],
-                "default": {"marker": "ok"}}],
-        recommendations=[{"id": "fix", "when": {"rule": "loss", "marker": "problem"}, "priority": 1,
-                          "text": "> quote <b>{line.name}</b>"}])
-
-
+                "outcomes": [
+                    {
+                        "when": cond("line.profit_year", "lt", 0),
+                        "marker": "problem",
+                        "message": "# Not a heading | a|b `code` <script>x</script>\x07{line.name}",
+                    }
+                ],
+                "default": {"marker": "ok"},
+            }
+        ],
+        recommendations=[
+            {
+                "id": "fix",
+                "when": {"rule": "loss", "marker": "problem"},
+                "priority": 1,
+                "text": "> quote <b>{line.name}</b>",
+            }
+        ],
+    )
 
 
 def test_markdown_neutralises_hostile_methodology_text(store):
@@ -78,28 +107,70 @@ def test_html_escapes_hostile_methodology_text(store):
     html = reports.render_report(store, "methodology", html=True, lens=lens_for(store, hostile_methodology()))
     surface = Surface()
     surface.feed(html)
-    assert "script" not in surface.tags and "img" not in surface.tags and "b" not in surface.tags and "i" not in surface.tags
+    assert (
+        "script" not in surface.tags
+        and "img" not in surface.tags
+        and "b" not in surface.tags
+        and "i" not in surface.tags
+    )
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
     assert "\x07" not in html
 
 
-
-
 def test_table_and_chart_catalog_with_same_numbers_tables(store):
     m = methodology(
-        roles={"line": [{"id": "pax", "select": cond("line.is_passenger_only", "eq", True)},
-                        {"id": "freight", "select": cond("line.is_passenger_only", "eq", False)}]},
+        roles={
+            "line": [
+                {"id": "pax", "select": cond("line.is_passenger_only", "eq", True)},
+                {"id": "freight", "select": cond("line.is_passenger_only", "eq", False)},
+            ]
+        },
         reports={
-            "tables": [{"id": "worst", "label": "Worst lines", "entity": "line", "sort": "line.profit_year",
-                        "columns": ["line.name", "line.profit_year", "line.role"]}],
+            "tables": [
+                {
+                    "id": "worst",
+                    "label": "Worst lines",
+                    "entity": "line",
+                    "sort": "line.profit_year",
+                    "columns": ["line.name", "line.profit_year", "line.role"],
+                }
+            ],
             "charts": [
-                {"id": "by-role", "label": "Result by role", "type": "bar", "entity": "line", "metric": "line.profit_year", "agg": "sum", "group_by": "role"},
-                {"id": "share", "label": "Lines by role", "type": "pie", "entity": "line", "agg": "count", "group_by": "role"},
-                {"id": "trend", "label": "Profit trend", "type": "history_line", "entity": "line", "metric": "line.profit_year",
-                 "agg": "sum", "group_by": "role"}]})
+                {
+                    "id": "by-role",
+                    "label": "Result by role",
+                    "type": "bar",
+                    "entity": "line",
+                    "metric": "line.profit_year",
+                    "agg": "sum",
+                    "group_by": "role",
+                },
+                {
+                    "id": "share",
+                    "label": "Lines by role",
+                    "type": "pie",
+                    "entity": "line",
+                    "agg": "count",
+                    "group_by": "role",
+                },
+                {
+                    "id": "trend",
+                    "label": "Profit trend",
+                    "type": "history_line",
+                    "entity": "line",
+                    "metric": "line.profit_year",
+                    "agg": "sum",
+                    "group_by": "role",
+                },
+            ],
+        },
+    )
     lens = lens_for(store, m)
     charts = {c.id: c for c in lens.verdicts.charts}
-    assert charts["by-role"].categories == ["freight", "pax"] and charts["by-role"].series[0][1] == [20_000.0, -40_000.0]
+    assert charts["by-role"].categories == ["freight", "pax"] and charts["by-role"].series[0][1] == [
+        20_000.0,
+        -40_000.0,
+    ]
     assert charts["share"].categories == ["freight", "pax"] and charts["share"].series[0][1] == [1.0, 1.0]
     assert len(charts["trend"].categories) == 4 and {n for n, _ in charts["trend"].series} == {"freight", "pax"}
     assert lens.verdicts.tables[0].rows[0][:2] == ["Trunk", -40_000]
@@ -112,8 +183,21 @@ def test_table_and_chart_catalog_with_same_numbers_tables(store):
 
 
 def test_unsupported_table_or_chart_blocks_rendering_before_partial_policy_application(store):
-    m = methodology(reports={"tables": [{"id": "t", "entity": "line", "columns": ["line.name", "line.bogus"]}],
-                             "charts": [{"id": "c", "type": "bar", "entity": "line", "metric": "line.route_km", "agg": "sum", "group_by": "line.carrier"}]})
+    m = methodology(
+        reports={
+            "tables": [{"id": "t", "entity": "line", "columns": ["line.name", "line.bogus"]}],
+            "charts": [
+                {
+                    "id": "c",
+                    "type": "bar",
+                    "entity": "line",
+                    "metric": "line.route_km",
+                    "agg": "sum",
+                    "group_by": "line.carrier",
+                }
+            ],
+        }
+    )
     with pytest.raises(MethodologyError) as failure:
         lens_for(store, m)
     assert {(i.itemKind, i.itemId) for i in failure.value.issues} >= {("table", "t"), ("chart", "c")}
@@ -133,8 +217,12 @@ def test_annual_closing_findings_use_closing_endpoint_and_respect_disabled_codes
 
         def closing_codes(year, **kwargs):
             doc = reports.compose_report(store, "annual", year=year, **kwargs)
-            rows = [r for b in doc.blocks if isinstance(b, reports.Table) and b.columns[:2] == ["Code", "Category"]
-                    for r in b.rows]
+            rows = [
+                r
+                for b in doc.blocks
+                if isinstance(b, reports.Table) and b.columns[:2] == ["Code", "Category"]
+                for r in b.rows
+            ]
             return {r[0] for r in rows}, doc
 
         assert "vehicle_no_path" in closing_codes(1980)[0]  # present only at the 1980 closing sample
@@ -151,8 +239,20 @@ def test_annual_closing_findings_use_closing_endpoint_and_respect_disabled_codes
 def test_charts_leave_unknown_values_out_instead_of_plotting_zero(store):
     m = methodology(
         roles={"line": [{"id": "pax", "select": cond("line.is_passenger_only", "eq", True)}]},
-        reports={"charts": [{"id": "trend", "label": "Profit trend", "type": "history_line", "entity": "line",
-                             "metric": "line.profit_year", "agg": "sum", "group_by": "role"}]})
+        reports={
+            "charts": [
+                {
+                    "id": "trend",
+                    "label": "Profit trend",
+                    "type": "history_line",
+                    "entity": "line",
+                    "metric": "line.profit_year",
+                    "agg": "sum",
+                    "group_by": "role",
+                }
+            ]
+        },
+    )
     lens = lens_for(store, m)
     chart = lens.verdicts.charts[0]
     chart.series = [(name, [None if i == 1 else v for i, v in enumerate(points)]) for name, points in chart.series]

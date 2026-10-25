@@ -16,8 +16,10 @@ from .model import FILE_SUFFIX, ID_RE, VERSION_RE, Issue, Methodology, Methodolo
 USER_FOLDER = "methodologies"
 PACKAGED, USER = "packaged", "user"
 REF_RE = re.compile(r"^([a-z0-9]+(?:-[a-z0-9]+)*)(?:@((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)))?$")
-PLACE_HINT = ("Only library ids (`id` or `id@version`) are accepted here. Place the file in the methodologies folder "
-              "or import it with `tf3c methodology import <file>`.")
+PLACE_HINT = (
+    "Only library ids (`id` or `id@version`) are accepted here. Place the file in the methodologies folder "
+    "or import it with `tf3c methodology import <file>`."
+)
 
 
 class LibraryError(ValueError):
@@ -29,9 +31,9 @@ class Entry:
     id: str | None
     version: str | None
     name: str | None
-    source: str                    # packaged | user
-    file: str                      # display path
-    status: str                    # valid | invalid | conflict
+    source: str  # packaged | user
+    file: str  # display path
+    status: str  # valid | invalid | conflict
     sha256: str | None
     error: str | None = None
     methodology: Methodology | None = None
@@ -43,10 +45,19 @@ class Entry:
         return f"{self.id}@{self.version}" if self.id and self.version else None
 
     def to_dict(self) -> dict[str, Any]:
-        return {"id": self.id, "version": self.version, "identity": self.identity, "name": self.name,
-                "source": self.source, "file": self.file, "status": self.status,
-                "hash": f"sha256:{self.sha256[:12]}" if self.sha256 else None, "error": self.error,
-                "activationEligible": self.activation_eligible, "diagnostics": self.diagnostics or []}
+        return {
+            "id": self.id,
+            "version": self.version,
+            "identity": self.identity,
+            "name": self.name,
+            "source": self.source,
+            "file": self.file,
+            "status": self.status,
+            "hash": f"sha256:{self.sha256[:12]}" if self.sha256 else None,
+            "error": self.error,
+            "activationEligible": self.activation_eligible,
+            "diagnostics": self.diagnostics or [],
+        }
 
 
 def parse_ref(ref: str) -> tuple[str, str | None]:
@@ -84,13 +95,34 @@ class Library:
     @staticmethod
     def _entry(raw: bytes, source: str, label: str, path: Path | None) -> Entry:
         from .prepare import inspect
+
         m, report = inspect(raw, source=source, path=str(path) if path else label)
         if m is None:
             ident = _lenient_identity(raw)
-            return Entry(ident[0], ident[1], ident[2], source, label, "invalid", content_hash(raw),
-                         "; ".join(report["errors"]), diagnostics=report["diagnostics"])
-        return Entry(m.id, m.version, m.name, source, label, "valid", m.sha256, None, m,
-                     report["diagnostics"], report["activationEligible"])
+            return Entry(
+                ident[0],
+                ident[1],
+                ident[2],
+                source,
+                label,
+                "invalid",
+                content_hash(raw),
+                "; ".join(report["errors"]),
+                diagnostics=report["diagnostics"],
+            )
+        return Entry(
+            m.id,
+            m.version,
+            m.name,
+            source,
+            label,
+            "valid",
+            m.sha256,
+            None,
+            m,
+            report["diagnostics"],
+            report["activationEligible"],
+        )
 
     @staticmethod
     def _mark_conflicts(entries: list[Entry]) -> list[Entry]:
@@ -105,8 +137,10 @@ class Library:
                     entry.status = "conflict"
                     entry.error = f"{identity} is declared by files with different content: {files}"
                     entry.activation_eligible = False
-                    entry.diagnostics = [*(entry.diagnostics or []), Issue(
-                        "", entry.error, category="conflict", code="identity-conflict").to_dict()]
+                    entry.diagnostics = [
+                        *(entry.diagnostics or []),
+                        Issue("", entry.error, category="conflict", code="identity-conflict").to_dict(),
+                    ]
         return entries
 
     # ---- resolution -----------------------------------------------------------------
@@ -118,10 +152,14 @@ class Library:
         if not usable:
             invalid = [e for e in candidates if e.status == "invalid"]
             if invalid:
-                raise LibraryError(f"Methodology '{ref}' only exists as an invalid file: {invalid[0].file}: {invalid[0].error}")
+                raise LibraryError(
+                    f"Methodology '{ref}' only exists as an invalid file: {invalid[0].file}: {invalid[0].error}"
+                )
             known = sorted({e.identity for e in self.entries() if e.identity})
-            raise LibraryError(f"Methodology '{ref}' is not in the library. Available: {', '.join(known)}. "
-                               f"Import a file with `tf3c methodology import <file>`.")
+            raise LibraryError(
+                f"Methodology '{ref}' is not in the library. Available: {', '.join(known)}. "
+                f"Import a file with `tf3c methodology import <file>`."
+            )
         best = max(usable, key=lambda e: version_key(e.version or "0.0.0"))
         if best.status == "conflict":
             raise LibraryError(best.error or f"{best.identity} is in conflict")
@@ -135,23 +173,34 @@ class Library:
     # ---- import / export ------------------------------------------------------------
     def import_file(self, path: Path, force: bool = False) -> dict[str, Any]:
         from .prepare import prepare
+
         m = prepare(load_file(Path(path)))
         target = self.directory / f"{m.id}@{m.version}{FILE_SUFFIX}"
         for entry in self.entries():
             if entry.status == "invalid" or entry.identity != m.identity or entry.sha256 == m.sha256:
                 continue
             if entry.source == PACKAGED:
-                raise LibraryError(f"{m.identity} is a packaged methodology with different content "
-                                   f"(sha256:{(entry.sha256 or '')[:12]} vs {m.short_hash}); change the id or version.")
+                raise LibraryError(
+                    f"{m.identity} is a packaged methodology with different content "
+                    f"(sha256:{(entry.sha256 or '')[:12]} vs {m.short_hash}); change the id or version."
+                )
             if not force:
-                raise LibraryError(f"{m.identity} already exists with different content: library "
-                                   f"sha256:{(entry.sha256 or '')[:12]} ({entry.file}), new file {m.short_hash}. "
-                                   "Bump the version or re-run with --force to replace it.")
+                raise LibraryError(
+                    f"{m.identity} already exists with different content: library "
+                    f"sha256:{(entry.sha256 or '')[:12]} ({entry.file}), new file {m.short_hash}. "
+                    "Bump the version or re-run with --force to replace it."
+                )
         self.directory.mkdir(parents=True, exist_ok=True)
         existed = target.is_file()
         _atomic_bytes(target, m.raw)
-        return {"identity": m.identity, "hash": m.short_hash, "file": str(target),
-                "result": "unchanged" if existed and content_hash(target.read_bytes()) == m.sha256 and not force else "imported"}
+        return {
+            "identity": m.identity,
+            "hash": m.short_hash,
+            "file": str(target),
+            "result": "unchanged"
+            if existed and content_hash(target.read_bytes()) == m.sha256 and not force
+            else "imported",
+        }
 
     def export(self, ref: str, destination: Path, force: bool = False) -> dict[str, Any]:
         m = self.resolve(ref)
@@ -171,9 +220,11 @@ def _lenient_identity(raw: bytes) -> tuple[str | None, str | None, str | None]:
     if not isinstance(data, dict):
         return None, None, None
     ident, version, name = data.get("id"), data.get("version"), data.get("name")
-    return (ident if isinstance(ident, str) and ID_RE.match(ident) else None,
-            version if isinstance(version, str) and VERSION_RE.match(version) else None,
-            name if isinstance(name, str) else None)
+    return (
+        ident if isinstance(ident, str) and ID_RE.match(ident) else None,
+        version if isinstance(version, str) and VERSION_RE.match(version) else None,
+        name if isinstance(name, str) else None,
+    )
 
 
 def _atomic_bytes(path: Path, content: bytes) -> None:

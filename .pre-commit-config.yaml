@@ -1,0 +1,46 @@
+# Commit-time gate. Install once per clone: `uv run pre-commit install`.
+# Every check also runs in CI, so skipping the hook never skips the check.
+# Local hooks use the locked environment through `uv run`; `luac` must be on PATH (see CONTRIBUTING.md).
+minimum_pre_commit_version: "4.0.0"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-case-conflict
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format
+        language: system
+        types: [python]
+      - id: repo-guards
+        name: repository guards (private data, language, required files, links, luac -p)
+        entry: uv run python scripts/check_repo.py
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: pytest-fast
+        name: pytest (without the slow installed-wheel tests)
+        entry: uv run pytest -m "not slow" -q
+        language: system
+        pass_filenames: false
+        always_run: true

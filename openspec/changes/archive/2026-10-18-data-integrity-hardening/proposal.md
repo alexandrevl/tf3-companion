@@ -12,7 +12,7 @@ Analysis of ingestion, parsing, and storage revealed several real-world data cor
 ## What Changes
 - **luadata**: Enforces strict data evaluation, validates table keys (rejecting duplicates, nested tables, NaN), and wraps parser exceptions in `LuaDataError`.
 - **snapshot**: Validates `schemaVersion` (supported positive integers <= 1), 64-bit integer ranges for time and IDs, unique entity IDs, valid calendar dates, and safe filenames.
-- **store**: 
+- **store**:
   - Tracks file content digests via an additive `imported_files` table, preserving full backward compatibility with legacy `companion.db` files.
   - Verifies read file stability and refuses to prune files whose signatures or contents mutated after import.
   - Retains all malformed, partial, or conflicting files; never deletes failed ingestion targets.

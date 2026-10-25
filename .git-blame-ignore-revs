@@ -1,0 +1,5 @@
+# Mechanical formatting commits that git blame should skip.
+# Use: git config blame.ignoreRevsFile .git-blame-ignore-revs (GitHub applies this file automatically).
+
+# Apply ruff format (mechanical, no logic changes)
+70e6a3ca0a3e5affc132ba446ba3da949ea17bcf

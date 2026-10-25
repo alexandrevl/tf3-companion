@@ -18,7 +18,7 @@ Install [uv](https://docs.astral.sh/uv/) and ensure Python 3.12+ is installed.
 
 ```sh
 # Clone and prepare locked environment
-git clone <repo-url>
+git clone https://github.com/alexandrevl/tf3-companion.git
 cd tf3-companion
 uv sync --locked
 
@@ -33,14 +33,11 @@ uv run tf3c knowledge
 
 Use `TF3C_DATA_DIR` and `TF3C_USERDATA_DIR` during testing to isolate tests from your actual game data.
 
-### Repository checks and the Lua prerequisite
+`tests/test_installed_analysis.py` (marked `slow`) builds the wheel into a temporary directory, installs it offline into a clean temporary environment and runs the installed service, `tf3c evaluate`, the MCP `evaluate` tool, all seven analysis views, report composition/publication and `tf3c analyse` from outside the checkout with synthetic evidence. It needs `uv` and uv's local cache to already hold the build backend and dependency wheels (run `uv sync --locked` once with network access, then install the built wheel once into a scratch environment so the registry metadata is cached); when they are missing it fails naming that prerequisite and never reaches a package index.
 
-```sh
-uv run python scripts/check_repo.py   # private data, Portuguese text, required files, links, `luac -p` on Lua
-uv run ruff check . && uv run ruff format --check .
-```
+### Install the Lua checker
 
-The Lua check is `luac -p` (syntax only, never evidence that the mod works in the game) and it **fails instead of skipping** when `luac` is missing. Install it first:
+The Lua check is `luac -p`: syntax only, never evidence that the mod works in the game. It **fails instead of skipping** when `luac` is missing, so install it before running the checks:
 
 | Platform | Command |
 | --- | --- |
@@ -50,7 +47,24 @@ The Lua check is `luac -p` (syntax only, never evidence that the mod works in th
 
 If the binary has an unusual name or location, set the `LUAC` environment variable to it.
 
-`tests/test_installed_analysis.py` builds the wheel into a temporary directory, installs it offline into a clean temporary environment and runs the installed service, `tf3c evaluate`, the MCP `evaluate` tool, all seven analysis views, report composition/publication and `tf3c analyse` from outside the checkout with synthetic evidence. It needs `uv` and uv's local cache to already hold the build backend and dependency wheels (run `uv sync --locked` once with network access); when they are missing it fails naming that prerequisite and never reaches a package index.
+### Checks and the commit hook
+
+Every check has one definition and runs in three places: the commit hook, `uv run pytest` and CI.
+
+```sh
+uv run pre-commit install             # once per clone: runs the fast checks before every commit
+uv run pre-commit run --all-files     # the same checks over the whole tree, without committing
+uv run python scripts/check_repo.py   # private data, Portuguese text, required files, links, `luac -p` on Lua
+uv run ruff check . && uv run ruff format --check .
+uv run pytest                         # everything, including the slow installed-wheel tests
+```
+
+| Where | What runs |
+| --- | --- |
+| Commit hook (fast) | whitespace, end-of-file, merge-marker, large-file, YAML/JSON/TOML checks; `ruff check`; `ruff format`; `scripts/check_repo.py` (includes `luac -p`); `pytest -m "not slow"` |
+| CI (full, Linux, macOS and Windows) | all of the above plus the slow installed-wheel tests, the wheel and sdist build, strict OpenSpec validation, CodeQL and dependency review |
+
+Skipping the hook (`git commit --no-verify`) does not skip a check: the same checks fail the pull request. `.git-blame-ignore-revs` lists the mechanical formatting commit; run `git config blame.ignoreRevsFile .git-blame-ignore-revs` to make local `git blame` skip it (GitHub applies it automatically).
 
 ---
 

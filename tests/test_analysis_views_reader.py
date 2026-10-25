@@ -5,7 +5,7 @@ from contextlib import closing
 
 import pytest
 
-from conftest import YEAR, base_snapshot
+from conftest import base_snapshot
 from tf3companion import store as store_module
 from tf3companion.analysis_views import EvaluationContext, EvidenceReader, evaluate_views, select_views
 from tf3companion.report_policy import resolve_context

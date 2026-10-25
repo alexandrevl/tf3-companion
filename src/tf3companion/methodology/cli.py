@@ -10,7 +10,6 @@ from typing import Any
 from ..paths import data_directory
 from .resolve import Resolver, field_catalog, validate_file
 
-
 SHOWN_FINDINGS = 15
 
 
@@ -99,9 +98,8 @@ def run_methodology(args: argparse.Namespace) -> int:
         listing = resolver.listing()
         _print(listing) if args.json else _print_list(listing)
     elif action == "show":
-        from .resolve import describe
-
         from .library import looks_like_path
+        from .resolve import describe
         origin = "file" if looks_like_path(args.ref) else "request"
         m = resolver.library.load_path(args.ref) if origin == "file" else resolver.library.resolve(args.ref)
         _print(describe(m, origin, resolver.scope))

@@ -13,8 +13,14 @@ from typing import Any
 from .analysis_views.bottlenecks import BottleneckItem, BottlenecksView
 from .analysis_views.models import EvaluationContext
 from .reports import (
-    Chart, Heading, Note, Paragraph, ReportDocument, Table,
-    _base_header, _fmt_pct,
+    Chart,
+    Heading,
+    Note,
+    Paragraph,
+    ReportDocument,
+    Table,
+    _base_header,
+    _fmt_pct,
 )
 
 TABLE_CAP = 20

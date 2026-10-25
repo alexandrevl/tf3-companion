@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from collections import Counter
-import hashlib
 import sqlite3
+from collections import Counter
 from collections.abc import Collection
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -14,8 +14,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-from .snapshot import Snapshot, snapshot_files
 from . import luadata
+from .snapshot import Snapshot, snapshot_files
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS snapshots (
@@ -192,7 +192,7 @@ class Store:
 
     def calendar_baseline(self, snapshot: Snapshot) -> Snapshot | None:
         """Latest dated observation at least 365.25 calendar days before evaluation."""
-        from .game_time import calendar_ordinal, DAYS_PER_YEAR
+        from .game_time import DAYS_PER_YEAR, calendar_ordinal
         clock = self.time_context(snapshot)
         ordinal = calendar_ordinal(snapshot.date)
         if clock.ambiguous or ordinal is None:

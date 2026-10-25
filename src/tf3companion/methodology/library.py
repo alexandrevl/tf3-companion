@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .loader import load_file, packaged_files, parse, read_file
+from .loader import load_file, packaged_files, read_file
 from .model import FILE_SUFFIX, ID_RE, VERSION_RE, Issue, Methodology, MethodologyError, content_hash, version_key
 
 USER_FOLDER = "methodologies"

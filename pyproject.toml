@@ -27,6 +27,23 @@ packages = ["src/tf3companion"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "slow: builds and installs the wheel in a clean environment; excluded from the commit hook, always run in CI",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B"]
+# B905: every zip() pairs equal-length sequences built together; `strict=` would add noise, not safety.
+# B008: the default arguments are frozen dataclass instances (thresholds) and are never mutated.
+ignore = ["B905", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tf3companion"]
 
 [dependency-groups]
 dev = [
@@ -34,4 +51,6 @@ dev = [
     "lupa>=2.0",
     "pillow>=13.0.0",
     "jsonschema>=4.26.0",
+    "ruff>=0.17.2",
+    "pre-commit>=4.7.0",
 ]

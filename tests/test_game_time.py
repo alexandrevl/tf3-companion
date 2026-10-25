@@ -1,6 +1,8 @@
 """Calendar arithmetic and conservative evidence bounds, independent of nominal duration."""
 from datetime import date
+
 import pytest
+
 from tf3companion.game_time import GameCalendarClock, calendar_ordinal
 
 

@@ -151,7 +151,7 @@ def render_markdown(doc: ReportDocument) -> str:
                 out.append(f'    title "{_clean_mermaid(b.title)}"')
                 cats = [_clean_mermaid(c, 20) for c in b.categories[:60]]
                 out.append('    x-axis [' + ", ".join(f'"{c}"' for c in cats) + ']')
-                for s_name, pts in b.series:
+                for _s_name, pts in b.series:
                     decimated = pts[:len(cats)]
                     out.append(f'    {b.kind} [' + ", ".join(f"{p:.2f}" for p in decimated) + ']')
             out.append("```\n")
@@ -603,9 +603,9 @@ def _build_annual_report(data: facts.AnnualFacts) -> ReportDocument:
     worst_5 = ranked[-5:] if len(ranked) > 5 else []
     blocks.extend([
         Heading(2, "Top 5 Lines by Closing Annual Profit"),
-        Table(["Line", "Rolling Annual Profit"], [[_line_label(l), l.get("profitYear")] for l in best_5], ["left", "right"]),
+        Table(["Line", "Rolling Annual Profit"], [[_line_label(ln), ln.get("profitYear")] for ln in best_5], ["left", "right"]),
         Heading(2, "Bottom 5 Lines by Closing Annual Profit"),
-        Table(["Line", "Rolling Annual Profit"], [[_line_label(l), l.get("profitYear")] for l in worst_5], ["left", "right"]),
+        Table(["Line", "Rolling Annual Profit"], [[_line_label(ln), ln.get("profitYear")] for ln in worst_5], ["left", "right"]),
         Heading(2, "Fleet and Network Adjustments"),
         Table(["Category", "Entities Added", "Entities Removed"],
               [["Lines", _names(data.lines_added, "Line"), _names(data.lines_removed, "Line")],
@@ -663,7 +663,7 @@ def render_report(store: Store, kind: str, year: int | None = None, html: bool =
 def compose_report(store: Store, kind: str, year: int | None = None,
                    thresholds: analysis.Thresholds | None = None, lens: Any = None, context=None) -> ReportDocument:
     """Compose a report document once; Markdown and HTML are separate pure renderings of it."""
-    from .report_policy import resolve_context, REGISTRY
+    from .report_policy import REGISTRY, resolve_context
     if lens is not None and (thresholds is not None or context is not None):
         raise ValueError("lens and explicit thresholds/context are mutually exclusive")
     if context is not None and thresholds is not None:
@@ -707,6 +707,7 @@ def compose_report(store: Store, kind: str, year: int | None = None,
         # Local imports keep presentation builders free to reuse the document model. Each builder
         # renders the typed view that its family evaluated at the latest stored endpoint.
         from importlib import import_module
+
         from .analysis_views import evaluate_views
 
         views = evaluate_views(store, operation, (kind,))

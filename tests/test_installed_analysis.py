@@ -22,8 +22,10 @@ from typing import Any
 import pytest
 
 from conftest import YEAR
-from methodology_helpers import FREIGHT, PASSENGERS, Net
+from methodology_helpers import FREIGHT, Net
 from tf3companion import luadata
+
+pytestmark = pytest.mark.slow
 
 REPO = Path(__file__).resolve().parent.parent
 EXAMPLE_ID = "local-feeder-intercity-trunk"
@@ -486,10 +488,12 @@ def test_a_different_policy_changes_verdicts_never_the_measured_facts(run):
     assert hit_markers(strict, "vehicle-maintenance")["V1001"] == "problem"          # 0.60 is below 0.7 ...
     assert hit_markers(lenient, "vehicle-maintenance")["V1001"] == "ok"              # ... and not below 0.5
     identity = ("methodology", "methodology_hash", "methodology_selection")
-    engine = lambda result: [{k: v for k, v in f.items() if k not in identity}
-                             for f in result["findings"] if not f["code"].startswith("rule:")]
+    def engine(result):
+        return [{k: v for k, v in f.items() if k not in identity}
+                                 for f in result["findings"] if not f["code"].startswith("rule:")]
     assert engine(strict) == engine(lenient) and engine(strict)
-    severity = lambda result: {f["entity"]["name"]: f["severity"] for f in result["findings"] if f["code"] == "rule:passenger-loss"}
+    def severity(result):
+        return {f["entity"]["name"]: f["severity"] for f in result["findings"] if f["code"] == "rule:passenger-loss"}
     assert severity(strict) == {"Maple Express": "high"} and severity(lenient) == {"Maple Express": "low"}
     assert strict["analysisViews"] != {} and [v for v in strict["analysisViews"]] == [v for v in lenient["analysisViews"]]
 

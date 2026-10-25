@@ -5,13 +5,12 @@ from datetime import date
 import pytest
 
 from conftest import base_snapshot
-from view_helpers import MODULES, document, view
-
 from tf3companion.analysis_views import VIEW_NAMES, EvaluationContext, evaluate_views
 from tf3companion.report_policy import resolve_context
 from tf3companion.reports import Note, Table, compose_report, render_html, render_markdown
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
+from view_helpers import document, view
 
 
 def observation(tick, dated, capacity, *, purchase=None):

@@ -6,7 +6,6 @@ from typing import Any
 
 import anyio
 import pytest
-
 from mcp.server.mcpserver.exceptions import ToolError
 
 from conftest import write_snapshot
@@ -27,8 +26,7 @@ NEW_TOOLS = {"list_methodologies", "methodology_detail", "analyse", "evaluate", 
 @pytest.fixture
 def server(paths, monkeypatch):
     write_snapshot(paths.snapshot_folder, troubled_company())
-    # Tools run on worker threads and SQLite connections are per-thread, so each call gets its own Companion.
-    monkeypatch.setattr(mcp_server, "companion", lambda: Companion(paths))
+    monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: Companion(paths, save))
     yield mcp_server.server
 
 
@@ -164,7 +162,7 @@ def draft(ident="draft", version="1.0.0", **extra) -> dict[str, Any]:
 def readonly(paths, monkeypatch):
     """Validation must never construct a Companion or create store, library or report files."""
     monkeypatch.setenv("TF3C_DATA_DIR", str(paths.data))
-    monkeypatch.setattr(mcp_server, "companion", lambda: pytest.fail("validation must not build a Companion"))
+    monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: pytest.fail("validation must not build a Companion"))
     yield paths
     assert not paths.database.exists() and not (paths.data / "reports").exists()
 

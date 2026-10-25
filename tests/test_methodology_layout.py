@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
 
 from conftest import YEAR, write_snapshot
-from methodology_helpers import Net, companion_with, troubled_company, methodology
+from methodology_helpers import companion_with, methodology, troubled_company
 from tf3companion.cli import main
 from tf3companion.methodology import output
 from tf3companion.methodology.library import Library

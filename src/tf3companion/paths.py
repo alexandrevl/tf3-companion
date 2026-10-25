@@ -8,7 +8,7 @@ from pathlib import Path
 
 from platformdirs import user_data_path
 
-from .discovery import ConfigError, TF3_STEAM_APP_ID, discover_userdata
+from .discovery import discover_userdata
 
 
 @dataclass(frozen=True)

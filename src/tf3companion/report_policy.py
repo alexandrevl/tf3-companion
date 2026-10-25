@@ -1,9 +1,11 @@
 """Finite report judgments and one immutable resolved analysis context."""
 from __future__ import annotations
-from dataclasses import dataclass, asdict, make_dataclass
+
 import math
+from dataclasses import asdict, dataclass, make_dataclass
 from types import MappingProxyType
 from typing import Any, Mapping
+
 from .analysis import Thresholds
 
 REGISTRY_VERSION = 1
@@ -60,17 +62,24 @@ def validate_report_policies(raw: Any) -> list[tuple[str, str]]:
     for family, supplied in raw.items():
         path = f"/report_policies/{family}"
         if family not in REGISTRY:
-            issues.append((path, f"unsupported family {family!r}; supported: {', '.join(REGISTRY)}")); valid = False; continue
+            issues.append((path, f"unsupported family {family!r}; supported: {', '.join(REGISTRY)}"))
+            valid = False
+            continue
         if not isinstance(supplied, Mapping):
-            issues.append((path, f"expected object, got {supplied!r}")); valid = False; continue
+            issues.append((path, f"expected object, got {supplied!r}"))
+            valid = False
+            continue
         for key, value in supplied.items():
             spec = REGISTRY[family].get(key)
             location = f"{path}/{key}"
             if spec is None:
-                issues.append((location, f"unsupported key {key!r}; supported: {', '.join(REGISTRY[family])}")); valid = False; continue
+                issues.append((location, f"unsupported key {key!r}; supported: {', '.join(REGISTRY[family])}"))
+                valid = False
+                continue
             numeric = type(value) is int or (type(value) is float and math.isfinite(value))
             if not numeric or (spec.integer and value != int(value)) or not (spec.minimum < value if spec.exclusive_minimum else spec.minimum <= value) or value > spec.maximum:
-                issues.append((location, f"got {value!r}; expected finite {'integer' if spec.integer else 'number'} in {'(' if spec.exclusive_minimum else '['}{spec.minimum}, {spec.maximum}]")); valid = False
+                issues.append((location, f"got {value!r}; expected finite {'integer' if spec.integer else 'number'} in {'(' if spec.exclusive_minimum else '['}{spec.minimum}, {spec.maximum}]"))
+                valid = False
     if valid:
         values = {k: {n: s.default for n, s in entries.items()} | dict(raw.get(k, {})) for k, entries in REGISTRY.items()}
         expansion = values["expansion"]

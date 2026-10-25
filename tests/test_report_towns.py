@@ -1,9 +1,14 @@
+import json
+
 import pytest
 
+from conftest import YEAR, base_snapshot
+from tf3companion.analysis_views import EvaluationContext, evaluate_views
+from tf3companion.analysis_views.models import plain
+from tf3companion.report_policy import resolve_context
 from tf3companion.reports import Chart, Table, render_html, render_markdown
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
-from conftest import YEAR, base_snapshot
 from view_helpers import document, view
 
 PAX_INDEX = 1  # lines[].capacity[].cargo is cargoTypeId + 1; passengers are cargo id 0
@@ -183,13 +188,6 @@ def test_deterministic(multi_year_store):
 # ---------------------------------------------------------------------------
 # Direct view assertions
 # ---------------------------------------------------------------------------
-
-import json
-
-from tf3companion.analysis_views import EvaluationContext, evaluate_views
-from tf3companion.analysis_views.models import plain
-from tf3companion.report_policy import resolve_context
-
 
 def _rows(v):
     return {r.name: r for r in v.rows}

@@ -1,8 +1,7 @@
-from tf3companion import analysis
-from tf3companion.snapshot import Snapshot
-
 from conftest import YEAR, base_snapshot
 from methodology_helpers import fixture_clock
+from tf3companion import analysis
+from tf3companion.snapshot import Snapshot
 
 
 def add_line(data, line_id, *, profit, vehicles_age_years=3.0, load=(50, 100), vehicles=1, **extra):

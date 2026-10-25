@@ -20,8 +20,14 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .analysis_views.industries import (
-    ClosureRemaining, IndustriesView, LifecycleEvent, Span, STATUS_IDLE, STATUS_INPUT_LIMITED, STATUS_OUTPUT_FULL,
+    STATUS_IDLE,
+    STATUS_INPUT_LIMITED,
+    STATUS_OUTPUT_FULL,
     STATUS_RUNNING,
+    ClosureRemaining,
+    IndustriesView,
+    LifecycleEvent,
+    Span,
 )
 from .analysis_views.models import EvaluationContext
 from .reports import Chart, Heading, Note, Paragraph, ReportDocument, Table, _fmt_pct

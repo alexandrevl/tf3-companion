@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import copy
-from datetime import date
 import json
+from datetime import date
 from typing import Any
 
 from conftest import YEAR, base_snapshot
+from tf3companion.game_time import GameCalendarClock
 from tf3companion.methodology import evaluate, parse
 from tf3companion.snapshot import Snapshot
-from tf3companion.game_time import GameCalendarClock
 
 PASSENGERS = 1  # lines[].capacity[].cargo is the cargo id + 1: 1 means passengers (cargo id 0)
 FREIGHT = 4     # cargo id 3

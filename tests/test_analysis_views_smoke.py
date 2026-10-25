@@ -18,7 +18,6 @@ import pytest
 from conftest import YEAR, base_snapshot
 from tf3companion import mcp_server, reports
 from tf3companion.analysis_views import VIEW_NAMES, EvaluationContext, evaluate_views
-from tf3companion.analysis_views.models import plain
 from tf3companion.cli import main
 from tf3companion.methodology.library import Library
 from tf3companion.report_policy import resolve_context
@@ -258,7 +257,8 @@ def test_stored_views_end_to_end(tmp_path, monkeypatch, capsys):
 
     # ---- policy changes judgments, never the measured facts ---------------------------------------
     n_cand, s_cand = neutral["analysisViews"]["expansion"]["candidates"], strict_result["analysisViews"]["expansion"]["candidates"]
-    key = lambda c: (c["producer"]["name"], c["consumer"]["name"])
+    def key(c):
+        return (c["producer"]["name"], c["consumer"]["name"])
     n_by, s_by = {key(c): c for c in n_cand}, {key(c): c for c in s_cand}
     assert n_by.keys() == s_by.keys()
     for k in n_by:

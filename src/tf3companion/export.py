@@ -196,7 +196,7 @@ def _charts_sheet(canvas: Worksheet, data: Worksheet, snap: Snapshot) -> None:
     _bar_chart(canvas, data, "Profit per vehicle by transport mode", 1, 5, n, next(anchors), head, horizontal=False)
     _pie_chart(canvas, data, "Vehicles by transport mode", 1, 3, n, next(anchors), head)
 
-    rows = [analysis.line_row(snap, l) for l in snap.lines]
+    rows = [analysis.line_row(snap, ln) for ln in snap.lines]
     for r in rows:
         r["short"] = _short(r["name"])
     best = sorted(rows, key=lambda r: r["profitYear"] or 0, reverse=True)[:15]
@@ -255,7 +255,7 @@ def export_workbook(store: Store, snap: Snapshot, prev: Snapshot | None, folder:
     charts = wb.create_sheet("Charts")
     _charts_sheet(charts, wb.create_sheet("Chart Data"), snap)
 
-    lines = sorted((analysis.line_row(snap, l, clock=clock) for l in snap.lines), key=lambda r: r["profitYear"] or 0, reverse=True)
+    lines = sorted((analysis.line_row(snap, ln, clock=clock) for ln in snap.lines), key=lambda r: r["profitYear"] or 0, reverse=True)
     ws = wb.create_sheet("Lines")
     _table(ws, [
         ("Line", "name"), ("Id", "id"), ("Mode", "carrier"), ("Stops", "stops"), ("Vehicles", "vehicles"),

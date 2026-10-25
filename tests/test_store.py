@@ -4,13 +4,11 @@ import time
 
 import pytest
 
+from conftest import YEAR, base_snapshot, write_snapshot
 from tf3companion import luadata
 from tf3companion.paths import load_paths
 from tf3companion.service import Companion, NoSnapshotError
-from tf3companion.snapshot import SUPPORTED_SCHEMA
 from tf3companion.store import Store
-
-from conftest import YEAR, base_snapshot, write_snapshot
 
 
 def test_ingest_is_idempotent_and_prunes_old_files(paths):

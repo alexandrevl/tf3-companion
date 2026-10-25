@@ -10,7 +10,7 @@ from typing import Any
 from . import fields
 from .loader import parse
 from .model import MAX_BYTES, Issue, Methodology, MethodologyError, content_hash
-from .support import classify, items_of, static_probe
+from .support import classify, static_probe
 
 
 def pointer(value: Any) -> str:

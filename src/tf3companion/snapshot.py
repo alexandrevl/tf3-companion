@@ -12,6 +12,10 @@ from . import luadata
 
 SUPPORTED_SCHEMA = 1
 READABLE_SCHEMA = 3  # Stored additive schema-1/2/3 evidence; collector support remains separate.
+# `lines[].capacity[].cargo` is the cargo type id plus one: the game keys the usage table by Lua array index
+# (knowledge/snapshot_schema.md). Other cargo references in a snapshot are treated as plain cargo ids; the
+# bridge decodes vehicle load config itself.
+LINE_CAPACITY_CARGO_OFFSET = 1
 SNAPSHOT_FILE = re.compile(r"^tf3c_snap_(\d+)\.lua$")
 
 
@@ -22,6 +26,12 @@ def _list(value: Any) -> list:
     if isinstance(value, dict):
         return list(value.values())
     return value
+
+
+def positive_line_capacity(line: dict[str, Any]) -> list[dict[str, Any]]:
+    """A line's stored capacity entries that carry something; the game also lists every cargo with zero capacity."""
+    return [c for c in _list(line.get("capacity")) if isinstance(c, dict) and (c.get("capacity") or 0) > 0
+            and isinstance(c.get("cargo"), int)]
 
 
 @dataclass
@@ -176,6 +186,19 @@ class Snapshot:
         if cargo_id is None:
             return None
         return self.cargo_names.get(cargo_id, str(cargo_id))
+
+    def cargo_or_unknown(self, cargo_id: int | None) -> str | None:
+        """The cargo name, or an explicit marker when the id is absent from the snapshot's cargo table."""
+        if cargo_id is None:
+            return None
+        if cargo_id in self.cargo_names:
+            return self.cargo_names[cargo_id]
+        return f"Unknown cargo ({cargo_id})"
+
+    def line_capacity(self, line: dict[str, Any]) -> list[dict[str, Any]]:
+        """The line's carried cargo: positive-capacity entries with the cargo named from its decoded id."""
+        return [{**entry, "cargo": self.cargo_or_unknown(entry["cargo"] - LINE_CAPACITY_CARGO_OFFSET)}
+                for entry in positive_line_capacity(line)]
 
     def line_vehicles(self, line: dict[str, Any]) -> list[dict[str, Any]]:
         return [self.vehicles_by_id[v] for v in _list(line.get("vehicles")) if v in self.vehicles_by_id]

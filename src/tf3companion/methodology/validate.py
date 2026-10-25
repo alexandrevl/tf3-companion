@@ -14,8 +14,25 @@ from typing import Any, Iterable
 
 from . import fields as fieldmod
 from .model import (
-    AGGREGATES, CARRIERS, CHART_AGGS, CHART_TYPES, ENTITIES, FORMATS, ID_RE, IDENT_RE, MAX_DEPTH, MAX_ID,
-    MAX_RULES, MAX_ROLES_PER_ENTITY, MAX_TEXT, OPS, ROLE_ENTITIES, SCHEMA_ID, SEVERITIES, VERSION_RE, Issue,
+    AGGREGATES,
+    CARRIERS,
+    CHART_AGGS,
+    CHART_TYPES,
+    ENTITIES,
+    FORMATS,
+    ID_RE,
+    IDENT_RE,
+    MAX_DEPTH,
+    MAX_ID,
+    MAX_ROLES_PER_ENTITY,
+    MAX_RULES,
+    MAX_TEXT,
+    OPS,
+    ROLE_ENTITIES,
+    SCHEMA_ID,
+    SEVERITIES,
+    VERSION_RE,
+    Issue,
 )
 from .safe_regex import capture_names, check_pattern
 

@@ -868,7 +868,8 @@ def _town_demand(snap: Snapshot) -> list[TownDemand]:
                     unknown.append(_cargo(snap, c.get("cargo")))
             elif _num(c.get("limit")) - _num(c.get("supply")) > 0:
                 unmet.append(_cargo(snap, c.get("cargo")))
-        key = lambda c: c.name or "?"
+        def key(c):
+            return c.name or "?"
         rows.append(TownDemand(_town_ref(town), sum(town.get("capacities") or []) or None,
                                usage if _is_num(usage) else None, stations,
                                tuple(sorted(unmet, key=key)), tuple(sorted(unknown, key=key))))

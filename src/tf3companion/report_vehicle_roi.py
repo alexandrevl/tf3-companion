@@ -254,7 +254,7 @@ def _trend_section(view: VehicleRoiView) -> list[Any]:
     picks = [m for m in movers if m.change < 0][:4] + [m for m in reversed(movers) if m.change > 0][:4]
     if picks:
         blocks.append(Heading(3, f"Largest Changes Between {cats[0]} and {cats[-1]} (groups with n>={MIN_SAMPLE} at both dates)"))
-        blocks.append(Table(["Model [Carrier]", f"Mean at {cats[0]}", f"n", f"Mean at {cats[-1]}", "n ", "Change"],
+        blocks.append(Table(["Model [Carrier]", f"Mean at {cats[0]}", "n", f"Mean at {cats[-1]}", "n ", "Change"],
                             [[m.key, _money(m.first_mean), m.first_n, _money(m.last_mean), m.last_n, _money(m.change)]
                              for m in picks],
                             ["left", "right", "right", "right", "right", "right"]))

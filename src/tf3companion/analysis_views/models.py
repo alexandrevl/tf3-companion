@@ -12,7 +12,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping
 
 from ..game_time import GameCalendarClock
 from ..snapshot import Snapshot

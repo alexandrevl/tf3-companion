@@ -5,12 +5,11 @@ from contextlib import closing
 from conftest import YEAR
 from test_report_industries import add, industry
 from test_report_lines_history import _cls, _snap
-from view_helpers import document
-
 from tf3companion import reports
 from tf3companion.analysis import Thresholds
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
+from view_helpers import document
 
 
 def _two_year_old_line_store(path):

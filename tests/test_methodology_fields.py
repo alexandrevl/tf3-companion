@@ -3,12 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from conftest import YEAR
 from methodology_helpers import FREIGHT, PASSENGERS, Net
 from tf3companion.methodology import fields as F
-from tf3companion.methodology.model import ENTITIES
-
-
 
 
 def test_unknown_and_dynamic_names():

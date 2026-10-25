@@ -1,13 +1,13 @@
 """Evidence-bound calendar time. No nominal tick duration is a calendar fallback."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date
 import hashlib
 import json
 import math
-from typing import Any, Iterable, Mapping
+from dataclasses import dataclass
+from datetime import date
 from types import MappingProxyType
+from typing import Any, Iterable, Mapping
 
 DAYS_PER_YEAR = 365.25
 VERSION = "game-calendar-v1"

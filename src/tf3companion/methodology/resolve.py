@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from . import fields as fieldmod
-from .library import PLACE_HINT, Entry, Library, LibraryError, looks_like_path
-from .loader import load_default, load_file
+from .library import PLACE_HINT, Library, LibraryError, looks_like_path
+from .loader import load_default
 from .model import Methodology
 from .scope import SaveScope
 from .support import Classification, classify, items_of, static_probe
@@ -32,6 +32,7 @@ class Resolver:
     def _selected(self, m: Methodology, origin: str, reference: str | None, metadata: Path | None,
                   overrides: dict[str, Any] | None = None) -> tuple[Methodology, str]:
         from dataclasses import replace
+
         from .prepare import prepare
         m = replace(m, selection={"origin": origin, "reference": reference, "libraryRoot": str(self.data),
                                   "metadataFile": str(metadata) if metadata else None})
@@ -131,9 +132,9 @@ def support_rows(m: Methodology, classification: Classification) -> list[dict[st
 
 
 def validate_file(path: str, strict: bool = False, parameters: dict[str, Any] | None = None) -> dict[str, Any]:
-    from .prepare import inspect
     from .loader import read_file
-    from .model import MethodologyError, Issue
+    from .model import Issue, MethodologyError
+    from .prepare import inspect
     try:
         _, report = inspect(read_file(Path(path).expanduser()), path=str(path), overrides=parameters)
     except (MethodologyError, OSError) as exc:

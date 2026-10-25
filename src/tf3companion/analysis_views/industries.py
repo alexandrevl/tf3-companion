@@ -767,27 +767,27 @@ def _comparison(first: _Sample, last: _Sample, common: list[int], events: Sequen
 
 
 def _levels(first: _Sample, last: _Sample, common: list[int], cargo_name) -> LevelsAnalysis:
-    f, l = first.inds, last.inds
-    changed = [i for i in common if _level(l[i]) != _level(f[i]) or (l[i].max_level or 0) != (f[i].max_level or 0)]
-    changed.sort(key=lambda i: (-abs(_level(l[i]) - _level(f[i])), l[i].name, i))
-    level_changes = tuple(LevelChange(i, l[i].name, l[i].label, f[i].level, l[i].level, f[i].max_level, l[i].max_level,
-                                      f[i].produced, l[i].produced, f[i].shipped, l[i].shipped, f[i].served)
+    f, lt = first.inds, last.inds
+    changed = [i for i in common if _level(lt[i]) != _level(f[i]) or (lt[i].max_level or 0) != (f[i].max_level or 0)]
+    changed.sort(key=lambda i: (-abs(_level(lt[i]) - _level(f[i])), lt[i].name, i))
+    level_changes = tuple(LevelChange(i, lt[i].name, lt[i].label, f[i].level, lt[i].level, f[i].max_level, lt[i].max_level,
+                                      f[i].produced, lt[i].produced, f[i].shipped, lt[i].shipped, f[i].served)
                           for i in changed)
-    rated = [i for i in common if f[i].rating is not None and l[i].rating is not None
-             and abs(l[i].rating - f[i].rating) >= RATING_CHANGE_MIN]
-    rated.sort(key=lambda i: (-abs(l[i].rating - f[i].rating), l[i].name, i))
-    rating_changes = tuple(RatingChange(i, l[i].name, l[i].label, f[i].rating, l[i].rating, f[i].produced, l[i].produced)
+    rated = [i for i in common if f[i].rating is not None and lt[i].rating is not None
+             and abs(lt[i].rating - f[i].rating) >= RATING_CHANGE_MIN]
+    rated.sort(key=lambda i: (-abs(lt[i].rating - f[i].rating), lt[i].name, i))
+    rating_changes = tuple(RatingChange(i, lt[i].name, lt[i].label, f[i].rating, lt[i].rating, f[i].produced, lt[i].produced)
                            for i in rated)
     leveled = [i for i in common if f[i].has_levels]
     groups: tuple[UpgradeGroup, ...] = ()
     if leveled:
         shipping = [i for i in leveled if f[i].served]
         idle = [i for i in leveled if not f[i].served]
-        groups = tuple(UpgradeGroup(code, len(ids), sum(1 for i in ids if _level(l[i]) > _level(f[i])))
+        groups = tuple(UpgradeGroup(code, len(ids), sum(1 for i in ids if _level(lt[i]) > _level(f[i])))
                        for code, ids in (("shipping-at-first", shipping), ("not-shipping-at-first", idle)))
     movers: list[ProductionMover] = []
     for i in common:
-        a, b = f[i], l[i]
+        a, b = f[i], lt[i]
         before = {o.cargo: o for o in a.outputs}
         for out in b.outputs:
             old = before.get(out.cargo)
@@ -830,10 +830,10 @@ def _service_by_type(first: _Sample, last: _Sample, common: list[int]) -> Servic
         by_type.setdefault(last.inds[i].label, []).append(i)
     types: list[TypeService] = []
     for label, ids in sorted(by_type.items(), key=lambda kv: (-_stats([last.inds[i] for i in kv[1]]).produced, kv[0])):
-        f, l = _stats([first.inds[i] for i in ids]), _stats([last.inds[i] for i in ids])
+        f, lt = _stats([first.inds[i] for i in ids]), _stats([last.inds[i] for i in ids])
         ratings = [last.inds[i].rating for i in ids if last.inds[i].producing and last.inds[i].rating is not None]
-        types.append(TypeService(label, len(ids), l.producing, l.served, f.produced, l.produced, f.ratio, l.ratio,
-                                 statistics.fmean(ratings) if ratings else None, f.produced <= 0 and l.produced <= 0))
+        types.append(TypeService(label, len(ids), lt.producing, lt.served, f.produced, lt.produced, f.ratio, lt.ratio,
+                                 statistics.fmean(ratings) if ratings else None, f.produced <= 0 and lt.produced <= 0))
     outliers: list[Outlier] = []
     for label, ids in by_type.items():
         producing = [last.inds[i] for i in ids if last.inds[i].producing]
@@ -857,8 +857,10 @@ def _chains(first: _Sample, last: _Sample, full: float, policy, cargo_name) -> C
     for c in sorted({f.cargo for i in consumers for f in i.inputs}):
         producers = [i for i in last.inds.values() if any(o.cargo == c for o in i.outputs)]
         cons = [i for i in consumers if any(f.cargo == c for f in i.inputs)]
-        out_of = lambda i: next(o for o in i.outputs if o.cargo == c)
-        in_of = lambda i: next(f for f in i.inputs if f.cargo == c)
+        def out_of(i, c=c):
+            return next(o for o in i.outputs if o.cargo == c)
+        def in_of(i, c=c):
+            return next(f for f in i.inputs if f.cargo == c)
         consumed = sum(in_of(i).consumed for i in cons)
         demand = sum(in_of(i).max_consumption for i in cons)
         consumed_first = sum(in_of(first.inds[i.id]).consumed for i in cons
@@ -904,7 +906,7 @@ def _stock_progression(samples: Sequence[_Sample], last: _Sample, full: float, c
     with_stocks = [s for s in samples if s.stocks is not None]
     if not with_stocks:
         return StockProgression(0, None, None, False, (), ())
-    f, l = with_stocks[0], with_stocks[-1]
+    f, lt = with_stocks[0], with_stocks[-1]
 
     def groups_of(sample: _Sample) -> dict[str, list[float]]:
         groups: dict[str, list[float]] = {"output-shipped": [], "output-not-shipped": [], "input": [], "warehouse": []}
@@ -919,24 +921,24 @@ def _stock_progression(samples: Sequence[_Sample], last: _Sample, full: float, c
                 groups["warehouse"].append(st.fill)
         return groups
 
-    gf, gl = groups_of(f), groups_of(l)
+    gf, gl = groups_of(f), groups_of(lt)
     groups = tuple(StockGroup(code, len(gl[code]), statistics.fmean(gf[code]) if gf[code] else None,
                               statistics.fmean(gl[code]) if gl[code] else None,
                               sum(1 for x in gf[code] if x >= full), sum(1 for x in gl[code] if x >= full))
                    for code in gl)
     movers: list[StockMover] = []
-    if f is not l:
-        for key, st in l.stocks.items():
+    if f is not lt:
+        for key, st in lt.stocks.items():
             old = f.stocks.get(key)
             if old is None or st.role == "warehouse":
                 continue
             delta = st.fill - old.fill
             if abs(delta) >= STOCK_MOVER_MIN:
-                ind = l.inds.get(st.owner)
+                ind = lt.inds.get(st.owner)
                 movers.append(StockMover(st.owner, ind.name if ind else f"Industry #{st.owner}", st.role,
                                          tuple(cargo_name(c) for c in st.cargos), old.fill, st.fill, delta))
         movers.sort(key=lambda m: (-abs(m.delta), m.owner_name, str(m.owner)))
-    return StockProgression(len(with_stocks), f.ref, l.ref, l is last, groups, tuple(movers))
+    return StockProgression(len(with_stocks), f.ref, lt.ref, lt is last, groups, tuple(movers))
 
 
 def _line_cargo_offset(snap: Snapshot) -> int:
@@ -1005,7 +1007,7 @@ def _links(first: _Sample, last: _Sample, snap: Snapshot, cargo_name) -> LinkAna
     unmatched = [i for i in shipping if i.id not in found]
     return LinkAnalysis(
         tuple(link for _key, link in links), len(shipping), len(shipping) - len(unmatched), len(unmatched),
-        sum(1 for link in (l for _k, l in links) if link.cargo_matches),
+        sum(1 for link in (lk for _k, lk in links) if link.cargo_matches),
         tuple(UnlinkedShipper(i.id, i.name, i.shipped) for i in sorted(unmatched, key=lambda i: (-i.shipped, i.name, i.id))))
 
 

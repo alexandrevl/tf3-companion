@@ -72,10 +72,6 @@ def full_stock(i, data):
     data["stocks"][0]["count"] = 400
 
 
-def full_stock(i, data):
-    data["stocks"][0]["count"] = 400
-
-
 def _both(store, report_context):
     """The view and document of the latest snapshot under an explicit effective report context."""
     snap = store.latest()

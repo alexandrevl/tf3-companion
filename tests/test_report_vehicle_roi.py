@@ -1,6 +1,7 @@
 import json
-import pytest
 from html.parser import HTMLParser
+
+import pytest
 
 from conftest import YEAR
 from tf3companion.analysis import Thresholds
@@ -12,7 +13,7 @@ from tf3companion.report_policy import resolve_context
 from tf3companion.reports import Chart, Table, render_html, render_markdown
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
-from view_helpers import context, document, view
+from view_helpers import document, view
 
 PASSENGERS, COAL = 0, 3
 BUS_A, BUS_B, BUS_C, TRUCK = 11, 12, 13, 14
@@ -61,16 +62,20 @@ def _snapshot(year, month, with_catalog=False, units=None, bus_b_name="Bus B", e
     vid = 1
     # Bus A: 4 mature, profitable, line 100 (load high)
     for _ in range(4):
-        vehicles.append(_vehicle(vid, 100, BUS_A, PASSENGERS, 200_000, 5, game_time)); vid += 1
+        vehicles.append(_vehicle(vid, 100, BUS_A, PASSENGERS, 200_000, 5, game_time))
+        vid += 1
     # Bus B: 4 mature, loss-making on line 101 (load low)
     for _ in range(4):
-        vehicles.append(_vehicle(vid, 101, BUS_B, PASSENGERS, b_profit, 6, game_time, capacity=40)); vid += 1
+        vehicles.append(_vehicle(vid, 101, BUS_B, PASSENGERS, b_profit, 6, game_time, capacity=40))
+        vid += 1
     # Bus C: 2 mature (small sample)
     for _ in range(2):
-        vehicles.append(_vehicle(vid, 100, BUS_C, PASSENGERS, 50_000, 3, game_time)); vid += 1
+        vehicles.append(_vehicle(vid, 100, BUS_C, PASSENGERS, 50_000, 3, game_time))
+        vid += 1
     # Truck: 3 mature, loss-making coal
     for _ in range(3):
-        vehicles.append(_vehicle(vid, 102, TRUCK, COAL, -10_000, 4, game_time, capacity=30)); vid += 1
+        vehicles.append(_vehicle(vid, 102, TRUCK, COAL, -10_000, 4, game_time, capacity=30))
+        vid += 1
     # Young bus A
     vehicles.append(_vehicle(vid, 100, BUS_A, PASSENGERS, 9_000, 0.2, game_time))
     vehicles.extend(extra_vehicles)

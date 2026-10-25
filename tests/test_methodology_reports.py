@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 
 from conftest import YEAR, base_snapshot
-from methodology_helpers import FREIGHT, Net, cond, methodology, troubled_company
+from methodology_helpers import FREIGHT, Net, cond, methodology
 from tf3companion import reports
-from tf3companion.methodology import MethodologyError, load_file
+from tf3companion.methodology import MethodologyError
 from tf3companion.methodology.lens import build_lens
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store

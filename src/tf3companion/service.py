@@ -4,25 +4,24 @@ from __future__ import annotations
 
 import dataclasses
 import math
+import os
+import subprocess
+import sys
+import tempfile
+import time
 from collections import deque
 from contextlib import contextmanager
-from typing import Iterator
-import tempfile
-import os
-import sys
 from importlib.resources import files
-import subprocess
-import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
-from . import analysis, luadata
-from .paths import Paths, data_directory, load_paths
+from . import __version__, analysis, luadata
 from .evaluation import Evaluation, evaluate_selected, with_views
 from .export import export_workbook
-from .methodology.lens import PROBE_SNAPSHOTS, Lens, build_lens
+from .methodology.lens import Lens, build_lens
 from .methodology.resolve import Resolver, describe
 from .methodology.summary import DEFAULT_KINDS, summarise
+from .paths import Paths, data_directory, load_paths
 from .snapshot import Snapshot, snapshot_files
 from .store import Store
 
@@ -144,6 +143,7 @@ class Companion:
         ).fetchone()
         modified = receipt["source_mtime"] if receipt and receipt["source_mtime"] > 0 else None
         return {
+            "version": __version__,
             "userdata": str(self.paths.userdata),
             "snapshotFolders": {str(self.paths.snapshot_folder): self.paths.snapshot_folder.is_dir()},
             "modInstalled": (self.paths.staging_area / "tf3_companion_bridge" / "mod.json").is_file(),
@@ -183,7 +183,7 @@ class Companion:
         clock = self.store.time_context(snap)
         line = snap.find_line(ref)
         if line is None:
-            candidates = [l.get("name") for l in snap.lines if str(ref).casefold() in (l.get("name") or "").casefold()]
+            candidates = [ln.get("name") for ln in snap.lines if str(ref).casefold() in (ln.get("name") or "").casefold()]
             raise LookupError(f"Line '{ref}' not found. Candidates: {candidates[:10]}")
         stops = [
             {**stop, "linesAtStation": len(_station(snap, stop.get("stationGroup")).get("lines") or [])}
@@ -192,8 +192,8 @@ class Companion:
         return {
             **analysis.line_row(snap, line, clock=clock),
             "stops": stops,
-            "capacity": [{**c, "cargo": snap.cargo(c.get("cargo"))} for c in line.get("capacity") or []],
-            "issues": [{**i, "cargo": snap.cargo(i.get("cargo"))} for i in line.get("issues") or []],
+            "capacity": snap.line_capacity(line),
+            "issues": [{**i, "cargo": snap.cargo_or_unknown(i.get("cargo"))} for i in line.get("issues") or []],
             "vehicleList": [analysis.vehicle_row(snap, v, clock=clock) for v in snap.line_vehicles(line)],
             "history": self.store.line_history(line["id"]),
         }
@@ -324,8 +324,7 @@ class Companion:
                allow_path: bool = False, param_overrides: dict[str, Any] | None = None) -> dict[str, Any]:
         """Compose a snapshot-backed report once, then render and publish it into the lens folder, atomically."""
         from .methodology import output
-        from .reports import compose_report
-        from .reports import render_html, render_markdown
+        from .reports import compose_report, render_html, render_markdown
 
         with self._selection(ingest=True) as (snap, prev):
             evaluation = self._evaluation(methodology, snap, prev, allow_path=allow_path, overrides=param_overrides)
@@ -375,7 +374,7 @@ class Companion:
 
     def methodology_detail(self, ref: str, allow_path: bool = False) -> dict[str, Any]:
         """Description, roles, rules, parameters and data needs; methodology free text sits under `untrusted`."""
-        from .methodology.library import looks_like_path, LibraryError, PLACE_HINT
+        from .methodology.library import PLACE_HINT, LibraryError, looks_like_path
         if looks_like_path(ref):
             if not allow_path:
                 raise LibraryError(PLACE_HINT)

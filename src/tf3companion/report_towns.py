@@ -9,7 +9,13 @@ from typing import Any
 
 from .analysis_views.models import EvaluationContext
 from .analysis_views.towns import (
-    HEADROOM_MARGIN, LARGE_QUANTILE, MIN_WINDOW_SAMPLES, MIN_WINDOW_YEARS, USAGE_CAP, TownRow, TownsView,
+    HEADROOM_MARGIN,
+    LARGE_QUANTILE,
+    MIN_WINDOW_SAMPLES,
+    MIN_WINDOW_YEARS,
+    USAGE_CAP,
+    TownRow,
+    TownsView,
 )
 from .game_time import DAYS_PER_YEAR
 from .reports import Chart, Heading, Note, Paragraph, ReportDocument, Table, _base_header, _fmt_pct

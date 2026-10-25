@@ -123,3 +123,8 @@ Locations below are relative to `<userdata>`, the `.../Steam/userdata/<account i
 - **`tf3c://notes`:** Requires at least one imported snapshot to anchor the current game date.
 - **`tf3c://report/latest`:** Requires at least one report to have been generated. Generate one using the CLI (`uv run tf3c report company`) or ask the agent to call the `report` tool first.
 - **Static knowledge:** Topics under `tf3c://knowledge` are bundled inside the Python package and remain available even without a game installation or active snapshot.
+
+### Symptom: A tool is missing or behaves like an older release after upgrading
+
+- **Cause:** The MCP server keeps the code and tool definitions it started with; it does not hot reload.
+- **Fix:** Restart the server from the client, then call `status` and compare its `version` with `uv run tf3c --version`.

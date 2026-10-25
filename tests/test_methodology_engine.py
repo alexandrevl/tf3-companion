@@ -7,7 +7,7 @@ import json
 import pytest
 
 from conftest import YEAR
-from methodology_helpers import Net, cond, companion_with, methodology, troubled_company
+from methodology_helpers import Net, companion_with, cond, methodology, troubled_company
 from tf3companion import analysis
 from tf3companion.methodology import load_default, parse
 from tf3companion.methodology.engine import thresholds_for

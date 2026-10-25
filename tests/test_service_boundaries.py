@@ -61,6 +61,7 @@ def test_queries_do_not_silently_use_stale_data_when_import_fails(paths):
 
 def test_export_preserves_file_and_reports_default_app_failure(paths, monkeypatch):
     from pathlib import Path
+
     from tf3companion import service
 
     def fail_open(path):

@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 from conftest import YEAR, write_snapshot
-from methodology_helpers import Net, methodology, cond, companion_with, troubled_company
+from methodology_helpers import Net, companion_with, cond, methodology, troubled_company
 from tf3companion import reports, service
 from tf3companion.methodology.library import Library
 from tf3companion.service import Companion, NoSnapshotError

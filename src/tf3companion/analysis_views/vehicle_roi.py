@@ -531,7 +531,7 @@ def _swaps(latest: Snapshot, model_recs: dict[str, list[VehicleObservation]], gr
         mature = [r for r in recs if r.maturity == "mature"]
         carrier = recs[0].carrier
 
-        def unassessed(status: str) -> WeakGroup:
+        def unassessed(status: str, label=label, carrier=carrier, st=st) -> WeakGroup:
             return WeakGroup(label, carrier, st, status, None, None, None, None, None, None, None, None, None, ())
 
         line_loads = [statistics.median(loads[r.line_id]) for r in mature

@@ -8,8 +8,16 @@ from pathlib import Path
 from typing import Any
 
 from .model import (
-    FILE_SUFFIX, MAX_BYTES, MAX_JSON_DEPTH, SCHEMA_ID, SCHEMA_MAJOR, SCHEMA_PREFIX, Issue, Methodology,
-    MethodologyError, content_hash,
+    FILE_SUFFIX,
+    MAX_BYTES,
+    MAX_JSON_DEPTH,
+    SCHEMA_ID,
+    SCHEMA_MAJOR,
+    SCHEMA_PREFIX,
+    Issue,
+    Methodology,
+    MethodologyError,
+    content_hash,
 )
 from .validate import validate
 

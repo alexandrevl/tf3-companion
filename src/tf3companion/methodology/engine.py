@@ -634,7 +634,7 @@ def _evaluate_prepared(m: Methodology, snap: Snapshot, *, overrides=None, probe_
         snapshot={"date": snap.date_label, "gameTime": snap.game_time},
         roles=run.roles, rules=rules,
         recommendations=[run.run_recommendation(r, by_id) for r in m.data.get("recommendations") or []],
-        ladders=[run.run_ladder(l) for l in m.data.get("ladders") or []],
+        ladders=[run.run_ladder(lad) for lad in m.data.get("ladders") or []],
         tables=[run.run_table(t) for t in reports.get("tables") or []],
         charts=[run.run_chart(c, history or [snap]) for c in reports.get("charts") or []],
         classification=classification, role_index=_role_index(run),

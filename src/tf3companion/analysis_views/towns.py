@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..game_time import DAYS_PER_YEAR
+from ..snapshot import LINE_CAPACITY_CARGO_OFFSET
 from .models import EvaluationContext, SampleRef, Unavailable, ViewCoverage
 from .towns_evidence import TownPoint, TownSample, TownsEvidence
 
@@ -29,9 +30,8 @@ HEADROOM_MARGIN = 0.02  # a usage gap smaller than this is not reported; usage w
 MAX_EVOLUTION_POINTS = 40
 PAIR_POOL = 10
 MIN_TOWNS_FOR_HOTSPOT_SUMMARY = 4
-# `lines[].capacity[].cargo` is cargoTypeId + 1 (knowledge/snapshot_schema.md, loadConfig note); town
+# `lines[].capacity[].cargo` is cargoTypeId + 1 (`snapshot.LINE_CAPACITY_CARGO_OFFSET`); town
 # `cargoSupply[].cargo` and `industries[].outputs[].cargo` are plain cargo ids.
-LINE_CAPACITY_CARGO_OFFSET = 1
 
 
 @dataclass(frozen=True)

@@ -1,17 +1,17 @@
 """The same evidence-bound age across rows, facts, findings, workbook and history."""
 from __future__ import annotations
-import copy
+
 import json
 from contextlib import closing
 from datetime import date
 
 import pytest
 from openpyxl import load_workbook
+
 from conftest import base_snapshot
 from tf3companion import analysis, reports
 from tf3companion.export import export_workbook
 from tf3companion.game_time import GameCalendarClock
-from tf3companion.methodology.fields import Facts
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
 
@@ -208,7 +208,7 @@ def surfaces(tmp_path, monkeypatch):
     write_snapshot(folder, _surface_snapshot(0, (1980, 1, 1)))
     write_snapshot(folder, _surface_snapshot(4000, (1984, 1, 1)))
     companion = Companion()
-    monkeypatch.setattr(mcp_server, "companion", lambda: companion)
+    monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: Companion(save=save))
     yield companion, mcp_server
     companion.close()
 

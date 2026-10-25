@@ -11,9 +11,9 @@ from tf3companion import reports
 from tf3companion.analysis import Thresholds
 from tf3companion.analysis_views import EvaluationContext, evaluate_views
 from tf3companion.analysis_views.models import plain
+from tf3companion.report_policy import resolve_context
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
-from tf3companion.report_policy import resolve_context
 from view_helpers import document, view
 
 COAL, IRON, PLANKS = 3, 4, 5

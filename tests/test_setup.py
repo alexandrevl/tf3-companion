@@ -1,13 +1,12 @@
 """Portable discovery and installer tests use isolated fake game folders only."""
-from contextlib import contextmanager
 import json
-from pathlib import Path
+from contextlib import contextmanager
 
 import pytest
 
+from tf3companion import setup_tools
 from tf3companion.discovery import ConfigError, discover, discover_userdata
 from tf3companion.paths import Paths, load_paths
-from tf3companion import setup_tools
 
 
 def game(root, account="123"):

@@ -5,6 +5,7 @@ import functools
 import json
 import sqlite3
 from collections.abc import Callable
+from contextlib import AbstractContextManager as ContextManager
 from importlib.resources import files
 from typing import Annotated, TypeVar
 
@@ -12,8 +13,8 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ResourceError
 from pydantic import Field
 
+from .discovery import ConfigError
 from .methodology.library import REF_RE
-from .paths import ConfigError
 from .service import Companion, NoSnapshotError
 
 F = TypeVar("F", bound=Callable)
@@ -185,7 +186,7 @@ def _resource_errors(fn: F) -> F:
     return wrapped
 
 
-def register_experience(server: MCPServer, companion_provider: Callable[[], Companion]) -> None:
+def register_experience(server: MCPServer, companion_session: Callable[[], ContextManager[Companion]]) -> None:
     """Register the offline setup workflow, six data-fetching workflows and Markdown resource handlers."""
     for name, fn in (
         ("setup-check", setup_check),
@@ -223,11 +224,12 @@ def register_experience(server: MCPServer, companion_provider: Callable[[], Comp
     @server.resource("tf3c://notes", name="player-notes", description="Player notes in the current companion store; requires an imported snapshot.", mime_type="text/markdown")
     @_resource_errors
     def notes() -> str:
-        companion = companion_provider()
-        companion.current()
-        return companion.save_notes() or "No notes yet. Use save_notes to record a player-agreed goal or observation.\n"
+        with companion_session() as companion:
+            companion.current()
+            return companion.save_notes() or "No notes yet. Use save_notes to record a player-agreed goal or observation.\n"
 
     @server.resource("tf3c://report/latest", name="latest-report", description="The newest locally generated Markdown report, including observation dates.", mime_type="text/markdown")
     @_resource_errors
     def latest_report() -> str:
-        return companion_provider().latest_report()
+        with companion_session() as companion:
+            return companion.latest_report()

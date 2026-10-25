@@ -16,7 +16,7 @@ from functools import cached_property
 from typing import Any, Callable
 
 from .. import analysis
-from ..snapshot import Snapshot
+from ..snapshot import LINE_CAPACITY_CARGO_OFFSET, Snapshot, positive_line_capacity
 from .model import ENTITIES, UNCLASSIFIED
 from .safe_regex import bounded_search
 
@@ -24,7 +24,7 @@ NUMBER, STRING, BOOL, LIST_NUMBER, LIST_STRING = "number", "string", "bool", "li
 TYPES = (NUMBER, STRING, BOOL, LIST_NUMBER, LIST_STRING)
 
 POSITIONS = "stations[].position"
-CARGO_OFFSET = 1  # lines[].capacity[].cargo is the cargo id plus one.
+# lines[].capacity[].cargo is the cargo id plus one (snapshot.LINE_CAPACITY_CARGO_OFFSET).
 PASSENGER_CARGO_ID = 0
 
 Getter = Callable[["Record"], Any]
@@ -214,13 +214,8 @@ def _town_key(station: dict[str, Any] | None) -> Any:
 # ---------------------------------------------------------------------------
 # Derived value helpers
 
-def _positive_capacity(line: dict[str, Any]) -> list[dict[str, Any]]:
-    return [c for c in line.get("capacity") or [] if isinstance(c, dict) and (c.get("capacity") or 0) > 0
-            and isinstance(c.get("cargo"), int)]
-
-
 def _cargo_ids(line: dict[str, Any]) -> list[int]:
-    return list(dict.fromkeys(c["cargo"] - CARGO_OFFSET for c in _positive_capacity(line)))
+    return list(dict.fromkeys(c["cargo"] - LINE_CAPACITY_CARGO_OFFSET for c in positive_line_capacity(line)))
 
 
 def _cargo_name(snap: Snapshot, cargo_id: int) -> str:

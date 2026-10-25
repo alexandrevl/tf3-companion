@@ -1,24 +1,24 @@
 """Behavioral policy registry, propagation and isolated real CLI comparison."""
 from __future__ import annotations
-import copy
-import hashlib
+
 import json
 import os
-from pathlib import Path
 import sqlite3
 import subprocess
+from pathlib import Path
 
 import pytest
+
 from methodology_helpers import methodology
-from test_report_expansion import make, industry, inp, out, COAL
-from view_helpers import document, view
+from test_report_expansion import COAL, industry, inp, make, out
 from tf3companion import reports
 from tf3companion.analysis import Thresholds
 from tf3companion.methodology import load_file
 from tf3companion.methodology.lens import build_lens
-from tf3companion.report_policy import REGISTRY, resolve_context, validate_report_policies
+from tf3companion.report_policy import resolve_context, validate_report_policies
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
+from view_helpers import document, view
 
 FIXTURES = Path(__file__).parent / "fixtures" / "methodologies"
 
@@ -99,7 +99,8 @@ def test_distance_breakpoints_and_numeric_priority_reversal(tmp_path):
         priority_policy = {"expansion": {"weight_volume": 10, "weight_distance": 40}}
         neutral_view = lens_view(store, "expansion")
         priority_view = lens_view(store, "expansion", **priority_policy)
-        by_producer = lambda v: {c.producer.id: c for c in v.candidates}
+        def by_producer(v):
+            return {c.producer.id: c for c in v.candidates}
         n, pr = by_producer(neutral_view), by_producer(priority_view)
         assert n[3].parts.distance == 20 and pr[3].parts.distance == 40 and n[3].distance_km == pr[3].distance_km == 3
         assert n[3].parts.volume == 6 and pr[3].parts.volume == 2
@@ -134,7 +135,8 @@ def test_actual_ranking_propagation_and_demand_conservation(tmp_path):
         assert b[0].producer.id == 3
         assert [c.rank for c in a] == [c.rank for c in b] == [1, 2]
         # The policy reorders candidates but never changes the measured volumes, distances or unshipped quantities.
-        measured = lambda cs: {(c.producer.id, c.volume, c.distance_km, c.unshipped, c.produced) for c in cs}
+        def measured(cs):
+            return {(c.producer.id, c.volume, c.distance_km, c.unshipped, c.produced) for c in cs}
         assert measured(a) == measured(b)
         assert all(c.volume <= c.unmet_available for c in b)
     finally:
@@ -162,7 +164,8 @@ def test_selected_policy_disclosure_and_ambiguity_rejection(tmp_path):
 def test_cli_compare_smoke(tmp_path):
     root = Path(__file__).parents[1]
     data, userdata = tmp_path / "data", tmp_path / "userdata"
-    data.mkdir(); (userdata / "towns_industries").mkdir(parents=True)
+    data.mkdir()
+    (userdata / "towns_industries").mkdir(parents=True)
     store = Store(data / "companion.db")
     for i in range(3):
         store.add_snapshot(Snapshot(evidence(i * 1000, i + 1), source=f"fixture-{i}"))
@@ -365,14 +368,16 @@ def test_industries_capacity_decline_and_shared_fullness_boundaries(tmp_path):
     full = {"full_stock_ratio": .75}
     store = build("decline")
     try:
-        status = lambda thresholds=None, **policy: [s.status for s in lens_view(
-            store, "industries", thresholds, industries=policy).chains.consumer_statuses]
+        def status(thresholds=None, **policy):
+            return [s.status for s in lens_view(
+                    store, "industries", thresholds, industries=policy).chains.consumer_statuses]
         # 90 of 100 is not below the default capacity ratio, and the stock is not full at the default fullness.
         assert "output-stock-full" not in status(full)
         assert "output-stock-full" not in status(None, below_capacity_ratio=.95)
         # Both the shared fullness threshold and the capacity-ratio policy are needed.
         assert status(full, below_capacity_ratio=.95) == ["output-stock-full"]
-        measured = lambda thresholds, **policy: lens_view(store, "industries", thresholds, industries=policy).comparison.full_outputs_last
+        def measured(thresholds, **policy):
+            return lens_view(store, "industries", thresholds, industries=policy).comparison.full_outputs_last
         assert measured(full, below_capacity_ratio=.95) == measured(full) == 1  # raw fullness count is unchanged by the ratio
         # The decline minimum selects the manual-review row at exactly the 30-unit decline and drops it just above.
         for minimum, expected in ((30, True), (31, False)):
@@ -424,7 +429,8 @@ def test_no_lens_default_and_empty_policy_are_analytically_equivalent_and_read_o
     try:
         for i in range(4):
             store.add_snapshot(Snapshot(evidence(i * 1000, i + 1), source=f"fixture-{i}"))
-        rows = lambda: [tuple(r) for r in store.conn.execute("SELECT game_time, data FROM snapshots ORDER BY game_time")]
+        def rows():
+            return [tuple(r) for r in store.conn.execute("SELECT game_time, data FROM snapshots ORDER BY game_time")]
         before = rows()
         lenses = {"packaged default": build_lens(store, store.latest(), load_default()),
                   "empty policy": build_lens(store, store.latest(), methodology(report_policies={}))}

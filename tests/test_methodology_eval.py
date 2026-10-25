@@ -1,17 +1,17 @@
 """Evaluator: three-valued logic, availability, roles, rules, aggregates, recommendations and ladders."""
 from __future__ import annotations
 
-from dataclasses import replace
 import itertools
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from methodology_helpers import FREIGHT, PASSENGERS, Net, cond, markers_of, methodology, rule, run
-from tf3companion.methodology import MethodologyError, load_file
-from tf3companion.methodology import fields
+from methodology_helpers import FREIGHT, Net, cond, markers_of, methodology, rule, run
+from tf3companion.methodology import MethodologyError, fields, load_file
+from tf3companion.methodology.conditions import compare, first_true
+from tf3companion.methodology.conditions import evaluate as eval_condition
 from tf3companion.methodology.prepare import inspect
-from tf3companion.methodology.conditions import compare, evaluate as eval_condition, first_true
 
 FIXTURES = Path(__file__).parent / "fixtures" / "methodologies"
 T, F_, U = True, False, None

@@ -10,7 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .paths import ConfigError, load_paths
+from .discovery import ConfigError
+from .paths import load_paths
 from .service import Companion, NoSnapshotError, open_default
 
 

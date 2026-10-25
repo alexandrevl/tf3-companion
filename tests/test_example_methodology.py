@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from conftest import YEAR
 from methodology_helpers import FREIGHT, Net, markers_of, rule
 from tf3companion.methodology import evaluate, load_file
 
@@ -56,7 +55,7 @@ def example_net() -> Net:
     for number, state in ((500, 0.69), (501, 0.70), (502, 0.84), (503, 0.85)):
         net.line(number, f"HC Heli-{state}-Alp-IC-1", [1, 2], profit=1, load=(1, 100))
     for vehicle in net.data["vehicles"]:
-        line = next(l for l in net.data["lines"] if l["id"] == vehicle["line"])
+        line = next(ln for ln in net.data["lines"] if ln["id"] == vehicle["line"])
         for number, state in ((500, 0.69), (501, 0.70), (502, 0.84), (503, 0.85)):
             if line["id"] == number:
                 vehicle["maintenanceState"] = state

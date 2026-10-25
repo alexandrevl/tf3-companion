@@ -10,7 +10,7 @@ many members were unknown.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from . import analysis
@@ -374,7 +374,7 @@ def _name(entity: dict[str, Any] | None, kind: str) -> str:
 
 
 def _best(lines: list[dict[str, Any]]) -> dict[str, Any] | None:
-    return max(lines, key=lambda l: l.get("profitYear") if l.get("profitYear") is not None else -math.inf, default=None)
+    return max(lines, key=lambda ln: ln.get("profitYear") if ln.get("profitYear") is not None else -math.inf, default=None)
 
 
 def _compared(label: str, baseline: Any, closing: Any) -> Compared:
@@ -407,10 +407,10 @@ def annual_facts(reader: EvidenceReader, context: EvaluationContext, year: int |
     in_progress = (current.date or {}).get("year") == year and (end_snap.date or {}).get("month", 0) < 12
 
     base = baseline_snap or start_snap
-    profits = [l.get("profitYear") for l in end_snap.lines]
+    profits = [ln.get("profitYear") for ln in end_snap.lines]
     known_profit, unknown_lines = _known_sum(profits)
-    ranked = sorted(end_snap.lines, key=lambda l: (-(l["profitYear"] if l.get("profitYear") is not None else -10**15),
-                                                   l["id"]))
+    ranked = sorted(end_snap.lines, key=lambda ln: (-(ln["profitYear"] if ln.get("profitYear") is not None else -10**15),
+                                                   ln["id"]))
 
     def keyed(items: list[dict[str, Any]]) -> dict[Any, dict[str, Any]]:
         return {i["id"]: i for i in items}
@@ -439,7 +439,7 @@ def annual_facts(reader: EvidenceReader, context: EvaluationContext, year: int |
     prev_ticks = [t for t, y, _ in index if y == prev_year]
     if prev_ticks:
         p_end = reader.hydrate(prev_ticks[-1])
-        p_profit, _ = _known_sum([l.get("profitYear") for l in p_end.lines])
+        p_profit, _ = _known_sum([ln.get("profitYear") for ln in p_end.lines])
         yoy = (
             _compared("Cash Balance", p_end.company.get("balance"), end_snap.company.get("balance")),
             _compared("Outstanding Loan", p_end.company.get("loan"), end_snap.company.get("loan")),

@@ -1,10 +1,12 @@
-import pytest
 from contextlib import closing
 from html.parser import HTMLParser
+
+import pytest
+
+from conftest import YEAR, base_snapshot
 from tf3companion import reports
 from tf3companion.snapshot import Snapshot
 from tf3companion.store import Store
-from conftest import YEAR, base_snapshot
 
 
 @pytest.fixture
@@ -117,7 +119,7 @@ def test_decision_tracks_renamed_line_by_baseline_identity(tmp_path):
     store = Store(tmp_path / "decisions.db")
     before = base_snapshot(game_time=10 * YEAR)
     store.add_snapshot(Snapshot(before))
-    decision = store.add_decision("Expand", "Observed queues", ["Train A"], Snapshot(before))
+    store.add_decision("Expand", "Observed queues", ["Train A"], Snapshot(before))
     after = base_snapshot(game_time=10 * YEAR + YEAR // 2)
     after["meta"]["date"] = {"year": 1980, "month": 7, "day": 1}
     after["lines"][0].update(name="Renamed Express", profitYear=900_000, vehicles=[1000, 1001])

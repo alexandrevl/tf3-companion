@@ -9,7 +9,6 @@ from tf3companion.methodology.loader import parse
 from tf3companion.methodology.model import MethodologyError
 from tf3companion.methodology.prepare import inspect, prepare
 from tf3companion.methodology.resolve import Resolver, validate_file
-from tf3companion.methodology.scope import UserPreference
 
 
 def document(ident="policy", version="1.0.0", **extra):
@@ -160,8 +159,8 @@ def test_effective_overrides_are_finite_typed_and_isolated():
     assert repeated.parameters["number"] == 7
     assert repeated.effective_overrides == {"number": 7}
     assert prepare(repeated, {"number": 9}).sha256 == m.sha256
-    from tf3companion.methodology.engine import evaluate
     from conftest import base_snapshot
+    from tf3companion.methodology.engine import evaluate
     from tf3companion.snapshot import Snapshot
     verdicts = evaluate(repeated, Snapshot(base_snapshot()))
     assert verdicts.parameters["number"] == 7
@@ -186,7 +185,7 @@ def test_changed_dropin_is_revalidated_and_previous_selection_is_not_erased(tmp_
 def test_readonly_mcp_validation_and_configuration_need_no_companion(tmp_path, monkeypatch):
     from tf3companion import mcp_server
     monkeypatch.setenv("TF3C_DATA_DIR", str(tmp_path / "library"))
-    monkeypatch.setattr(mcp_server, "companion", lambda: pytest.fail("must not construct Companion"))
+    monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: pytest.fail("must not construct Companion"))
     result = mcp_server.validate_methodology(content=json.dumps(document()))
     assert result["activationEligible"]
     assert mcp_server.list_methodologies()["origin"] == "packaged-default"
@@ -321,7 +320,7 @@ def test_validate_import_select_apply_agree_across_cli_and_mcp_without_touching_
     from tf3companion.service import Companion
     monkeypatch.setenv("TF3C_DATA_DIR", str(paths.data))
     monkeypatch.setenv("TF3C_USERDATA_DIR", str(paths.userdata))
-    monkeypatch.setattr(mcp_server, "companion", lambda: Companion(paths))
+    monkeypatch.setattr(mcp_server, "open_companion", lambda save=None: Companion(paths, save))
     write_snapshot(paths.snapshot_folder, troubled_company())
     draft = document("sequence", parameters={"limit": {"value": 3}}, markers={"review": {"label": "Review"}}, rules=[
         {"id": "many", "entity": "line", "outcomes": [

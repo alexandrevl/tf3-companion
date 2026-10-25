@@ -29,7 +29,7 @@ Unknown later schema versions still require an upgrade; missing fields retain th
 | | `transportedYear` | annual `itemsTransported` logbook value | |
 | | `rate` | `line.calcLineStationThroughput` | line "rate" |
 | | `maxFrequency` | `line.getMaxFrequency` | |
-| | `capacity[]{cargo, used, capacity}` | `line.getLineCapacityUsages` | occupancy **at that instant** |
+| | `capacity[]{cargo, used, capacity}` | `line.getLineCapacityUsages` | occupancy **at that instant**; `cargo` is the cargo id plus one (the game lists every cargo type, mostly with zero capacity, so readers keep only positive capacity) |
 | | `issues[]{type, stopIndex, cargo}` | `line.getLineIssues` | `NowhereToLoad`, `NowhereToUnload`, `NoVehicleToLoadCargo`, `VehicleUseless`, `LineCargoConfig` |
 | `vehicles[]` | `carrier`, `state`, `line`, `stopIndex`, `userStopped`, `noPath`, `daysInDepot`, `daysAtTerminal` | `TRANSPORT_VEHICLE` component | player's vehicles only |
 | | `purchaseTime` | earliest `purchaseTime` among the parts | Calendar age uses dated history: elapsed Gregorian days / 365.25; unsupported purchases are null, with no nominal fallback. |

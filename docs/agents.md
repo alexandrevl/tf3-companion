@@ -115,3 +115,9 @@ Methodology tools: `list_methodologies` (packaged and user files, validity, hash
 ## Connection checks
 
 Run `uv run tf3c doctor` in the source checkout, then use the same executable, checkout path and environment in the client. Confirm a `doctor` or `status` response through the client before assuming configuration works; `doctor.ok` alone does not mean the bridge is active or that snapshots exist. Approve only permissions you understand. Hosted CI cannot verify a desktop client's configuration or privacy behavior.
+
+## After upgrading
+
+An MCP server is a long-lived process that keeps the code and tool definitions it started with; it does not reload them. After upgrading TF3 Companion, restart the server (quit and reopen the client, or use its "restart MCP server" control). Call `status` and compare its `version` with `uv run tf3c --version` to see whether the running server is stale.
+
+Tools that ingest pending snapshots or write records run one at a time. A long `refresh` (up to its timeout) therefore makes other such tools wait; `evaluate`, the methodology tools, `knowledge` and `doctor` do not wait.

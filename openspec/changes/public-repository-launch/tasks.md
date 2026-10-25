@@ -24,7 +24,7 @@
 
 - [x] 4.1 Add `ruff` and `pre-commit` to the dev dependency group, add the conservative rule set and format settings to `pyproject.toml`, refresh `uv.lock`; verify `uv sync --locked` succeeds and `uv run ruff --version` runs.
 - [x] 4.2 Fix lint findings without behaviour change, using local, justified suppressions only where a fix would alter behaviour; verify `uv run ruff check .` exits 0 and the full suite result matches the 1.2 baseline.
-- [ ] 4.3 Apply `ruff format` as one isolated mechanical commit with no logic edits and record it in a `.git-blame-ignore-revs` entry once the commit exists; verify `uv run ruff format --check .` exits 0 and the full suite and `uv run tf3c --help`, `uv run tf3c knowledge` still behave identically.
+- [x] 4.3 Apply `ruff format` as one isolated mechanical commit with no logic edits and record it in a `.git-blame-ignore-revs` entry once the commit exists; verify `uv run ruff format --check .` exits 0 and the full suite and `uv run tf3c --help`, `uv run tf3c knowledge` still behave identically.
 - [x] 4.4 Mark the installed-wheel acceptance tests with a `slow` marker registered in `pyproject.toml`; verify `uv run pytest -m "not slow"` skips only those tests and a plain `uv run pytest` still runs them.
 
 ## 5. Repository guards
@@ -37,9 +37,9 @@
 
 ## 6. Commit-time hooks
 
-- [ ] 6.1 Write `.pre-commit-config.yaml` with hygiene hooks (trailing whitespace, end of file, merge conflict markers, large files, YAML/JSON/TOML syntax), ruff check and format, the repo guards, the `luac -p` Lua gate and `pytest -m "not slow"` using `language: system` entries through `uv run`; verify `uv run pre-commit run --all-files` exits 0.
-- [ ] 6.2 Prove the gate by staging a throwaway violation in a temporary clone (a merge marker, then a personal path), installing the hook there with `uv run pre-commit install`, and attempting a commit; verify each commit is rejected naming the file, and that the clean commit is accepted.
-- [ ] 6.3 Document hook installation, the `luac` prerequisite with per-platform install commands, and the fast-versus-full check split in `CONTRIBUTING.md` (setup section and release checklist), explain that CI repeats every check, and keep `AGENTS.md`'s "syntax only" boundary; verify each documented command runs as written.
+- [x] 6.1 Write `.pre-commit-config.yaml` with hygiene hooks (trailing whitespace, end of file, merge conflict markers, large files, YAML/JSON/TOML syntax), ruff check and format, the repo guards, the `luac -p` Lua gate and `pytest -m "not slow"` using `language: system` entries through `uv run`; verify `uv run pre-commit run --all-files` exits 0.
+- [x] 6.2 Prove the gate by staging a throwaway violation in a temporary clone (a merge marker, then a personal path), installing the hook there with `uv run pre-commit install`, and attempting a commit; verify each commit is rejected naming the file, and that the clean commit is accepted.
+- [x] 6.3 Document hook installation, the `luac` prerequisite with per-platform install commands, and the fast-versus-full check split in `CONTRIBUTING.md` (setup section and release checklist), explain that CI repeats every check, and keep `AGENTS.md`'s "syntax only" boundary; verify each documented command runs as written.
 
 ## 7. Public governance files and identity
 

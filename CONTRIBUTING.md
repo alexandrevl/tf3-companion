@@ -139,10 +139,10 @@ The bridge mod under `mod/tf3_companion_bridge/` is read-only.
 
 Releasing a new version involves human verification gates:
 
-- [ ] Single version updated in `src/tf3companion/__init__.py`.
+- [ ] Version bumped in `pyproject.toml` and in the matching source-checkout fallback in `src/tf3companion/__init__.py`; `CHANGELOG.md` has a section for it.
 - [ ] Compatibility matrix updated in `README.md` and `docs/ROADMAP.md`.
-- [ ] No personal player data, paths, or unapproved screenshot placeholders in repository.
-- [ ] CI suite passing on Windows, macOS, and Linux runners (`uv sync --locked`, `uv run pytest`).
+- [ ] No personal player data, paths, or unapproved screenshot placeholders in repository (`uv run python scripts/check_repo.py`).
+- [ ] CI suite passing on Windows, macOS, and Linux runners (lint, guards, OpenSpec validation, `uv sync --locked`, `uv run pytest` including the slow installed-wheel tests).
 - [ ] Clean package build verified: `uv build`.
 - [ ] Mod bundle verified in clean staging directory.
 - [ ] In-game activation and refresh verified on live game builds.

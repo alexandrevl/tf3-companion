@@ -283,18 +283,49 @@ LADDER_DRAFT = {  # needs station positions, which the collector does not emit y
 
 # ---- scripts run by the installed interpreter (they import nothing from this checkout) --------------------------
 
-SITECUSTOMIZE = """
+# Blocks every connection that leaves the machine. Loopback and Unix sockets stay open because asyncio on Windows
+# builds its event loop's self-pipe from a loopback socket pair, so the MCP child cannot start without them.
+BLOCK_NETWORK = """
 import socket
 
+_LOCAL = {"127.0.0.1", "::1", "localhost"}
+_connect = socket.socket.connect
+_connect_ex = socket.socket.connect_ex
+_create_connection = socket.create_connection
+_getaddrinfo = socket.getaddrinfo
 
-def _blocked(*args, **kwargs):
-    raise OSError("network access is blocked by the installed-analysis acceptance test")
+
+def _check(address):
+    host = address[0] if isinstance(address, tuple) else address
+    if isinstance(address, tuple) and host not in _LOCAL:
+        raise OSError("network access is blocked by the installed-analysis acceptance test")
 
 
-socket.socket.connect = _blocked
-socket.socket.connect_ex = _blocked
-socket.create_connection = _blocked
-socket.getaddrinfo = _blocked
+def connect(self, address):
+    _check(address)
+    return _connect(self, address)
+
+
+def connect_ex(self, address):
+    _check(address)
+    return _connect_ex(self, address)
+
+
+def create_connection(address, *args, **kwargs):
+    _check(address)
+    return _create_connection(address, *args, **kwargs)
+
+
+def getaddrinfo(host, *args, **kwargs):
+    if host is not None and host not in _LOCAL:
+        raise OSError("network access is blocked by the installed-analysis acceptance test")
+    return _getaddrinfo(host, *args, **kwargs)
+
+
+socket.socket.connect = connect
+socket.socket.connect_ex = connect_ex
+socket.create_connection = create_connection
+socket.getaddrinfo = getaddrinfo
 """
 
 SERVICE_CHILD = """
@@ -425,7 +456,10 @@ class Installed:
             text=True,
             check=True,
         ).stdout.strip()
-        (Path(purelib) / "sitecustomize.py").write_text(SITECUSTOMIZE, encoding="utf-8")
+        # A `.pth` import line runs on every start whatever else is on sys.path. A venv `sitecustomize.py` does
+        # not: Debian and Ubuntu system Pythons ship their own `sitecustomize` earlier on the path, which shadows it.
+        (Path(purelib) / "tf3c_block_network.py").write_text(BLOCK_NETWORK, encoding="utf-8")
+        (Path(purelib) / "tf3c_block_network.pth").write_text("import tf3c_block_network\n", encoding="utf-8")
 
     def run(self, command: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
         done = subprocess.run(command, cwd=self.work, env=self.env, capture_output=True, text=True, timeout=180)
@@ -501,7 +535,7 @@ def run(tmp_path_factory) -> SimpleNamespace:
     )
     seen.origin = where.stdout.split()
     blocked = box.run(
-        [str(box.python), "-c", "import socket; socket.create_connection(('127.0.0.1', 9), timeout=1)"], check=False
+        [str(box.python), "-c", "import socket; socket.create_connection(('192.0.2.1', 9), timeout=1)"], check=False
     )
     seen.network_probe = blocked
 

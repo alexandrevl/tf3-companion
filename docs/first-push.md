@@ -95,6 +95,7 @@ Files that carry the identity:
 
    (evidence) the **Release (draft)** workflow creates a draft release with the wheel, the sdist and `tf3_companion_bridge-<revision>.zip`. Review it and publish or delete it yourself. The workflow never uploads to PyPI or the mod hub.
 
+9. **Optional: the social preview (you).** `uv run python scripts/make_assets.py` writes `assets/social-preview.png` (1280x640, the whole cover on the canvas colour). GitHub has no API for it: upload it in Settings, General, **Social preview**. (evidence) a link to the repository shows the card on social networks and chats.
 ## Rollback
 
 - **Before step 4**: nothing has left your machine. Undo with ordinary `git` on your local branch.

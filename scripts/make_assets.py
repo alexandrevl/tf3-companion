@@ -1,7 +1,8 @@
-"""Generate the mod cover and logo from the supplied source art.
+"""Generate the mod cover, the logo and the repository social preview from the supplied source art.
 
 assets/art/cover.png  ->  mod/tf3_companion_bridge/_metadata/0.png  (1920x1080 RGBA PNG)
 assets/art/cover.png  ->  assets/logo.png                           (512x512 PNG, centre crop)
+assets/art/cover.png  ->  assets/social-preview.png                 (1280x640 PNG, whole cover on the canvas colour)
 
 If assets/art/logo-source.png exists it is resized instead of cropping the cover.
 Output is deterministic: fixed resampling filter, no timestamp metadata.
@@ -16,6 +17,8 @@ from PIL import Image, UnidentifiedImageError
 
 COVER_SIZE = (1920, 1080)
 LOGO_SIZE = (512, 512)
+SOCIAL_SIZE = (1280, 640)  # GitHub's recommended repository social preview
+SOCIAL_CANVAS = (23, 27, 31, 255)  # the dark `canvas` token, #171B1F (assets/brand/tokens.json)
 
 
 class AssetError(Exception):
@@ -64,11 +67,30 @@ def build(root: Path) -> list[Path]:
     return [cover_out, logo_out]
 
 
+def build_social_preview(root: Path) -> Path:
+    """Fit the whole cover into the 2:1 repository social preview (1280x640) on the dark canvas colour.
+
+    The cover is 16:9, so it is scaled to the preview's height and centred; nothing is cropped, which keeps the
+    non-affiliation sentence in the cover's corner visible.
+    """
+    root = Path(root)
+    cover = _load(root / "assets" / "art" / "cover.png").convert("RGBA")
+    if cover.size != COVER_SIZE:
+        raise AssetError(f"cover is {cover.size[0]}x{cover.size[1]}, expected {COVER_SIZE[0]}x{COVER_SIZE[1]}")
+    height = SOCIAL_SIZE[1]
+    width = round(COVER_SIZE[0] * height / COVER_SIZE[1])
+    canvas = Image.new("RGBA", SOCIAL_SIZE, SOCIAL_CANVAS)
+    canvas.alpha_composite(cover.resize((width, height), Image.Resampling.LANCZOS), ((SOCIAL_SIZE[0] - width) // 2, 0))
+    out = root / "assets" / "social-preview.png"
+    _save_png(canvas.convert("RGB"), out)
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     root = Path(args[0]) if args else Path(__file__).resolve().parent.parent
     try:
-        written = build(root)
+        written = build(root) + [build_social_preview(root)]
     except AssetError as exc:
         print(f"make_assets: {exc}")
         return 1

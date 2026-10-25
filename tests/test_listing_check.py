@@ -124,6 +124,21 @@ def test_make_assets_output_is_byte_identical_across_runs(tmp_path):
     assert first == second
 
 
+def test_social_preview_fits_the_whole_cover_on_the_canvas_colour(tmp_path):
+    _art(tmp_path)
+    out = make_assets.build_social_preview(tmp_path)
+    with Image.open(out) as preview:
+        assert preview.size == (1280, 640) and preview.mode == "RGB"
+        assert preview.getpixel((2, 2)) == (23, 27, 31)  # side margin: the canvas colour, not cover pixels
+        assert preview.getpixel((640, 320)) == (
+            0,
+            255,
+            0,
+        )  # the cover is centred (the fixture's centre square is green)
+        assert preview.getpixel((640, 2)) == (255, 0, 0) and preview.getpixel((640, 637)) == (255, 0, 0)  # not cropped
+    assert out.read_bytes() == make_assets.build_social_preview(tmp_path).read_bytes()
+
+
 def test_make_assets_prefers_logo_source_and_rejects_bad_input(tmp_path):
     _art(tmp_path)
     _png(tmp_path / "assets" / "art" / "logo-source.png", (300, 300), color=(0, 0, 255, 255))

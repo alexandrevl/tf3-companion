@@ -69,6 +69,37 @@ jobs:
       - name: Repository guards (private data, language, required files, links, luac -p)
         run: uv run python scripts/check_repo.py
 
+  # The commit hook is optional for contributors, so CI runs every configured hook over the whole tree:
+  # merge markers, oversized files, case conflicts, whitespace, YAML/JSON/TOML syntax and the rest. The fast
+  # tests are skipped here only because the `test` job runs the whole suite.
+  hooks:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SKIP: pytest-fast
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+
+      - name: Install Lua 5.4 (provides luac)
+        uses: leafo/gh-actions-lua@32909a2dea0a48c433aec79e7fcd31b4cd55800f # v13.1.0
+        with:
+          luaVersion: "5.4"
+
+      - name: Install dependencies (locked)
+        run: uv sync --python 3.12
+
+      - name: Run every pre-commit hook over all files
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
   openspec:
     name: OpenSpec validation
     runs-on: ubuntu-latest

@@ -49,6 +49,9 @@ def check_tag(tag: str, root: Path = ROOT) -> str:
         raise ValueError(f"tag {tag} does not match the package version {declared} in pyproject.toml")
     if fallback != declared:
         raise ValueError(f"source fallback version {fallback} does not match the package version {declared}")
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8") if (root / "CHANGELOG.md").is_file() else ""
+    if not re.search(rf"^## {re.escape(declared)}(?:\s|$)", changelog, re.MULTILINE):
+        raise ValueError(f"CHANGELOG.md has no `## {declared}` section")
     return version
 
 

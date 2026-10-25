@@ -15,7 +15,7 @@ repos:
       - id: check-merge-conflict
         args: [--assume-in-merge]
       - id: check-added-large-files
-        args: [--maxkb=500]
+        args: [--maxkb=500, --enforce-all]
       - id: check-yaml
       - id: check-json
       - id: check-toml

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (unreleased)
 
 ### Added
 
@@ -31,6 +31,9 @@
 - Analysis views: `tf3c evaluate --view NAME` (repeatable) and MCP `evaluate(views=[...])` add structured, report-independent analyses of stored history (`bottlenecks`, `expansion`, `lines-history`, `history`, `industries`, `vehicle-roi`, `towns`) under `analysisViews`, with coverage, sample counts, bounds and engine-owned criteria. Nothing is computed unless requested; unknown names fail before any read. The seven specialized reports and the company, lines, fleet, cargo, annual and decisions reports now present these typed results (`facts.py` for the base reports) instead of calculating their own. Historical queries are bounded at the selected endpoint in SQL and stream compact rows in batches of 256. See `docs/reports.md`.
 - Installed-distribution acceptance (`tests/test_installed_analysis.py`): a wheel built into temporary storage and installed offline into a clean environment runs the installed service, `tf3c evaluate`, the MCP `evaluate` tool, all seven analysis views, report composition/publication and `tf3c analyse` outside the checkout over synthetic evidence and name-free methodologies. It fails naming its offline prerequisite instead of using a package index.
 - Ordered `TODO.md` project board and a contributor delivery lifecycle: one active workstream/integration owner per worktree, explicit blocked gates, evidence-backed Done cards and authorized coherent commits before starting unrelated work.
+- Public-repository launch tooling: `scripts/check_repo.py` guards (private data, Portuguese text, required files, repository identity and links, tracked-workflow pinning, and `luac -p` over every tracked Lua file, which fails rather than skips when `luac` is missing), a `pre-commit` gate with ruff, hygiene checks and the fast tests, a ruff configuration, `slow`-marked installed-wheel tests, and a `.git-blame-ignore-revs` entry for the formatting commit.
+- Public governance files: `NOTICE` (MPFever attribution and licence notice), `SECURITY.md`, `CODE_OF_CONDUCT.md`, `.github/CODEOWNERS`, package URLs and classifiers, `.gitattributes` for LF checkouts, and `docs/first-push.md` (private-first runbook, pinned actions).
+- GitHub Actions: a hardened CI (lint, guards, OpenSpec validation, Linux/macOS/Windows test matrix with Lua 5.4 built per runner), CodeQL for Python, dependency review, Dependabot for actions and uv, and a tag-triggered workflow that builds the wheel, sdist and bridge-mod archive for a **draft** release only. No hosted run has happened yet.
 
 ### Changed
 
@@ -44,6 +47,7 @@
 - `findings` items gain `methodology`, `methodology_hash` and `source` (`engine` or `methodology`); `report` headers name the methodology, its content hash, effective parameters and the skipped, unsupported and not-evaluable counts.
 - **BREAKING (pre-release):** age and elapsed duration use `game-calendar-v1`: in-game Gregorian days normalized by 365.25, exact anchors or bounded interpolation, no nominal-tick fallback or extrapolation. Unsupported purchases return unknown; line age remains an oldest-current-vehicle proxy. Outputs expose conversion and isolation provenance. Raw snapshots, decisions and user methodology files are not migrated; old reports without provenance retain an unknown time basis.
 - **BREAKING (pre-release):** unsupported methodology fields/capabilities can be inspected as drafts but cannot be imported, selected or applied as a partial policy. Selection origins and listing fields now distinguish save overrides, user defaults and packaged defaults without legacy aliases.
+- `status` (CLI and MCP) reports the package `version`; restart a long-lived MCP server after upgrading, which the server does not hot reload (`docs/agents.md`).
 - **BREAKING (pre-release):** the author-local analysis generator is removed: `data/analise/{gerar,common,raio_x,evolucao,cidades,cadeias,frota}.py` and their caches. Nothing replaces it (no wrapper or private generator); use `tf3c evaluate`, `tf3c analyse` and `tf3c report`. Snapshots, databases, preferences, notes, methodologies and previously generated reports are untouched, and `data/analysis-rules.md` keeps its history with updated source-of-truth pointers.
 - The `analysis-methodology` specification no longer requires parity with the author's scripts: it requires generic declarative policies and optional self-contained examples. The packaged `local-feeder-intercity-trunk` example is retained as it is; its watch from 3.0 / problem from 3.5 aircraft-per-terminal screening is policy screening, not congestion, and differs deliberately from the old watch-only prototype (`docs/methodologies.md`). Its boundary fixtures now live in `tests/test_example_methodology.py`.
 
@@ -64,10 +68,13 @@
 - Bottlenecks report at an earlier selected endpoint no longer reads samples after it, and equally ranked rising stocks, depots and collector-error families are ordered by name rather than input order.
 - Industries report no longer charts an unknown service ratio (no production in a sample or type) as 0%, and equally ranked events, movers, outliers, chains, links and review candidates are ordered by industry id rather than input order.
 - Base reports: company net position, annual closing line profit, idle-depot capital and annual modal profit changes no longer treat unknown values as zero (known subtotals state how many members were unknown); balance/loan charts and methodology-report charts leave out unknown values instead of plotting zero; equally ranked lines, fleet losses and added/removed entities are ordered by id; decision follow-up ignores decisions recorded after the selected endpoint and never reads a baseline past it; the cargo report applies the effective full-stock threshold to both the screen and its label.
+- MCP tools no longer fail with a SQLite thread-affinity error on repeated or concurrent calls: tools that ingest pending snapshots or write records open a short-lived store per call under one process lock, so no connection outlives a call; `evaluate` and the methodology, knowledge and doctor tools stay stored-only.
+- `line_detail` (CLI `tf3c line` and MCP `line_detail`) lists only the cargo a line carries, names it correctly by decoding the one-based capacity index through one shared convention, and marks cargo it cannot resolve as unknown instead of showing a wrong name (P-010/P-011).
 
 ### Validation status
 
 - Local source tests, isolated CLI/MCP round trips, package builds, installed-wheel checks and browser report inspection are recorded in `docs/review-notes.md`.
 - Real Windows/game activation, persistent save lineage, thumbnail presentation and third-party GUI-client rehearsals remain release gates.
-- Consolidation review: 943 Python tests pass locally. Open known issues include the older MCP tools' shared SQLite thread affinity, per-view hydration coverage leaking across combined requests and line-detail capacity decoding/filtering; these are prioritized in `TODO.md`, not claimed fixed by the architecture changes.
-- No live mod installation, player-data migration, GitHub remote, package publication or mod upload is performed during this review.
+- Local verification on 2026-10-25: 1008 Python tests pass (the installed-wheel acceptance tests need uv's registry cache warmed once, see `CONTRIBUTING.md`), `ruff check`, `ruff format --check`, the repository guards, the pre-commit hooks, strict OpenSpec validation and the package build all pass; workflow files pass `actionlint` and their schemas. None of this is a hosted CI run, a Windows or Linux run, or an in-game check.
+- Open known issues, prioritized in `TODO.md` and not claimed fixed: per-view hydration coverage leaking across combined requests, overview comparison labelling, and the compatibility-identifier reconciliation.
+- No live mod installation, player-data migration, GitHub remote, package publication or mod upload is performed by these changes; the first push is a manual runbook (`docs/first-push.md`).

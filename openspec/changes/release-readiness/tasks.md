@@ -1,10 +1,21 @@
+> **Re-baselined 2026-10-25 against delivered code.** Checked boxes below were verified as stated; no other box was ticked. Most of the repository, CI and community work was delivered by [`public-repository-launch`](../public-repository-launch/) and is recorded here, not redone:
+>
+> | Tasks | Status |
+> | --- | --- |
+> | 1.2, 4.1, 4.2, 4.3, 7.2, 7.3, 7.4, 8.1 | Largely delivered by `public-repository-launch` (package URLs and classifiers, `ci.yml`, `scripts/release_assets.py` bridge archive, draft-only `release.yml`, changelog `0.1.0` section, contributing guide with the release checklist, issue templates, README compatibility table). They stay unchecked here because the specific acceptance wording differs (no `twine check`, archive named `tf3_companion_bridge-<revision>.zip`, no `release_check.sh`, no `test_docs.py` drift test, no `Unreleased` heading) and no hosted run exists. Close them only after re-reading the acceptance text against the delivered files. |
+> | 1.1 | Not adopted as written: the version stays static in `pyproject.toml` with a source fallback in `src/tf3companion/__init__.py`; `tests/test_release_assets.py` and the release tag check enforce that they agree. |
+> | 3.1 | `luacheck` is optional; the repository's Lua check is `luac -p` through `scripts/check_repo.py`, mandatory in the hook and CI. |
+> | 6.1 to 6.5 | Owned by `mod-listing-assets` (see the note in group 6). |
+> | 1.3, 1.4, 2.1 to 2.4, 3.2 to 3.4, 4.4, 5.1 to 5.9, 8.1 (drift test) | Still open here; some are partly covered (`tests/test_installed_analysis.py`, the CI setup-guide smoke, `scripts/check_repo.py`). |
+> | 9.1 to 9.4 | Player and game gates (screenshots, clean-machine rehearsal, in-game final check); they stay open. Nothing is pushed or published by any change. |
+
 ## 1. Packaging and single-sourced version
 
 - [ ] 1.1 Make the version single-sourced: `__version__` in `src/tf3companion/__init__.py`, `dynamic = ["version"]` + `[tool.hatch.version]`; `tf3c --version` and MCP `serverInfo.version` read it. Verify: `uv run python -c "import tf3companion as t;print(t.__version__)"`, `uv run tf3c --version` match, and a pytest asserts the built wheel METADATA version equals it.
 - [ ] 1.2 Complete `pyproject.toml` metadata (description, readme, license MIT, authors Alexandre Lima, classifiers, `project.urls` with the future GitHub URL, keywords, `requires-python`). Verify: `uv build` succeeds and `uvx twine check dist/*` (or `uv run twine check`) passes.
 - [ ] 1.3 Verify (no implementation; changes 1/2 own it) that the wheel ships package data: knowledge topics (`mechanics`, `strategy`, `cargo_economy`, `snapshot_schema`) and the mod folder under `tf3companion/_mod/`. Verify: pytest opens the built wheel zip and asserts every knowledge topic, `mod.json`, `_content.json`, `modinfo.json` and each `_content.json` file is present, with no `.db`, `data/` or `tf3c_snap_*` file.
 - [ ] 1.4 Smoke the installed wheel in a clean venv outside the repo: `uv venv /tmp/v && uv pip install --python /tmp/v dist/*.whl && /tmp/v/bin/tf3c --version`, `tf3c knowledge`-equivalent read of a topic, `tf3c mod install --help`. Verify with the output; then `uvx --from dist/*.whl tf3c --version` works (the `uvx tf3-companion` path) and `pipx run --spec dist/*.whl tf3c --version` if pipx is installed. Record the exact commands in `docs/cli.md`.
-- [ ] 1.5 Extend `.gitignore` (`data/`, `*.db`, `dist/`, `tf3c_snap_*.lua`, `.venv`, `__pycache__`). Verify: `git status --ignored` shows `data/tf3.db` ignored.
+- [x] 1.5 Extend `.gitignore` (`data/`, `*.db`, `dist/`, `tf3c_snap_*.lua`, `.venv`, `__pycache__`). Verify: `git status --ignored` shows `data/tf3.db` ignored. (Verified 2026-10-25 with `git check-ignore -v`.)
 
 ## 2. Anonymised fixtures and privacy guard
 
@@ -51,11 +62,11 @@
 
 ## 7. Repository files and community templates
 
-- [ ] 7.1 `LICENSE` (MIT, "Copyright (c) 2026 Alexandre Lima") and `license = "MIT"` in `pyproject.toml`. Verify: file text equals the SPDX MIT template; `uv build` includes it in the wheel.
+- [x] 7.1 `LICENSE` (MIT, "Copyright (c) 2026 Alexandre Lima") and `license = "MIT"` in `pyproject.toml`. Verify: file text equals the SPDX MIT template; `uv build` includes it in the wheel. (Verified 2026-10-25: `License-File: LICENSE` in the built wheel METADATA.)
 - [ ] 7.2 `CHANGELOG.md` in Keep a Changelog format with `Unreleased` and a `0.1.0` entry summarising changes 1–6, plus compatibility table row. Verify: `release_check.sh` finds the entry for `__version__`.
 - [ ] 7.3 `CONTRIBUTING.md`: dev setup (`uv sync`, `uv run pytest`, lua checks), project layout, how to add a finding/analysis, openspec workflow, code of conduct pointer (short), screenshot/fixture rules (no personal data, run the guard), commit style, and the **manual release checklist** (create GitHub repo, add remote, push, tag, review draft release, PyPI trusted publish or token, Mod Hub upload, record file id, update compat table). Verify: every command in it runs on the author's machine; checklist items link to the owning docs.
 - [ ] 7.4 `.github/ISSUE_TEMPLATE/bug_report.yml` (required fields: OS, game build, companion version, mod revision, agent used, full `tf3c doctor` output, `[tf3c]` lines from the game log with per-OS path, steps) , `feature_request.yml`, `config.yml` (blank issues disabled, link to troubleshooting), and `PULL_REQUEST_TEMPLATE.md`. Verify: `python -c` YAML load of each template and a test asserting the bug form has required textareas mentioning `tf3c doctor` and `[tf3c]`.
-- [ ] 7.5 `SECURITY.md` short note (local-only tool, report privately) and `.github/dependabot.yml` for actions and uv. Verify: YAML parses.
+- [x] 7.5 `SECURITY.md` short note (local-only tool, report privately) and `.github/dependabot.yml` for actions and uv. Verify: YAML parses. (Delivered by `public-repository-launch`, validated with the Dependabot schema.)
 
 ## 8. Compatibility table
 

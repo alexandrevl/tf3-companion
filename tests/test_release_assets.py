@@ -17,11 +17,20 @@ sys.modules["release_assets"] = release
 SPEC.loader.exec_module(release)
 
 
-def fake_repo(tmp_path: Path, declared: str = "1.2.3", fallback: str | None = None, revision: int = 7) -> Path:
+def fake_repo(
+    tmp_path: Path,
+    declared: str = "1.2.3",
+    fallback: str | None = None,
+    revision: int = 7,
+    changelog: str | None = None,
+) -> Path:
     (tmp_path / "src" / "tf3companion").mkdir(parents=True)
     (tmp_path / "pyproject.toml").write_text(f'[project]\nname = "x"\nversion = "{declared}"\n', encoding="utf-8")
     (tmp_path / "src" / "tf3companion" / "__init__.py").write_text(
         f'__version__ = "{fallback or declared}"\n', encoding="utf-8"
+    )
+    (tmp_path / "CHANGELOG.md").write_text(
+        changelog if changelog is not None else f"# Changelog\n\n## {declared} (unreleased)\n\n- x\n", encoding="utf-8"
     )
     mod = tmp_path / "mod" / "tf3_companion_bridge"
     (mod / "content").mkdir(parents=True)
@@ -43,6 +52,12 @@ def test_a_tag_that_differs_or_is_malformed_fails(tmp_path, tag):
 def test_a_stale_source_fallback_version_fails_even_when_the_tag_matches(tmp_path):
     repo = fake_repo(tmp_path, declared="1.2.3", fallback="1.2.2")
     with pytest.raises(ValueError, match="fallback"):
+        release.check_tag("v1.2.3", repo)
+
+
+def test_a_release_without_a_changelog_section_fails(tmp_path):
+    repo = fake_repo(tmp_path, changelog="# Changelog\n\n## 1.2.2\n\n- older\n")
+    with pytest.raises(ValueError, match="CHANGELOG"):
         release.check_tag("v1.2.3", repo)
 
 

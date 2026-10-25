@@ -13,7 +13,7 @@ A local, explainable transport-company analyst. Players keep control of every ga
 | --- | --- | --- |
 | Source build | English product, portable discovery/installer, explainable findings, six reports, MCP workflows and safe local storage | Implemented and exercised locally; evidence in [review notes](docs/review-notes.md) |
 | Trustworthy game integration | Windows/macOS activation and refresh; persistent save lineage and isolated histories | Requires player-controlled live-game probes; no town-id fingerprinting |
-| Distribution rehearsal | Clean-machine quickstart, assistant-guided installation, intended AI-client setup, inspected package/mod artifacts and hosted CI | Package artifacts and offline setup guidance exercised locally; real clients, game platforms and first hosted CI remain gates |
+| Distribution rehearsal | Clean-machine quickstart, assistant-guided installation, intended AI-client setup, inspected package/mod artifacts, a commit-time gate and hosted CI | Package artifacts, offline setup guidance, repository guards and the pre-commit gate exercised locally; real clients, game platforms and the first hosted CI run remain gates ([first-push runbook](docs/first-push.md)) |
 | Public release | Reviewed compatibility matrix, original branding, tested mod thumbnail, release checklist and changelog | Publish only after gates pass and publication is separately approved |
 | Deeper company decisions | Verified station-linked cargo diagnosis, calibrated fleet renewal, configurable collection and longitudinal follow-up | Planned in OpenSpec; recommendations require measured fields and verified units |
 

@@ -43,6 +43,12 @@ REQUIRED_PUBLIC_FILES: tuple[str, ...] = (
     ".pre-commit-config.yaml",
     ".git-blame-ignore-revs",
     "docs/first-push.md",
+    ".gitattributes",
+    ".github/dependabot.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/codeql.yml",
+    ".github/workflows/dependency-review.yml",
+    ".github/workflows/release.yml",
 )
 
 # ---------------------------------------------------------------------------------------------
@@ -217,6 +223,35 @@ def rule_identity(root: Path, files: list[str]) -> Iterator[Violation]:
                         )
 
 
+WORKFLOW_FILE = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")
+THIRD_PARTY_USE = re.compile(r"^\s*-?\s*uses:\s*([^\s#@]+)@([^\s#]+)")
+FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
+
+
+def rule_workflows(root: Path, files: list[str]) -> Iterator[Violation]:
+    """Workflows pin third-party actions to commit SHAs, declare top-level permissions and avoid pull_request_target."""
+    for rel in files:
+        if not WORKFLOW_FILE.match(rel):
+            continue
+        text = read_text(root, rel)
+        if text is None:
+            continue
+        if not re.search(r"^permissions:", text, re.MULTILINE):
+            yield Violation(
+                "workflows", rel, 0, "no top-level `permissions:` block; declare least privilege explicitly"
+            )
+        for number, line in lines_of(text):
+            if re.match(r"^\s*pull_request_target\s*:", line):
+                yield Violation(
+                    "workflows", rel, number, "`pull_request_target` runs untrusted code with secrets; do not use it"
+                )
+            match = THIRD_PARTY_USE.match(line)
+            if match and not match.group(1).startswith("./") and not FULL_SHA.match(match.group(2)):
+                yield Violation(
+                    "workflows", rel, number, f"`{match.group(1)}@{match.group(2)}` is not pinned to a full commit SHA"
+                )
+
+
 LUAC_NAMES = ("luac", "luac5.4")
 LUAC_INSTALL_HINT = (
     "`luac` was not found. Install it (Linux: `apt-get install lua5.4`; macOS: `brew install lua@5.4` and add "
@@ -259,6 +294,7 @@ RULES: dict[str, Rule] = {
     "required-files": rule_required_files,
     "identity": rule_identity,
     "lua-syntax": rule_lua_syntax,
+    "workflows": rule_workflows,
 }
 
 

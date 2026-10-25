@@ -1,0 +1,10 @@
+# Text files are LF on every platform: tests hash and compare file contents, and the Windows CI runner
+# otherwise checks out CRLF by default.
+* text=auto eol=lf
+
+# Binary assets are never normalised.
+*.png binary
+*.tga binary
+*.zip binary
+*.xlsx binary
+*.db binary

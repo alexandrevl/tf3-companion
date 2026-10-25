@@ -184,3 +184,42 @@ def test_a_repository_without_lua_files_needs_no_luac(tmp_path, monkeypatch):
     repo = make_repo(tmp_path, {"a.md": "x\n"})
     hide_luac(monkeypatch)
     assert guards.check(repo, ["lua-syntax"]) == []
+
+
+PINNED = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+
+
+def workflow(uses: str = PINNED, permissions: bool = True, extra: str = "") -> str:
+    head = "name: x\non: push\n" + ("permissions:\n  contents: read\n" if permissions else "") + extra
+    return head + f"jobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: {uses} # v7\n"
+
+
+def test_a_sha_pinned_workflow_with_permissions_passes(tmp_path):
+    assert violations(tmp_path, {".github/workflows/ci.yml": workflow()}, "workflows") == []
+
+
+@pytest.mark.parametrize("uses", ["actions/checkout@v4", "actions/checkout@main", "actions/checkout@3d3c42e"])
+def test_an_unpinned_third_party_action_fails_with_its_line(tmp_path, uses):
+    found = violations(tmp_path, {".github/workflows/ci.yml": workflow(uses)}, "workflows")
+    assert [(v.path, v.line) for v in found] == [(".github/workflows/ci.yml", 9)]
+    assert uses in found[0].message
+
+
+def test_a_local_action_needs_no_pin(tmp_path):
+    assert violations(tmp_path, {".github/workflows/ci.yml": workflow("./.github/actions/x")}, "workflows") == []
+
+
+def test_a_workflow_without_permissions_fails(tmp_path):
+    found = violations(tmp_path, {".github/workflows/ci.yml": workflow(permissions=False)}, "workflows")
+    assert [v.rule for v in found] == ["workflows"] and "permissions" in found[0].message
+
+
+def test_pull_request_target_is_rejected(tmp_path):
+    found = violations(
+        tmp_path, {".github/workflows/ci.yml": workflow(extra="on2:\n  pull_request_target:\n")}, "workflows"
+    )
+    assert any("pull_request_target" in v.message for v in found)
+
+
+def test_files_outside_the_workflows_folder_are_ignored(tmp_path):
+    assert violations(tmp_path, {"docs/example.yml": "uses: actions/checkout@v4\n"}, "workflows") == []

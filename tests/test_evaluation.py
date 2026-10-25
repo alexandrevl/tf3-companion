@@ -529,7 +529,7 @@ def test_dual_format_report_renders_one_composition(tmp_path, monkeypatch):
         monkeypatch.setattr(reports, "render_markdown", real)
         companion.close()
         writer.close()
-    html = Path(result["html_file"]).read_text()
+    html = Path(result["html_file"]).read_text(encoding="utf-8")
     assert "1980-01-01" in result["markdown"] and "1980-01-01" in html
     assert "1979-01-01" not in result["markdown"] and "1979-01-01" not in html
     assert Path(result["folder"]).name == "1980-01-01__default@1.0.0"

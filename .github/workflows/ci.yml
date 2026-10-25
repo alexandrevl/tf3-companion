@@ -2,38 +2,146 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Least privilege: jobs only read the repository. Nothing here writes, publishes or reads secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  UV_LOCKED: "1"
 
 jobs:
-  python-test:
-    name: Test (${{ matrix.os }})
+  lint:
+    name: Lint and format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (locked)
+        run: uv sync --python 3.12
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  guards:
+    name: Repository guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+
+      # luac -p is the repository's Lua check; the guard fails, never skips, when it is missing.
+      - name: Install Lua 5.4 (provides luac)
+        uses: leafo/gh-actions-lua@32909a2dea0a48c433aec79e7fcd31b4cd55800f # v13.1.0
+        with:
+          luaVersion: "5.4"
+
+      - name: Install dependencies (locked)
+        run: uv sync --python 3.12
+
+      - name: Repository guards (private data, language, required files, links, luac -p)
+        run: uv run python scripts/check_repo.py
+
+  openspec:
+    name: OpenSpec validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the OpenSpec CLI
+        run: npm install --global @fission-ai/openspec@1.14.0
+
+      - name: Validate every change and spec strictly
+        run: openspec validate --all --strict
+
+  test:
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.12"]
+        include:
+          - os: ubuntu-latest
+            python: "3.14"
+    defaults:
+      run:
+        shell: bash
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
 
-      - name: Set up Python
-        run: uv python install 3.12
+      # leafo/gh-actions-lua compiles Lua on the runner; on Windows its README requires the MSVC developer
+      # environment first (the step does nothing on other platforms).
+      - name: Set up the MSVC developer environment (Windows Lua build prerequisite)
+        uses: step-security/msvc-dev-cmd@22c98154b708dbd743e6f27a933cf6ceba3305c4 # v1.13.1
+
+      - name: Install Lua 5.4 (provides luac)
+        uses: leafo/gh-actions-lua@32909a2dea0a48c433aec79e7fcd31b4cd55800f # v13.1.0
+        with:
+          luaVersion: "5.4"
 
       - name: Install dependencies (locked)
-        run: uv sync --locked --python 3.12
+        run: uv sync --python ${{ matrix.python }}
 
-      - name: Run pytest
-        run: uv run pytest
-
-      - name: Build package (dry-run artifact check)
+      - name: Build the package (wheel and sdist)
         run: uv build
 
-      - name: Check setup guidance ships in the wheel
-        shell: bash
-        run: uv run --isolated --no-project --python 3.12 --with "$(ls dist/*.whl)" python -c "from tf3companion.agent_experience import load_setup_guide, setup_check; assert load_setup_guide().strip() and setup_check().strip()"
+      # The installed-wheel acceptance tests install offline from uv's cache, so seed the cache once
+      # with network access by installing the built wheel into a scratch environment.
+      - name: Warm uv's cache for the offline acceptance test
+        run: |
+          uv venv "$RUNNER_TEMP/warm-venv" --python ${{ matrix.python }}
+          VIRTUAL_ENV="$RUNNER_TEMP/warm-venv" uv pip install dist/*.whl
+
+      - name: Run the full test suite
+        run: uv run pytest
+
+      - name: Check the setup guidance ships in the wheel
+        run: >
+          uv run --isolated --no-project --python ${{ matrix.python }} --with "$(ls dist/*.whl)"
+          python -c "from tf3companion.agent_experience import load_setup_guide, setup_check;
+          assert load_setup_guide().strip() and setup_check().strip()"
+
+      - name: Check the release helper agrees with the package version
+        run: uv run python scripts/release_assets.py check-tag "v$(uv run python -c 'import tf3companion; print(tf3companion.__version__)')"

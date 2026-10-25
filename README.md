@@ -145,7 +145,7 @@ This is a source-development build, not a published release. Compatibility evide
 | macOS game bridge | The existing OpenSpec notes record prototype snapshot output on game build 40420; the updated release still needs an in-game rehearsal. |
 | Windows | Portable source setup and discovery are implemented; a real Windows game installation, activation and refresh are not verified. |
 | Linux / Proton | Best-effort candidate discovery; live game compatibility is not verified. |
-| GitHub Actions | Lint, repository guards, OpenSpec validation and Windows/macOS/Linux locked tests plus package build are configured, with CodeQL, dependency review and a draft-only release workflow; **no hosted CI run has happened yet**. A pre-commit hook repeats the fast checks locally. |
+| GitHub Actions | Lint, repository guards, pre-commit hooks, OpenSpec validation and locked tests on Ubuntu (Python 3.12 and 3.14), macOS and Windows pass on GitHub (run on commit `d930c6d`, Lua 5.4 compiled on every runner), alongside CodeQL and a draft-only release workflow. Dependency review is configured but fails until the repository's Dependency graph is enabled. A pre-commit hook repeats the fast checks locally. |
 | Save identity | Persistent lineage and end-to-end isolation remain release gates. |
 
 No screenshots, logos, badges or published package links are presented as available before they exist. The [roadmap](docs/ROADMAP.md) distinguishes delivered source work, current review and planned release gates; OpenSpec remains the detailed acceptance record.

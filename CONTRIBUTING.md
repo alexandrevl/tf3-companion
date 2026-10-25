@@ -33,6 +33,23 @@ uv run tf3c knowledge
 
 Use `TF3C_DATA_DIR` and `TF3C_USERDATA_DIR` during testing to isolate tests from your actual game data.
 
+### Repository checks and the Lua prerequisite
+
+```sh
+uv run python scripts/check_repo.py   # private data, Portuguese text, required files, links, `luac -p` on Lua
+uv run ruff check . && uv run ruff format --check .
+```
+
+The Lua check is `luac -p` (syntax only, never evidence that the mod works in the game) and it **fails instead of skipping** when `luac` is missing. Install it first:
+
+| Platform | Command |
+| --- | --- |
+| Linux | `sudo apt-get install lua5.4` |
+| macOS | `brew install lua@5.4`, then `export PATH="$(brew --prefix lua@5.4)/bin:$PATH"` (the formula is keg-only) |
+| Windows | `choco install lua` |
+
+If the binary has an unusual name or location, set the `LUAC` environment variable to it.
+
 `tests/test_installed_analysis.py` builds the wheel into a temporary directory, installs it offline into a clean temporary environment and runs the installed service, `tf3c evaluate`, the MCP `evaluate` tool, all seven analysis views, report composition/publication and `tf3c analyse` from outside the checkout with synthetic evidence. It needs `uv` and uv's local cache to already hold the build backend and dependency wheels (run `uv sync --locked` once with network access); when they are missing it fails naming that prerequisite and never reaches a package index.
 
 ---

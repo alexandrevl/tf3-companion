@@ -22,18 +22,18 @@
 
 ## 4. Lint and format tooling
 
-- [ ] 4.1 Add `ruff` and `pre-commit` to the dev dependency group, add the conservative rule set and format settings to `pyproject.toml`, refresh `uv.lock`; verify `uv sync --locked` succeeds and `uv run ruff --version` runs.
-- [ ] 4.2 Fix lint findings without behaviour change, using local, justified suppressions only where a fix would alter behaviour; verify `uv run ruff check .` exits 0 and the full suite result matches the 1.2 baseline.
+- [x] 4.1 Add `ruff` and `pre-commit` to the dev dependency group, add the conservative rule set and format settings to `pyproject.toml`, refresh `uv.lock`; verify `uv sync --locked` succeeds and `uv run ruff --version` runs.
+- [x] 4.2 Fix lint findings without behaviour change, using local, justified suppressions only where a fix would alter behaviour; verify `uv run ruff check .` exits 0 and the full suite result matches the 1.2 baseline.
 - [ ] 4.3 Apply `ruff format` as one isolated mechanical commit with no logic edits and record it in a `.git-blame-ignore-revs` entry once the commit exists; verify `uv run ruff format --check .` exits 0 and the full suite and `uv run tf3c --help`, `uv run tf3c knowledge` still behave identically.
-- [ ] 4.4 Mark the installed-wheel acceptance tests with a `slow` marker registered in `pyproject.toml`; verify `uv run pytest -m "not slow"` skips only those tests and a plain `uv run pytest` still runs them.
+- [x] 4.4 Mark the installed-wheel acceptance tests with a `slow` marker registered in `pyproject.toml`; verify `uv run pytest -m "not slow"` skips only those tests and a plain `uv run pytest` still runs them.
 
 ## 5. Repository guards
 
-- [ ] 5.1 Write `scripts/check_repo.py` (standard library only) with the private-data guard, language guard, required-public-files check and link-identity check reading `git ls-files`, with commented allowlists; verify `uv run python scripts/check_repo.py` exits 0 on the clean tree and prints file, line and rule on a seeded violation.
-- [ ] 5.2 Write `tests/test_repo_guards.py` against temporary git repositories seeding each violation class (personal path, Steam id, tracked `.db`, tracked `tf3c_snap_*.lua`, foreign e-mail, Portuguese string, missing required file) and each allowed placeholder; verify each seeded violation fails and each placeholder passes with `uv run pytest tests/test_repo_guards.py`.
-- [ ] 5.3 Ask the maintainer for approval to install `luac` on this machine (for example `brew install lua`), install it, and record the exact command and `luac -v` output; verify `luac -p` passes on both files under `mod/tf3_companion_bridge/content/tf3_companion/`. If approval is not given, leave this task, 5.4 and 6.1 open and record the missing prerequisite.
-- [ ] 5.4 Add the Lua gate to `scripts/check_repo.py` running `luac -p` (names `luac`, `luac5.4`) over every tracked `.lua` file, failing with a per-platform install message when no binary exists and with no fallback parser, and add tests using a deliberately broken temporary Lua file and a simulated missing binary; verify the broken file fails naming the file, the missing binary fails rather than skips, and both mod files pass.
-- [ ] 5.5 Replace the grep command in the archived English-only requirement's documentation with the guard command in `CONTRIBUTING.md` and `AGENTS.md`; verify the documented command runs as written from the repository root.
+- [x] 5.1 Write `scripts/check_repo.py` (standard library only) with the private-data guard, language guard, required-public-files check and link-identity check reading `git ls-files`, with commented allowlists; verify `uv run python scripts/check_repo.py` exits 0 on the clean tree and prints file, line and rule on a seeded violation.
+- [x] 5.2 Write `tests/test_repo_guards.py` against temporary git repositories seeding each violation class (personal path, Steam id, tracked `.db`, tracked `tf3c_snap_*.lua`, foreign e-mail, Portuguese string, missing required file) and each allowed placeholder; verify each seeded violation fails and each placeholder passes with `uv run pytest tests/test_repo_guards.py`.
+- [x] 5.3 Ask the maintainer for approval to install `luac` on this machine (for example `brew install lua`), install it, and record the exact command and `luac -v` output; verify `luac -p` passes on both files under `mod/tf3_companion_bridge/content/tf3_companion/`. If approval is not given, leave this task, 5.4 and 6.1 open and record the missing prerequisite.
+- [x] 5.4 Add the Lua gate to `scripts/check_repo.py` running `luac -p` (names `luac`, `luac5.4`) over every tracked `.lua` file, failing with a per-platform install message when no binary exists and with no fallback parser, and add tests using a deliberately broken temporary Lua file and a simulated missing binary; verify the broken file fails naming the file, the missing binary fails rather than skips, and both mod files pass.
+- [x] 5.5 Replace the grep command in the archived English-only requirement's documentation with the guard command in `CONTRIBUTING.md` and `AGENTS.md`; verify the documented command runs as written from the repository root.
 
 ## 6. Commit-time hooks
 

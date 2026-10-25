@@ -16,7 +16,7 @@ Conversation with the player MAY use the player's language. That never extends t
 
 Localizing player-facing output is out of scope here: it is neither required nor forbidden, and a future change must design it (for example a message catalog). Until then, source contains no localized literals.
 
-Review changed paths and content for language compliance before delivery, including gitignored scripts. Language detection is a review aid, not proof: accented characters can be valid proper names, and English-only ASCII can still contain non-English words.
+Review changed paths and content for language compliance before delivery, including gitignored scripts. The guard command under Verification enforces the rule on tracked files; it is a review aid, not proof: accented characters can be valid proper names, and English-only ASCII can still contain non-English words.
 
 ## Product boundary
 
@@ -28,7 +28,8 @@ Review changed paths and content for language compliance before delivery, includ
 ## Verification
 
 - Run `uv run pytest` for the Python package.
-- Lua is checked with `luac -p` only; that proves syntax, not game behaviour.
+- Run `uv run python scripts/check_repo.py` for the repository guards (private data, Portuguese text, required public files, link identity). It reads tracked files and also runs `luac -p` on every tracked Lua file; the commit hook and CI run the same command.
+- Lua is checked with `luac -p` only; that proves syntax, not game behaviour. Install `luac` first (see CONTRIBUTING.md); the check fails rather than skipping when it is missing.
 - Mod behaviour can only be verified in the game by the player; plan an in-game step for any mod change.
 - Add behavioural regression tests; do not assert on volatile wording.
 

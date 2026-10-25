@@ -32,10 +32,17 @@ ALLOWED_EMAILS = frozenset({"alexandrevl@gmail.com"})
 REQUIRED_PUBLIC_FILES: tuple[str, ...] = (
     "README.md",
     "LICENSE",
+    "NOTICE",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "AGENTS.md",
     "TODO.md",
+    ".github/CODEOWNERS",
+    ".pre-commit-config.yaml",
+    ".git-blame-ignore-revs",
+    "docs/first-push.md",
 )
 
 # ---------------------------------------------------------------------------------------------

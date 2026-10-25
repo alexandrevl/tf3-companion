@@ -1,0 +1,50 @@
+TF3 Companion
+Copyright (c) Alexandre Lima. Licensed under the MIT License (see LICENSE).
+
+TF3 Companion is an unofficial project. It is not affiliated with or endorsed by Urban Games or Paradox
+Interactive. Product names are used only to say what the software works with.
+
+No source code from Transport Fever 3 or from any third-party project is vendored in this repository.
+Facts adopted from other work are paraphrased and cite the file they came from.
+
+Third-party material adopted
+============================
+
+MPFever
+-------
+
+  Project:   MPFever, an independent multiplayer research project for Transport Fever 3
+  URL:       https://github.com/dkdknight/MPFever
+  Licence:   MIT
+  Studied:   commit ae5fc96
+  Adopted:   engine and runtime behaviour notes, API catalogue entries and game-mechanics facts, paraphrased
+             and tagged `[ADOPTED: ...]` with an `MPF:<file>` source citation. They are the author's
+             statements, not verified by this project unless a topic says so.
+  Used in:   src/tf3companion/knowledge/engine.md, api_catalog.md, mechanics.md and cargo_economy.md,
+             and the troubleshooting guide's "Game files, logs and crashes" section.
+
+The MPFever licence notice, reproduced because material derived from it is included:
+
+  MIT License
+
+  Copyright (c) 2026 arthur
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+When a change adopts material from another project, add that project to this file in the same change.

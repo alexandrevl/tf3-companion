@@ -6,11 +6,30 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{name = "Alexandre Lima", email = "alexandrevl@gmail.com"}]
 license = "MIT"
+keywords = ["transport-fever", "transport-fever-3", "mcp", "analytics", "game-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment :: Simulation",
+]
 dependencies = [
     "mcp>=2.0.0,<3",
     "openpyxl>=3.1.5",
     "platformdirs>=4",
 ]
+
+[project.urls]
+Homepage = "https://github.com/alexandrevl/tf3-companion"
+Repository = "https://github.com/alexandrevl/tf3-companion"
+Issues = "https://github.com/alexandrevl/tf3-companion/issues"
+Changelog = "https://github.com/alexandrevl/tf3-companion/blob/main/CHANGELOG.md"
+Security = "https://github.com/alexandrevl/tf3-companion/security/policy"
 
 [project.scripts]
 tf3c = "tf3companion.cli:main"

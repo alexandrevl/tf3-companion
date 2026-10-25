@@ -1,0 +1,16 @@
+# The maintainer reviews everything that can change what is built, released or shipped into a player's game.
+# Order matters: the last matching pattern wins, so the catch-all comes first.
+*                                @alexandrevl
+
+/.github/                        @alexandrevl
+/.github/workflows/              @alexandrevl
+/mod/                            @alexandrevl
+/pyproject.toml                  @alexandrevl
+/uv.lock                         @alexandrevl
+/scripts/                        @alexandrevl
+/.pre-commit-config.yaml         @alexandrevl
+/LICENSE                         @alexandrevl
+/NOTICE                          @alexandrevl
+/SECURITY.md                     @alexandrevl
+/CODE_OF_CONDUCT.md              @alexandrevl
+/CHANGELOG.md                    @alexandrevl

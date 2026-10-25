@@ -23,7 +23,11 @@ Prefer guided setup? Paste the request in [Install with an AI assistant](docs/ag
 
 ## Install from source
 
-The package is **not published on PyPI yet**. Download or clone this repository using its actual GitHub location, then open a terminal in the checkout. Install [uv](https://docs.astral.sh/uv/); uv can provision the required Python 3.12+ interpreter.
+The package is **not published on PyPI yet**. Clone the repository, then open a terminal in the checkout. Install [uv](https://docs.astral.sh/uv/); uv can provision the required Python 3.12+ interpreter.
+
+```sh
+git clone https://github.com/alexandrevl/tf3-companion.git
+```
 
 ### Windows PowerShell
 
@@ -153,3 +157,10 @@ No screenshots, logos, badges or published package links are presented as availa
 - [Install the mod](docs/install-mod.md) · [Connect an agent](docs/agents.md)
 - [Reports](docs/reports.md) · [Privacy and storage](docs/privacy.md) · [Troubleshooting](docs/troubleshooting.md)
 - [Contribute](CONTRIBUTING.md) · [Contributor/agent guide](AGENTS.md) · [Brand identity](docs/brand/identity.md)
+- [First push runbook (maintainer)](docs/first-push.md)
+
+## Security, conduct and third-party material
+
+- Report vulnerabilities privately, following [SECURITY.md](SECURITY.md); do not open a public issue for them.
+- Everyone taking part is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
+- The game-knowledge topics adapt facts from the MIT-licensed MPFever research project, paraphrased and cited; see [NOTICE](NOTICE) for the attribution and licence text. No game or third-party source code is included.

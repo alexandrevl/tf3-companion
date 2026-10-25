@@ -43,11 +43,11 @@
 
 ## 7. Public governance files and identity
 
-- [ ] 7.1 Confirm the repository name `alexandrevl/tf3-companion`, the security channel and the conduct contact with the maintainer, then record them as the single identity list in `docs/first-push.md`; verify the list names every file that carries a URL.
-- [ ] 7.2 Add `NOTICE` crediting MPFever (MIT, commit `ae5fc96`) and the derived topics with the paraphrase statement, and link it from README; verify by reading `NOTICE` and by the guard's required-files check. Confirm `knowledge/engine.md` file-and-line citations are references, not copied source.
-- [ ] 7.3 Add `SECURITY.md`, `CODE_OF_CONDUCT.md` and `.github/CODEOWNERS`; verify the files exist, contain the stated channel and boundary, and `CODEOWNERS` covers `.github/workflows/`, `mod/` and release files.
-- [ ] 7.4 Apply the repository identity to `.github/ISSUE_TEMPLATE/config.yml`, `pyproject.toml` `[project.urls]` and classifiers, the README, docs and the bridge `modinfo.json` `url`; verify the guard's link-identity check passes and the built wheel metadata (`uv build` then reading `METADATA`) shows the Homepage, Repository and Issues URLs.
-- [ ] 7.5 Update the README: unofficial statement, third-party and security sections, quickstart checked line by line, no badges or published-package links yet; verify every command in the README runs against an isolated `TF3C_DATA_DIR`.
+- [x] 7.1 Confirm the repository name `alexandrevl/tf3-companion`, the security channel and the conduct contact with the maintainer, then record them as the single identity list in `docs/first-push.md`; verify the list names every file that carries a URL.
+- [x] 7.2 Add `NOTICE` crediting MPFever (MIT, commit `ae5fc96`) and the derived topics with the paraphrase statement, and link it from README; verify by reading `NOTICE` and by the guard's required-files check. Confirm `knowledge/engine.md` file-and-line citations are references, not copied source.
+- [x] 7.3 Add `SECURITY.md`, `CODE_OF_CONDUCT.md` and `.github/CODEOWNERS`; verify the files exist, contain the stated channel and boundary, and `CODEOWNERS` covers `.github/workflows/`, `mod/` and release files.
+- [x] 7.4 Apply the repository identity to `.github/ISSUE_TEMPLATE/config.yml`, `pyproject.toml` `[project.urls]` and classifiers, the README, docs and the bridge `modinfo.json` `url`; verify the guard's link-identity check passes and the built wheel metadata (`uv build` then reading `METADATA`) shows the Homepage, Repository and Issues URLs.
+- [x] 7.5 Update the README: unofficial statement, third-party and security sections, quickstart checked line by line, no badges or published-package links yet; verify every command in the README runs against an isolated `TF3C_DATA_DIR`.
 
 ## 8. GitHub Actions
 

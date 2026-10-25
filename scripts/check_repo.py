@@ -83,7 +83,7 @@ LANGUAGE_ALLOWLIST: dict[str, str] = {
     "CHANGELOG.md": "names the retired author-local scripts it removed",
     "docs/methodologies.md": "shows a localized cargo name as the example of why keys are preferred",
     "openspec/changes/agent-experience/design.md": "describes the stop-word check that detects Portuguese remnants",
-    "openspec/changes/public-repository-launch/design.md": "quotes the localized cargo name that the language allowlist permits",
+    "openspec/changes/archive/2026-10-25-public-repository-launch/design.md": "quotes the localized cargo name that the language allowlist permits",
     "openspec/changes/archive/2026-10-18-analysis-methodologies/tasks.md": "archived record naming a local-only comparison",
     "openspec/changes/archive/2026-10-18-enforce-english-only/design.md": "archived record of the language-check command",
     "openspec/changes/archive/2026-10-18-enforce-english-only/proposal.md": "archived record naming the Portuguese scripts removed",

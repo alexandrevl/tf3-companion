@@ -1,4 +1,4 @@
-> **Re-baselined 2026-10-25 against delivered code.** Checked boxes below were verified as stated; no other box was ticked. Most of the repository, CI and community work was delivered by [`public-repository-launch`](../public-repository-launch/) and is recorded here, not redone:
+> **Re-baselined 2026-10-25 against delivered code.** Checked boxes below were verified as stated; no other box was ticked. Most of the repository, CI and community work was delivered by [`public-repository-launch`](../archive/2026-10-25-public-repository-launch/) and is recorded here, not redone:
 >
 > | Tasks | Status |
 > | --- | --- |

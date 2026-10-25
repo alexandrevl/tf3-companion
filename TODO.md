@@ -8,7 +8,7 @@ Tags: `[P1]` correctness/safety, `[P2]` usability/delivery, `[P3]` exploration; 
 
 ## In progress
 
-- [ ] `[P1]` Public repository launch: `openspec/changes/public-repository-launch/` (MCP tool lifecycle, line-detail capacity, lint/hooks/guards, public governance files, GitHub Actions, first-push runbook). Single integration owner this session; no push, tag or publication is authorized by this card.
+No implementation is active. The public-repository launch work is archived (`openspec/changes/archive/2026-10-25-public-repository-launch/`); the remaining step is the user-owned first push in **Blocked**. The next selected workstream must come from the ordered **Next** lane.
 
 ## Next
 
@@ -89,3 +89,4 @@ Completed source work is distinct from public release and live-game acceptance. 
 - [x] 2026-10-25 `release-readiness` re-baselined against delivered code: its notes now map each historical task to `public-repository-launch`, `mod-listing-assets` or the open player gates; only verified boxes (1.5, 7.1, 7.5) were ticked and `openspec validate release-readiness --strict` passes.
 - [x] 2026-10-25 Lua syntax verification: `luac` 5.4.9 installed with approval (`brew install lua@5.4`, keg-only, so PATH must include `$(brew --prefix lua@5.4)/bin`); `luac -p` passes on both bridge Lua files. Syntax only: no claim about game behaviour. The check is now mandatory in `scripts/check_repo.py`, the pre-commit hook and CI, and fails rather than skips when `luac` is missing.
 - [x] 2026-10-25 `public-repository-launch` groups 4-9: ruff lint and an AST-verified isolated format commit (`.git-blame-ignore-revs`), `scripts/check_repo.py` guards with `tests/test_repo_guards.py` (private data, Portuguese text, required files, identity and links, `luac -p`, workflow pinning), the pre-commit gate (proved in a clean clone: a merge marker and a personal path were rejected, a clean commit accepted), `NOTICE`/`SECURITY.md`/`CODE_OF_CONDUCT.md`/`CODEOWNERS`, hardened CI plus CodeQL, dependency review, Dependabot and a draft-only release workflow (actionlint and schema checks pass; no hosted run), and the `docs/first-push.md` runbook.
+- [x] 2026-10-25 `public-repository-launch` archived after all 43 tasks were verified and its five delta specs synced (`repository-quality-gates`, `public-project-governance`, `mcp-server-runtime`, `line-inspection`, and the modified `contributor-conventions`). Final local gate: 1008 tests, ruff, guards, hooks, build, strict OpenSpec validation and a clean-wheel stdio round trip all pass. Local commits only; nothing pushed.

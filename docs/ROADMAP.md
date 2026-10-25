@@ -72,8 +72,8 @@ Future features remain OpenSpec work, not promises that all game mechanics are a
 | [Visual identity](../openspec/changes/visual-identity/) | Source identity delivered; live cover acceptance pending |
 | [Mod listing assets](../openspec/changes/mod-listing-assets/) | Generation/checking tools and remaining player-approved gallery/game checks |
 | [Brand application](../openspec/changes/brand-application/) | Planned shared token application to product surfaces |
-| [Release readiness](../openspec/changes/release-readiness/) | Pending re-baseline of delivery and manual release gates |
-| [Public repository launch](../openspec/changes/public-repository-launch/) | MCP lifecycle and line-detail fixes, repository guards, pre-commit and CI hardening, governance files and the maintainer's [first-push runbook](first-push.md); the push itself stays manual |
+| [Release readiness](../openspec/changes/release-readiness/) | Re-baselined against delivered work; open items are the player and game gates |
+| [Public repository launch](../openspec/changes/archive/2026-10-25-public-repository-launch/) | Archived: MCP lifecycle and line-detail fixes, repository guards, pre-commit and CI hardening, governance files and the maintainer's [first-push runbook](first-push.md); the push itself stays manual |
 
 Completed plans are retained under [the archive](../openspec/changes/archive/), including installation onboarding, data integrity, methodology activation/defaults/report policy, calendar time, structured evaluation/views, generator retirement and engine-runtime knowledge. Their implemented contracts live in [main specs](../openspec/specs/); do not reopen them merely to track a new bug.
 
